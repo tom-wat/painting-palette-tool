@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D描画手法性能比較デモ</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #555;
+            min-width: 120px;
+        }
+        
+        input, select, button {
+            padding: 10px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .result-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .result-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .winner-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f4f8;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .recommendations {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .recommendations h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+        
+        .recommendation-item {
+            background: #f8fafc;
+            padding: 12px 16px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 10px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .demo-area {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .demo-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .demo-container {
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            height: 400px;
+            position: relative;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+        
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e1e8ed;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e1e8ed;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        @media (max-width: 768px) {
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                justify-content: space-between;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 2D描画手法性能比較</h1>
+        
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="cubeCount">立方体数:</label>
+                    <input type="number" id="cubeCount" min="1" max="200" value="20">
+                </div>
+                <div class="control-group">
+                    <label for="iterations">反復回数:</label>
+                    <input type="number" id="iterations" min="1" max="10" value="3">
+                </div>
+                <div class="control-group">
+                    <label for="testType">テスト種類:</label>
+                    <select id="testType">
+                        <option value="comparison">性能比較</option>
+                        <option value="scalability">スケーラビリティ</option>
+                        <option value="animation">アニメーション</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="control-row">
+                <button id="runTest">🚀 テスト実行</button>
+                <button id="clearResults">🗑️ 結果クリア</button>
+                <button id="exportResults">📊 結果エクスポート</button>
+            </div>
+            
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+        
+        <div class="results" id="results"></div>
+        
+        <div class="recommendations" id="recommendations" style="display: none;">
+            <h3>📋 推奨事項</h3>
+            <div id="recommendationsList"></div>
+        </div>
+        
+        <div class="demo-area">
+            <h3>🎯 リアルタイムデモ</h3>
+            <div class="demo-controls">
+                <button id="demoCanvas">Canvas表示</button>
+                <button id="demoSvg">SVG表示</button>
+                <button id="demoCss">CSS表示</button>
+                <button id="clearDemo">クリア</button>
+            </div>
+            
+            <div class="demo-container" id="demoContainer">
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>レンダリング中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { 
+            RenderingComparison,
+            CanvasRenderer,
+            SvgRenderer,
+            CssRenderer,
+            generateTestColors,
+            generateTestPositions
+        } from './src/rendering-comparison.js';
+
+        class RenderingDemo {
+            constructor() {
+                this.comparison = new RenderingComparison();
+                this.currentRenderer = null;
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('runTest').addEventListener('click', () => this.runTest());
+                document.getElementById('clearResults').addEventListener('click', () => this.clearResults());
+                document.getElementById('exportResults').addEventListener('click', () => this.exportResults());
+                
+                document.getElementById('demoCanvas').addEventListener('click', () => this.showDemo('canvas'));
+                document.getElementById('demoSvg').addEventListener('click', () => this.showDemo('svg'));
+                document.getElementById('demoCss').addEventListener('click', () => this.showDemo('css'));
+                document.getElementById('clearDemo').addEventListener('click', () => this.clearDemo());
+            }
+
+            async runTest() {
+                const button = document.getElementById('runTest');
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                
+                button.disabled = true;
+                button.textContent = '⏳ 実行中...';
+                progressBar.style.display = 'block';
+                
+                try {
+                    const cubeCount = parseInt(document.getElementById('cubeCount').value);
+                    const iterations = parseInt(document.getElementById('iterations').value);
+                    const testType = document.getElementById('testType').value;
+                    
+                    if (testType === 'scalability') {
+                        await this.runScalabilityTest();
+                    } else {
+                        const colors = generateTestColors(cubeCount);
+                        const positions = generateTestPositions(cubeCount);
+                        
+                        // プログレス更新
+                        progressFill.style.width = '33%';
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const results = await this.comparison.compareRenderingMethods(colors, positions, iterations);
+                        
+                        progressFill.style.width = '100%';
+                        this.displayResults(results);
+                    }
+                } catch (error) {
+                    console.error('テスト実行エラー:', error);
+                    alert('テスト実行中にエラーが発生しました。');
+                } finally {
+                    button.disabled = false;
+                    button.textContent = '🚀 テスト実行';
+                    progressBar.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }
+            }
+
+            async runScalabilityTest() {
+                const baseColors = generateTestColors(8);
+                const scalabilityResults = await this.comparison.performScalabilityTest(baseColors);
+                this.displayScalabilityResults(scalabilityResults);
+            }
+
+            displayResults(results) {
+                const resultsContainer = document.getElementById('results');
+                resultsContainer.innerHTML = '';
+
+                // Canvas結果
+                this.createResultCard('Canvas 2D', results.canvas, results.winner === 'canvas', resultsContainer);
+                
+                // SVG結果
+                this.createResultCard('SVG', results.svg, results.winner === 'svg', resultsContainer);
+                
+                // CSS結果
+                this.createResultCard('CSS Transform', results.css, results.winner === 'css', resultsContainer);
+
+                // 推奨事項を表示
+                this.displayRecommendations(results.recommendations);
+            }
+
+            createResultCard(title, metrics, isWinner, container) {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                card.innerHTML = `
+                    <div class="result-header">
+                        <div class="result-title">${title}</div>
+                        ${isWinner ? '<div class="winner-badge">🏆 Winner</div>' : ''}
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">レンダリング時間</span>
+                        <span class="metric-value">${metrics.renderTime.toFixed(2)}ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">メモリ使用量</span>
+                        <span class="metric-value">${(metrics.memoryUsage / 1024).toFixed(2)}KB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">要素数</span>
+                        <span class="metric-value">${metrics.elementCount}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">フレームレート</span>
+                        <span class="metric-value">${metrics.frameRate?.toFixed(1) || 'N/A'}fps</span>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            }
+
+            displayScalabilityResults(results) {
+                const resultsContainer = document.getElementById('results');
+                resultsContainer.innerHTML = '<h3>📈 スケーラビリティテスト結果</h3>';
+                
+                const chart = document.createElement('div');
+                chart.innerHTML = `
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <h4>レンダリング時間 vs 立方体数</h4>
+                        <div style="margin-top: 15px;">
+                            ${results.scales.map((scale, index) => `
+                                <div style="margin-bottom: 10px;">
+                                    <strong>${scale}立方体:</strong>
+                                    Canvas ${results.canvas[index].renderTime.toFixed(2)}ms |
+                                    SVG ${results.svg[index].renderTime.toFixed(2)}ms |
+                                    CSS ${results.css[index].renderTime.toFixed(2)}ms
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                resultsContainer.appendChild(chart);
+            }
+
+            displayRecommendations(recommendations) {
+                const container = document.getElementById('recommendations');
+                const list = document.getElementById('recommendationsList');
+                
+                list.innerHTML = recommendations.map(rec => 
+                    `<div class="recommendation-item">${rec}</div>`
+                ).join('');
+                
+                container.style.display = 'block';
+            }
+
+            async showDemo(rendererType) {
+                this.clearDemo();
+                
+                const container = document.getElementById('demoContainer');
+                const loading = document.getElementById('loading');
+                
+                loading.style.display = 'block';
+                
+                try {
+                    const colors = generateTestColors(15);
+                    const positions = generateTestPositions(15, 750, 350);
+                    
+                    let renderer;
+                    switch (rendererType) {
+                        case 'canvas':
+                            renderer = new CanvasRenderer(container);
+                            break;
+                        case 'svg':
+                            renderer = new SvgRenderer(container);
+                            break;
+                        case 'css':
+                            renderer = new CssRenderer(container);
+                            break;
+                    }
+                    
+                    if (renderer) {
+                        setTimeout(() => {
+                            renderer.renderCubes(colors, positions);
+                            this.currentRenderer = renderer;
+                            loading.style.display = 'none';
+                        }, 500);
+                    }
+                } catch (error) {
+                    console.error('デモ表示エラー:', error);
+                    loading.style.display = 'none';
+                }
+            }
+
+            clearDemo() {
+                if (this.currentRenderer) {
+                    this.currentRenderer.cleanup();
+                    this.currentRenderer = null;
+                }
+                document.getElementById('demoContainer').innerHTML = `
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>レンダリング中...</p>
+                    </div>
+                `;
+            }
+
+            clearResults() {
+                document.getElementById('results').innerHTML = '';
+                document.getElementById('recommendations').style.display = 'none';
+            }
+
+            exportResults() {
+                const results = document.getElementById('results').innerText;
+                const recommendations = document.getElementById('recommendationsList').innerText;
+                
+                const exportData = {
+                    timestamp: new Date().toISOString(),
+                    results: results,
+                    recommendations: recommendations
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `rendering-comparison-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // デモの初期化
+        new RenderingDemo();
+    </script>
+</body>
+</html>

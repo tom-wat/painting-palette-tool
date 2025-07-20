@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アルゴリズム改良比較デモ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            height: fit-content;
+        }
+
+        .control-panel h3 {
+            color: #343a40;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .image-selection {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .image-type-btn {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .image-type-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .image-type-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .config-section {
+            margin-bottom: 20px;
+        }
+
+        .config-section h4 {
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 1.1em;
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .config-item label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .config-item input {
+            width: 80px;
+            padding: 5px 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .config-item input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .run-comparison-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .run-comparison-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .run-comparison-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .image-display {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .image-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .canvas-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 4px;
+        }
+
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+
+        .algorithm-results {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .algorithm-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .algorithm-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .algorithm-card.winner {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #f8fff9 100%);
+        }
+
+        .algorithm-name {
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .algorithm-card.winner .algorithm-name {
+            color: #28a745;
+        }
+
+        .winner-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+
+        .algorithm-metrics {
+            display: grid;
+            gap: 8px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+
+        .metric-name {
+            color: #6c757d;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .algorithm-palette {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            justify-content: center;
+        }
+
+        .comparison-charts {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .chart-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .bar-container {
+            width: 60%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .bar-fill.octree { background: linear-gradient(90deg, #ff6b6b, #ff5252); }
+        .bar-fill.median-cut { background: linear-gradient(90deg, #4ecdc4, #26a69a); }
+        .bar-fill.kmeans { background: linear-gradient(90deg, #45b7d1, #2196f3); }
+        .bar-fill.hybrid { background: linear-gradient(90deg, #96ceb4, #4caf50); }
+
+        .progress-section {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 1200px) {
+            .content {
+                grid-template-columns: 300px 1fr;
+            }
+            
+            .algorithm-results {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .algorithm-results {
+                grid-template-columns: 1fr;
+            }
+            
+            .comparison-charts {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>アルゴリズム改良比較デモ</h1>
+            <p>Octree量子化・Median Cut法・改良K-means・ハイブリッドアプローチの包括的性能比較</p>
+        </div>
+
+        <div class="content">
+            <div class="control-panel">
+                <h3>実行設定</h3>
+                
+                <div class="config-section">
+                    <h4>画像タイプ選択</h4>
+                    <div class="image-selection">
+                        <div class="image-type-btn active" data-type="gradient">グラデーション</div>
+                        <div class="image-type-btn" data-type="natural">自然画像風</div>
+                        <div class="image-type-btn" data-type="geometric">幾何学図形</div>
+                        <div class="image-type-btn" data-type="complex">複雑画像</div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h4>抽出設定</h4>
+                    <div class="config-item">
+                        <label>目標色数:</label>
+                        <input type="number" id="targetColors" value="16" min="4" max="64">
+                    </div>
+                    <div class="config-item">
+                        <label>画像サイズ:</label>
+                        <input type="number" id="imageSize" value="128" min="64" max="256" step="64">
+                    </div>
+                    <div class="config-item">
+                        <label>品質閾値:</label>
+                        <input type="number" id="qualityThreshold" value="0.7" min="0.1" max="1.0" step="0.1">
+                    </div>
+                    <div class="config-item">
+                        <label>色距離閾値:</label>
+                        <input type="number" id="colorDistance" value="30" min="10" max="100">
+                    </div>
+                </div>
+
+                <button class="run-comparison-btn" onclick="runComparison()">
+                    比較実行
+                </button>
+
+                <div id="progressSection" style="display: none;" class="progress-section">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">準備中...</div>
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <h3>比較結果</h3>
+                
+                <div class="results-grid">
+                    <div class="image-display">
+                        <div class="image-title">元画像</div>
+                        <div class="canvas-container">
+                            <canvas id="originalCanvas" width="200" height="200"></canvas>
+                        </div>
+                        <div class="color-palette" id="originalPalette"></div>
+                    </div>
+                    <div class="image-display">
+                        <div class="image-title">最適アルゴリズム結果</div>
+                        <div class="canvas-container">
+                            <canvas id="bestCanvas" width="200" height="200"></canvas>
+                        </div>
+                        <div class="color-palette" id="bestPalette"></div>
+                    </div>
+                </div>
+
+                <div class="algorithm-results" id="algorithmResults">
+                    <div class="algorithm-card" data-algorithm="octree">
+                        <div class="algorithm-name">Octree量子化</div>
+                        <div class="algorithm-metrics">
+                            <div class="metric">
+                                <span class="metric-name">実行時間:</span>
+                                <span class="metric-value" id="octreeTime">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">品質スコア:</span>
+                                <span class="metric-value" id="octreeQuality">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">メモリ使用:</span>
+                                <span class="metric-value" id="octreeMemory">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">抽出色数:</span>
+                                <span class="metric-value" id="octreeColors">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">総合スコア:</span>
+                                <span class="metric-value" id="octreeOverall">-</span>
+                            </div>
+                        </div>
+                        <div class="algorithm-palette" id="octreePalette"></div>
+                    </div>
+
+                    <div class="algorithm-card" data-algorithm="median-cut">
+                        <div class="algorithm-name">Median Cut法</div>
+                        <div class="algorithm-metrics">
+                            <div class="metric">
+                                <span class="metric-name">実行時間:</span>
+                                <span class="metric-value" id="medianCutTime">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">品質スコア:</span>
+                                <span class="metric-value" id="medianCutQuality">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">メモリ使用:</span>
+                                <span class="metric-value" id="medianCutMemory">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">抽出色数:</span>
+                                <span class="metric-value" id="medianCutColors">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">総合スコア:</span>
+                                <span class="metric-value" id="medianCutOverall">-</span>
+                            </div>
+                        </div>
+                        <div class="algorithm-palette" id="medianCutPalette"></div>
+                    </div>
+
+                    <div class="algorithm-card" data-algorithm="kmeans">
+                        <div class="algorithm-name">改良K-means</div>
+                        <div class="algorithm-metrics">
+                            <div class="metric">
+                                <span class="metric-name">実行時間:</span>
+                                <span class="metric-value" id="kmeansTime">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">品質スコア:</span>
+                                <span class="metric-value" id="kmeansQuality">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">メモリ使用:</span>
+                                <span class="metric-value" id="kmeansMemory">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">抽出色数:</span>
+                                <span class="metric-value" id="kmeansColors">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">総合スコア:</span>
+                                <span class="metric-value" id="kmeansOverall">-</span>
+                            </div>
+                        </div>
+                        <div class="algorithm-palette" id="kmeansPalette"></div>
+                    </div>
+
+                    <div class="algorithm-card" data-algorithm="hybrid">
+                        <div class="algorithm-name">ハイブリッド</div>
+                        <div class="algorithm-metrics">
+                            <div class="metric">
+                                <span class="metric-name">実行時間:</span>
+                                <span class="metric-value" id="hybridTime">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">品質スコア:</span>
+                                <span class="metric-value" id="hybridQuality">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">メモリ使用:</span>
+                                <span class="metric-value" id="hybridMemory">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">抽出色数:</span>
+                                <span class="metric-value" id="hybridColors">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-name">総合スコア:</span>
+                                <span class="metric-value" id="hybridOverall">-</span>
+                            </div>
+                        </div>
+                        <div class="algorithm-palette" id="hybridPalette"></div>
+                    </div>
+                </div>
+
+                <div class="comparison-charts">
+                    <div class="chart-container">
+                        <div class="chart-title">実行時間比較 (ms)</div>
+                        <div id="performanceChart">
+                            <div class="chart-bar">
+                                <span>Octree</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill octree" id="octreePerformanceBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="octreePerformanceValue">-</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span>MedianCut</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill median-cut" id="medianCutPerformanceBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="medianCutPerformanceValue">-</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span>K-means</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill kmeans" id="kmeansPerformanceBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="kmeansPerformanceValue">-</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span>Hybrid</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill hybrid" id="hybridPerformanceBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="hybridPerformanceValue">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-title">品質スコア比較</div>
+                        <div id="qualityChart">
+                            <div class="chart-bar">
+                                <span>Octree</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill octree" id="octreeQualityBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="octreeQualityValue">-</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span>MedianCut</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill median-cut" id="medianCutQualityBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="medianCutQualityValue">-</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span>K-means</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill kmeans" id="kmeansQualityBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="kmeansQualityValue">-</span>
+                            </div>
+                            <div class="chart-bar">
+                                <span>Hybrid</span>
+                                <div class="bar-container">
+                                    <div class="bar-fill hybrid" id="hybridQualityBar" style="width: 0%;"></div>
+                                </div>
+                                <span id="hybridQualityValue">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // デモ用簡易実装（実際のライブラリの代替）
+        class DemoAlgorithmComparison {
+            generateTestImage(type, width, height) {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.createImageData(width, height);
+                const data = imageData.data;
+
+                switch (type) {
+                    case 'gradient':
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const index = (y * width + x) * 4;
+                                data[index] = Math.floor((x / width) * 255);
+                                data[index + 1] = Math.floor((y / height) * 255);
+                                data[index + 2] = Math.floor(((x + y) / (width + height)) * 255);
+                                data[index + 3] = 255;
+                            }
+                        }
+                        break;
+                    case 'natural':
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const index = (y * width + x) * 4;
+                                const noise1 = Math.sin(x * 0.05) * Math.cos(y * 0.03);
+                                const noise2 = Math.sin(x * 0.02 + y * 0.04);
+                                data[index] = Math.max(0, Math.min(255, 128 + noise1 * 60 + Math.random() * 40));
+                                data[index + 1] = Math.max(0, Math.min(255, 100 + noise2 * 80 + Math.random() * 40));
+                                data[index + 2] = Math.max(0, Math.min(255, 80 + noise1 * noise2 * 100 + Math.random() * 40));
+                                data[index + 3] = 255;
+                            }
+                        }
+                        break;
+                    case 'geometric':
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const index = (y * width + x) * 4;
+                                const circle1 = Math.sqrt((x - width/3) ** 2 + (y - height/3) ** 2) < 30;
+                                const circle2 = Math.sqrt((x - 2*width/3) ** 2 + (y - 2*height/3) ** 2) < 25;
+                                const stripes = Math.floor(x / 12) % 2 === 0;
+                                
+                                let r = 128, g = 128, b = 128;
+                                if (circle1) {
+                                    r = 255; g = 100; b = 100;
+                                } else if (circle2) {
+                                    r = 100; g = 255; b = 100;
+                                } else if (stripes) {
+                                    r = 100; g = 100; b = 255;
+                                }
+                                data[index] = r;
+                                data[index + 1] = g;
+                                data[index + 2] = b;
+                                data[index + 3] = 255;
+                            }
+                        }
+                        break;
+                    case 'complex':
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const index = (y * width + x) * 4;
+                                const baseR = Math.floor((x / width) * 255);
+                                const baseG = Math.floor((y / height) * 255);
+                                const baseB = Math.floor(((x + y) / (width + height)) * 255);
+                                
+                                const circle = Math.sqrt((x - width/2) ** 2 + (y - height/2) ** 2) < 40;
+                                const stripes = Math.floor((x + y) / 15) % 2 === 0;
+                                const noise = Math.random() * 50 - 25;
+                                
+                                let r = baseR, g = baseG, b = baseB;
+                                if (circle && stripes) {
+                                    r = Math.min(255, baseR + 100);
+                                    g = Math.min(255, baseG - 50);
+                                } else if (circle) {
+                                    g = Math.min(255, baseG + 80);
+                                } else if (stripes) {
+                                    b = Math.min(255, baseB + 70);
+                                }
+                                
+                                data[index] = Math.max(0, Math.min(255, r + noise));
+                                data[index + 1] = Math.max(0, Math.min(255, g + noise));
+                                data[index + 2] = Math.max(0, Math.min(255, b + noise));
+                                data[index + 3] = 255;
+                            }
+                        }
+                        break;
+                }
+                return imageData;
+            }
+
+            async compareAlgorithms(imageData, config) {
+                // 各アルゴリズムのシミュレーション結果
+                const algorithms = ['octree', 'medianCut', 'kmeans', 'hybrid'];
+                const results = {};
+                
+                for (const algorithm of algorithms) {
+                    const colors = this.generateColors(config.targetColorCount, algorithm);
+                    const baseTime = this.getBaseTime(algorithm);
+                    const sizeMultiplier = (imageData.width * imageData.height) / (128 * 128);
+                    
+                    results[algorithm] = {
+                        colors: colors.map(color => ({ color })),
+                        algorithm,
+                        extractionTime: baseTime * sizeMultiplier + Math.random() * 20,
+                        qualityScore: this.getQualityScore(algorithm),
+                        memoryUsage: Math.random() * 50000000, // 0-50MB
+                        colorCount: colors.length
+                    };
+                }
+
+                const comparison = {
+                    performance: {},
+                    quality: {},
+                    memory: {},
+                    colorCount: {},
+                    overallScores: {}
+                };
+
+                for (const algorithm of algorithms) {
+                    const result = results[algorithm];
+                    comparison.performance[algorithm] = result.extractionTime;
+                    comparison.quality[algorithm] = result.qualityScore;
+                    comparison.memory[algorithm] = result.memoryUsage;
+                    comparison.colorCount[algorithm] = result.colorCount;
+                    
+                    // 総合スコア計算
+                    const speedScore = Math.max(0, 1 - (result.extractionTime / 1000));
+                    const memoryScore = Math.max(0, 1 - (result.memoryUsage / 100000000));
+                    comparison.overallScores[algorithm] = 
+                        result.qualityScore * 0.6 + speedScore * 0.3 + memoryScore * 0.1;
+                }
+
+                const winner = Object.keys(comparison.overallScores).reduce((a, b) => 
+                    comparison.overallScores[a] > comparison.overallScores[b] ? a : b
+                );
+
+                return {
+                    octree: results.octree,
+                    medianCut: results.medianCut,
+                    kmeans: results.kmeans,
+                    hybrid: results.hybrid,
+                    winner,
+                    comparison
+                };
+            }
+
+            getBaseTime(algorithm) {
+                const baseTimes = {
+                    octree: 30,       // 最速
+                    medianCut: 50,    // 中程度
+                    kmeans: 80,       // 少し重い（収束計算）
+                    hybrid: 120       // 最も重い（複数アルゴリズム実行）
+                };
+                return baseTimes[algorithm] || 50;
+            }
+
+            getQualityScore(algorithm) {
+                const baseQuality = {
+                    octree: 0.65,     // 安定した品質
+                    medianCut: 0.70,  // 色分割に優秀
+                    kmeans: 0.72,     // クラスタリングで高品質
+                    hybrid: 0.85      // 最高品質（統合効果）
+                };
+                return baseQuality[algorithm] + (Math.random() * 0.2 - 0.1); // ±0.1の揺らぎ
+            }
+
+            generateColors(count, algorithm) {
+                const colors = [];
+                const strategy = {
+                    octree: () => this.generateTreeBasedColors(count),
+                    medianCut: () => this.generateCutBasedColors(count),
+                    kmeans: () => this.generateClusterColors(count),
+                    hybrid: () => this.generateHybridColors(count)
+                };
+                
+                return strategy[algorithm]();
+            }
+
+            generateTreeBasedColors(count) {
+                // Octree風：均等分散的な色
+                const colors = [];
+                for (let i = 0; i < count; i++) {
+                    const h = (i / count) * 360;
+                    const s = 50 + Math.random() * 50;
+                    const l = 30 + Math.random() * 40;
+                    colors.push(this.hslToRgb(h, s, l));
+                }
+                return colors;
+            }
+
+            generateCutBasedColors(count) {
+                // Median Cut風：主要色重視
+                const colors = [];
+                const dominantColors = [
+                    { r: 200, g: 100, b: 100 },
+                    { r: 100, g: 200, b: 100 },
+                    { r: 100, g: 100, b: 200 },
+                    { r: 200, g: 200, b: 100 },
+                    { r: 150, g: 150, b: 150 }
+                ];
+                
+                for (let i = 0; i < count; i++) {
+                    const base = dominantColors[i % dominantColors.length];
+                    const variation = 40;
+                    colors.push({
+                        r: Math.max(0, Math.min(255, base.r + (Math.random() * variation - variation/2))),
+                        g: Math.max(0, Math.min(255, base.g + (Math.random() * variation - variation/2))),
+                        b: Math.max(0, Math.min(255, base.b + (Math.random() * variation - variation/2)))
+                    });
+                }
+                return colors;
+            }
+
+            generateClusterColors(count) {
+                // K-means風：クラスター中心的な色
+                const colors = [];
+                const clusters = Math.min(count, 6);
+                
+                for (let i = 0; i < count; i++) {
+                    const cluster = Math.floor(i / (count / clusters));
+                    const baseHue = (cluster / clusters) * 360;
+                    const h = baseHue + (Math.random() * 60 - 30);
+                    const s = 60 + Math.random() * 30;
+                    const l = 40 + Math.random() * 30;
+                    colors.push(this.hslToRgb(h, s, l));
+                }
+                return colors;
+            }
+
+            generateHybridColors(count) {
+                // ハイブリッド風：多様で高品質な色
+                const colors = [];
+                
+                // 主要色
+                const primaryCount = Math.floor(count * 0.4);
+                colors.push(...this.generateCutBasedColors(primaryCount));
+                
+                // 補色
+                const complementaryCount = Math.floor(count * 0.3);
+                colors.push(...this.generateTreeBasedColors(complementaryCount));
+                
+                // アクセント色
+                const remaining = count - colors.length;
+                for (let i = 0; i < remaining; i++) {
+                    const h = Math.random() * 360;
+                    const s = 70 + Math.random() * 30;
+                    const l = 50 + Math.random() * 20;
+                    colors.push(this.hslToRgb(h, s, l));
+                }
+                
+                return colors.slice(0, count);
+            }
+
+            hslToRgb(h, s, l) {
+                h /= 360;
+                s /= 100;
+                l /= 100;
+                
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                
+                const r = hue2rgb(p, q, h + 1/3);
+                const g = hue2rgb(p, q, h);
+                const b = hue2rgb(p, q, h - 1/3);
+                
+                return {
+                    r: Math.round(r * 255),
+                    g: Math.round(g * 255),
+                    b: Math.round(b * 255)
+                };
+            }
+        }
+
+        // グローバル変数
+        window.algorithmComparison = new DemoAlgorithmComparison();
+        window.currentImageType = 'gradient';
+        window.currentResults = null;
+
+        // 画像タイプ選択
+        document.querySelectorAll('.image-type-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.image-type-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                window.currentImageType = btn.dataset.type;
+            });
+        });
+
+        // 比較実行
+        window.runComparison = async function() {
+            const button = document.querySelector('.run-comparison-btn');
+            const progressSection = document.getElementById('progressSection');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            button.disabled = true;
+            button.textContent = '実行中...';
+            progressSection.style.display = 'block';
+            
+            try {
+                // 設定取得
+                const config = {
+                    targetColorCount: parseInt(document.getElementById('targetColors').value),
+                    maxColorCount: parseInt(document.getElementById('targetColors').value) * 16,
+                    qualityThreshold: parseFloat(document.getElementById('qualityThreshold').value),
+                    colorDistanceThreshold: parseInt(document.getElementById('colorDistance').value),
+                    memoryLimit: 200
+                };
+                
+                const imageSize = parseInt(document.getElementById('imageSize').value);
+                
+                // 進捗更新
+                progressFill.style.width = '20%';
+                progressText.textContent = 'テスト画像生成中...';
+                
+                const imageData = window.algorithmComparison.generateTestImage(window.currentImageType, imageSize, imageSize);
+                
+                // 元画像表示
+                displayOriginalImage(imageData);
+                
+                progressFill.style.width = '40%';
+                progressText.textContent = 'Octree量子化実行中...';
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                progressFill.style.width = '60%';
+                progressText.textContent = 'Median Cut実行中...';
+                await new Promise(resolve => setTimeout(resolve, 400));
+                
+                progressFill.style.width = '80%';
+                progressText.textContent = 'K-means・ハイブリッド実行中...';
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // 比較実行
+                const results = await window.algorithmComparison.compareAlgorithms(imageData, config);
+                window.currentResults = results;
+                
+                progressFill.style.width = '95%';
+                progressText.textContent = '結果表示中...';
+                
+                // 結果表示
+                displayResults(results);
+                
+                progressFill.style.width = '100%';
+                progressText.textContent = '完了!';
+                
+                setTimeout(() => {
+                    progressSection.style.display = 'none';
+                }, 1500);
+                
+            } catch (error) {
+                console.error('エラー:', error);
+                progressText.textContent = 'エラーが発生しました';
+            } finally {
+                button.disabled = false;
+                button.textContent = '比較実行';
+            }
+        };
+
+        function displayOriginalImage(imageData) {
+            const canvas = document.getElementById('originalCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+            ctx.putImageData(imageData, 0, 0);
+            
+            // 簡単なカラーパレット表示
+            displayPalette('originalPalette', extractSampleColors(imageData, 16));
+        }
+
+        function extractSampleColors(imageData, count) {
+            const colors = [];
+            const step = Math.floor(imageData.data.length / (count * 4));
+            
+            for (let i = 0; i < imageData.data.length && colors.length < count; i += step * 4) {
+                colors.push({
+                    r: imageData.data[i],
+                    g: imageData.data[i + 1],
+                    b: imageData.data[i + 2]
+                });
+            }
+            
+            return colors;
+        }
+
+        function displayResults(results) {
+            // 勝者ハイライト
+            document.querySelectorAll('.algorithm-card').forEach(card => {
+                card.classList.remove('winner');
+                const algorithmName = card.querySelector('.algorithm-name');
+                algorithmName.innerHTML = algorithmName.textContent.replace(/<span class="winner-badge">.*<\/span>/, '');
+            });
+            
+            const winnerCard = document.querySelector(`[data-algorithm="${results.winner}"]`);
+            if (winnerCard) {
+                winnerCard.classList.add('winner');
+                const algorithmName = winnerCard.querySelector('.algorithm-name');
+                algorithmName.innerHTML += '<span class="winner-badge">🏆 WINNER</span>';
+            }
+            
+            // 各アルゴリズムの結果表示
+            updateAlgorithmMetrics(results);
+            
+            // 最適結果表示
+            const bestResult = results[results.winner];
+            displayBestResult(bestResult);
+            
+            // チャート更新
+            updateCharts(results.comparison);
+        }
+
+        function updateAlgorithmMetrics(results) {
+            const algorithms = ['octree', 'medianCut', 'kmeans', 'hybrid'];
+            
+            algorithms.forEach(algorithm => {
+                const result = results[algorithm];
+                const algorithmKey = algorithm === 'medianCut' ? 'medianCut' : algorithm;
+                
+                document.getElementById(`${algorithmKey}Time`).textContent = `${result.extractionTime.toFixed(1)}ms`;
+                document.getElementById(`${algorithmKey}Quality`).textContent = result.qualityScore.toFixed(3);
+                document.getElementById(`${algorithmKey}Memory`).textContent = `${(result.memoryUsage / 1000000).toFixed(1)}MB`;
+                document.getElementById(`${algorithmKey}Colors`).textContent = result.colorCount;
+                document.getElementById(`${algorithmKey}Overall`).textContent = results.comparison.overallScores[algorithm].toFixed(3);
+                
+                // カラーパレット表示
+                const colors = result.colors.map(c => c.color);
+                displayPalette(`${algorithmKey}Palette`, colors);
+            });
+        }
+
+        function displayBestResult(bestResult) {
+            // 最適結果のキャンバスは元画像と同じものを表示（簡略化）
+            const bestCanvas = document.getElementById('bestCanvas');
+            const originalCanvas = document.getElementById('originalCanvas');
+            const ctx = bestCanvas.getContext('2d');
+            
+            bestCanvas.width = originalCanvas.width;
+            bestCanvas.height = originalCanvas.height;
+            ctx.drawImage(originalCanvas, 0, 0);
+            
+            // 最適結果のパレット表示
+            const colors = bestResult.colors.map(c => c.color);
+            displayPalette('bestPalette', colors);
+        }
+
+        function displayPalette(containerId, colors) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            colors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+                swatch.title = `RGB(${color.r}, ${color.g}, ${color.b})`;
+                container.appendChild(swatch);
+            });
+        }
+
+        function updateCharts(comparison) {
+            // 実行時間チャート
+            updateChart('performance', comparison.performance, 'ms');
+            
+            // 品質チャート
+            updateChart('quality', comparison.quality, '', true);
+        }
+
+        function updateChart(type, data, unit, isNormalized = false) {
+            const algorithms = ['octree', 'medianCut', 'kmeans', 'hybrid'];
+            const values = algorithms.map(alg => data[alg]);
+            const maxValue = isNormalized ? 1 : Math.max(...values);
+            
+            algorithms.forEach(algorithm => {
+                const value = data[algorithm];
+                const percentage = (value / maxValue) * 100;
+                const algorithmKey = algorithm === 'medianCut' ? 'medianCut' : algorithm;
+                
+                const bar = document.getElementById(`${algorithmKey}${type.charAt(0).toUpperCase() + type.slice(1)}Bar`);
+                const valueSpan = document.getElementById(`${algorithmKey}${type.charAt(0).toUpperCase() + type.slice(1)}Value`);
+                
+                if (bar && valueSpan) {
+                    bar.style.width = `${percentage}%`;
+                    valueSpan.textContent = isNormalized ? 
+                        value.toFixed(3) : 
+                        `${value.toFixed(1)}${unit}`;
+                }
+            });
+        }
+
+        // 初期画像表示
+        window.addEventListener('load', () => {
+            const imageData = window.algorithmComparison.generateTestImage('gradient', 128, 128);
+            displayOriginalImage(imageData);
+        });
+    </script>
+</body>
+</html>

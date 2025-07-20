@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3Dレンダリング比較実験</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .renderer-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .renderer-title {
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    
+    .metrics {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-family: 'Monaco', monospace;
+      font-size: 12px;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+    
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      background: #0056b3;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .benchmark-results {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+    
+    .benchmark-title {
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>立方体3Dレンダリング手法比較</h1>
+      <p>Canvas 2D、WebGL、Three.jsの性能と機能を比較</p>
+    </div>
+    
+    <div class="controls">
+      <button id="startBtn">レンダリング開始</button>
+      <button id="benchmarkBtn">ベンチマーク実行</button>
+      <button id="resetBtn">リセット</button>
+    </div>
+    
+    <div class="grid">
+      <div class="renderer-card">
+        <h3 class="renderer-title">Canvas 2D</h3>
+        <div class="canvas-container">
+          <canvas id="canvas2d"></canvas>
+        </div>
+        <div id="metrics2d" class="metrics">
+          FPS: --<br>
+          Render Time: --ms<br>
+          Memory: --MB
+        </div>
+      </div>
+      
+      <div class="renderer-card">
+        <h3 class="renderer-title">WebGL</h3>
+        <div class="canvas-container">
+          <canvas id="webgl"></canvas>
+        </div>
+        <div id="metricsWebGL" class="metrics">
+          FPS: --<br>
+          Render Time: --ms<br>
+          Memory: --MB
+        </div>
+      </div>
+      
+      <div class="renderer-card">
+        <h3 class="renderer-title">Three.js</h3>
+        <div class="canvas-container">
+          <canvas id="threejs"></canvas>
+        </div>
+        <div id="metricsThree" class="metrics">
+          FPS: --<br>
+          Render Time: --ms<br>
+          Memory: --MB
+        </div>
+      </div>
+    </div>
+    
+    <div class="benchmark-results">
+      <h3 class="benchmark-title">ベンチマーク結果</h3>
+      <div id="benchmarkOutput">
+        ベンチマークを実行してください
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

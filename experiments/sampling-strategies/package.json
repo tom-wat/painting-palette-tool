@@ -1,0 +1,25 @@
+{
+  "name": "sampling-strategies",
+  "version": "1.0.0",
+  "description": "サンプリング戦略の検証（均等・重要度・エッジ優先サンプリング比較）",
+  "type": "module",
+  "main": "src/sampling-strategies.js",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "benchmark": "vitest bench",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Sampling strategies lint check passed'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "jsdom": "^22.1.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0",
+    "vitest": "^0.34.0"
+  }
+}

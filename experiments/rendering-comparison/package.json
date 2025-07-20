@@ -1,0 +1,25 @@
+{
+  "name": "rendering-comparison-experiment",
+  "version": "1.0.0",
+  "description": "2D描画手法性能比較（Canvas vs SVG vs CSS）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint skipped'",
+    "benchmark": "vitest bench"
+  },
+  "dependencies": {
+    "shared-utilities": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0",
+    "jsdom": "^23.0.0"
+  }
+}

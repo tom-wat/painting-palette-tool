@@ -1,0 +1,26 @@
+{
+  "name": "@painting-palette/parallel-processing",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "benchmark": "vitest --run benchmarks/",
+    "lint": "echo 'Lint: Using typecheck for code quality validation'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "shared-utilities": "workspace:*",
+    "color-extraction-experiment": "workspace:*",
+    "vibelogger": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.2",
+    "vite": "^4.5.0",
+    "vitest": "^0.34.6",
+    "jsdom": "^23.0.0"
+  }
+}

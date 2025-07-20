@@ -1,0 +1,36 @@
+{
+  "name": "painting-palette-tool",
+  "version": "0.1.0",
+  "description": "絵画支援パレット抽出ツール - 参考画像から絵画制作に最適化された色パレットを抽出し、立方体アイソメトリック図で明暗構造を可視化するツール",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:e2e": "turbo run test:e2e",
+    "benchmark": "turbo run benchmark",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "prepare": "husky",
+    "lint:fix": "turbo run lint -- --fix",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.9",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "eslint": "^8.52.0",
+    "eslint-config-prettier": "^9.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "prettier": "^3.0.3",
+    "turbo": "^1.10.15",
+    "typescript": "^5.2.2"
+  },
+  "packageManager": "pnpm@8.7.6",
+  "dependencies": {
+    "vibelogger": "^0.1.0"
+  }
+}

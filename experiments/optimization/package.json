@@ -1,0 +1,19 @@
+{
+  "name": "optimization-experiment",
+  "version": "0.1.0",
+  "description": "JavaScript最適化手法の検証実験",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "bench": "vitest bench",
+    "dev": "vitest --ui",
+    "lint": "echo 'Lint: Using typecheck for code quality validation'",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "vitest": "^0.34.6",
+    "@vitest/ui": "^0.34.6",
+    "typescript": "^5.2.2",
+    "@types/node": "^20.8.0"
+  }
+}

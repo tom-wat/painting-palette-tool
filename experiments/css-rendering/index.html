@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Transform立方体レンダリング - 実験デモ</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --accent-color: #00d4aa;
+            --panel-bg: #2d2d2d;
+            --border-color: #404040;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            grid-template-rows: 60px 1fr;
+            grid-template-areas: 
+                "header header"
+                "sidebar main";
+            height: 100vh;
+        }
+
+        .header {
+            grid-area: header;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .performance-display {
+            margin-left: auto;
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+        }
+
+        .perf-item {
+            padding: 4px 8px;
+            background: rgba(0, 212, 170, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+
+        .sidebar {
+            grid-area: sidebar;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .main {
+            grid-area: main;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .css-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, #2a2a2a 0%, #1a1a1a 100%);
+            perspective: 1000px;
+            transform-style: preserve-3d;
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .control-section h3 {
+            margin-bottom: 12px;
+            color: var(--accent-color);
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #cccccc;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            font-size: 0.9em;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            font-size: 0.9em;
+        }
+
+        select option {
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.9em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background: #00b89c;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-color);
+        }
+
+        .info-panel {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 15px;
+        }
+
+        .info-panel h4 {
+            margin-bottom: 8px;
+            color: var(--accent-color);
+            font-size: 0.95em;
+        }
+
+        .info-panel p {
+            font-size: 0.85em;
+            line-height: 1.4;
+            color: #cccccc;
+        }
+
+        .color-info-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            display: none;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 5px;
+            width: auto;
+        }
+
+        .color-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 2px solid var(--border-color);
+        }
+
+        .color-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .color-detail-item {
+            background: var(--bg-color);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .color-detail-label {
+            font-size: 0.8em;
+            color: #aaaaaa;
+            margin-bottom: 2px;
+        }
+
+        .color-detail-value {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        /* CSS立方体スタイル */
+        .css-cube-group {
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .css-cube-group:hover {
+            filter: brightness(1.1);
+        }
+
+        .css-cube-face {
+            transition: filter 0.3s ease;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60px auto 1fr;
+                grid-template-areas: 
+                    "header"
+                    "sidebar"
+                    "main";
+            }
+
+            .sidebar {
+                max-height: 200px;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .performance-display {
+                display: none;
+            }
+        }
+
+        /* カスタムスクロールバー */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #555555;
+        }
+
+        /* キーボードフォーカス */
+        button:focus,
+        select:focus,
+        input:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>CSS Transform立方体レンダリング実験</h1>
+            <div class="performance-display">
+                <div class="perf-item">
+                    <span>レンダリング時間: </span>
+                    <span id="render-time">-</span>
+                </div>
+                <div class="perf-item">
+                    <span>要素数: </span>
+                    <span id="element-count">-</span>
+                </div>
+                <div class="perf-item">
+                    <span>GPU層数: </span>
+                    <span id="gpu-layers">-</span>
+                </div>
+            </div>
+        </header>
+
+        <aside class="sidebar">
+            <div class="control-section">
+                <h3>基本設定</h3>
+                
+                <div class="control-group">
+                    <label for="cube-count">立方体数</label>
+                    <div class="slider-container">
+                        <input type="range" id="cube-count" min="1" max="100" value="16">
+                        <span class="slider-value" id="cube-count-value">16</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="cube-size">立方体サイズ</label>
+                    <div class="slider-container">
+                        <input type="range" id="cube-size" min="10" max="80" value="35">
+                        <span class="slider-value" id="cube-size-value">35</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="layout-type">レイアウト</label>
+                    <select id="layout-type">
+                        <option value="grid">グリッド</option>
+                        <option value="circle">円形</option>
+                        <option value="spiral">スパイラル</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>パフォーマンス設定</h3>
+                
+                <div class="checkbox-container">
+                    <input type="checkbox" id="enable-hardware-accel" checked>
+                    <label for="enable-hardware-accel">ハードウェアアクセラレーション</label>
+                </div>
+
+                <div class="checkbox-container">
+                    <input type="checkbox" id="enable-will-change" checked>
+                    <label for="enable-will-change">will-change最適化</label>
+                </div>
+
+                <div class="checkbox-container">
+                    <input type="checkbox" id="enable-3d-transforms" checked>
+                    <label for="enable-3d-transforms">3D Transform</label>
+                </div>
+
+                <div class="checkbox-container">
+                    <input type="checkbox" id="optimize-for-mobile">
+                    <label for="optimize-for-mobile">モバイル最適化</label>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>ビジュアル設定</h3>
+                
+                <div class="control-group">
+                    <label for="perspective">パースペクティブ</label>
+                    <div class="slider-container">
+                        <input type="range" id="perspective" min="500" max="2000" value="1000" step="100">
+                        <span class="slider-value" id="perspective-value">1000px</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="rotation-x">X軸回転</label>
+                    <div class="slider-container">
+                        <input type="range" id="rotation-x" min="-90" max="90" value="0" step="5">
+                        <span class="slider-value" id="rotation-x-value">0°</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="rotation-y">Y軸回転</label>
+                    <div class="slider-container">
+                        <input type="range" id="rotation-y" min="-90" max="90" value="0" step="5">
+                        <span class="slider-value" id="rotation-y-value">0°</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <button id="regenerate-colors">色を再生成</button>
+                <button id="run-benchmark">ベンチマーク実行</button>
+                <button id="clear-animation">アニメーションクリア</button>
+            </div>
+
+            <div class="info-panel">
+                <h4>ハードウェアアクセラレーション</h4>
+                <p>CSS3 transform3dとwill-changeを使用してGPU層を作成し、滑らかなアニメーションを実現。モバイルデバイスでの性能向上に効果的。</p>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="css-container" id="css-container"></div>
+        </main>
+    </div>
+
+    <!-- 色情報モーダル -->
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="color-info-modal" id="color-info-modal">
+        <div class="modal-header">
+            <h3>色情報</h3>
+            <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="color-preview" id="color-preview"></div>
+        <div class="color-details" id="color-details"></div>
+    </div>
+
+    <script type="module">
+        import { 
+            CssCubeRenderer, 
+            CssCubeLayoutManager,
+            type CubeColor,
+            type CubePosition
+        } from './src/css-cube.js';
+
+        class CssDemo {
+            constructor() {
+                this.container = document.getElementById('css-container');
+                this.renderer = null;
+                this.colors = [];
+                this.positions = [];
+                
+                this.initializeControls();
+                this.generateColors();
+                this.updateRenderer();
+                this.render();
+            }
+
+            initializeControls() {
+                // スライダー値の表示更新
+                document.getElementById('cube-count').addEventListener('input', (e) => {
+                    document.getElementById('cube-count-value').textContent = e.target.value;
+                    this.generateColors();
+                    this.render();
+                });
+
+                document.getElementById('cube-size').addEventListener('input', (e) => {
+                    document.getElementById('cube-size-value').textContent = e.target.value;
+                    this.render();
+                });
+
+                document.getElementById('perspective').addEventListener('input', (e) => {
+                    document.getElementById('perspective-value').textContent = e.target.value + 'px';
+                    this.container.style.perspective = e.target.value + 'px';
+                });
+
+                document.getElementById('rotation-x').addEventListener('input', (e) => {
+                    document.getElementById('rotation-x-value').textContent = e.target.value + '°';
+                    this.updateContainerRotation();
+                });
+
+                document.getElementById('rotation-y').addEventListener('input', (e) => {
+                    document.getElementById('rotation-y-value').textContent = e.target.value + '°';
+                    this.updateContainerRotation();
+                });
+
+                // セレクトボックス
+                document.getElementById('layout-type').addEventListener('change', () => {
+                    this.render();
+                });
+
+                // チェックボックス
+                document.getElementById('enable-hardware-accel').addEventListener('change', () => {
+                    this.updateRenderer();
+                    this.render();
+                });
+
+                document.getElementById('enable-will-change').addEventListener('change', () => {
+                    this.updateRenderer();
+                    this.render();
+                });
+
+                document.getElementById('enable-3d-transforms').addEventListener('change', () => {
+                    this.updateRenderer();
+                    this.render();
+                });
+
+                document.getElementById('optimize-for-mobile').addEventListener('change', () => {
+                    this.updateRenderer();
+                    this.render();
+                });
+
+                // ボタン
+                document.getElementById('regenerate-colors').addEventListener('click', () => {
+                    this.generateColors();
+                    this.render();
+                });
+
+                document.getElementById('run-benchmark').addEventListener('click', () => {
+                    this.runBenchmark();
+                });
+
+                document.getElementById('clear-animation').addEventListener('click', () => {
+                    this.clearWithAnimation();
+                });
+
+                // モーダル制御
+                document.getElementById('modal-close').addEventListener('click', () => {
+                    this.hideColorInfo();
+                });
+
+                document.getElementById('modal-backdrop').addEventListener('click', () => {
+                    this.hideColorInfo();
+                });
+
+                // 色選択イベント
+                this.container.addEventListener('cubeColorSelected', (e) => {
+                    this.showColorInfo(e.detail);
+                });
+
+                // ウィンドウリサイズ
+                window.addEventListener('resize', () => {
+                    this.render();
+                });
+            }
+
+            generateColors() {
+                const count = parseInt(document.getElementById('cube-count').value);
+                this.colors = Array.from({ length: count }, (_, i) => {
+                    const hue = (i * 137.5) % 360; // Golden angle for distribution
+                    const saturation = 0.7 + (Math.random() * 0.3);
+                    const lightness = 0.4 + (Math.random() * 0.4);
+                    
+                    const rgb = this.hslToRgb(hue / 360, saturation, lightness);
+                    
+                    return {
+                        r: Math.round(rgb.r * 255),
+                        g: Math.round(rgb.g * 255),
+                        b: Math.round(rgb.b * 255),
+                        brightness: lightness
+                    };
+                });
+            }
+
+            hslToRgb(h, s, l) {
+                const c = (1 - Math.abs(2 * l - 1)) * s;
+                const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+                const m = l - c / 2;
+                
+                let r, g, b;
+                
+                if (h < 1/6) {
+                    [r, g, b] = [c, x, 0];
+                } else if (h < 2/6) {
+                    [r, g, b] = [x, c, 0];
+                } else if (h < 3/6) {
+                    [r, g, b] = [0, c, x];
+                } else if (h < 4/6) {
+                    [r, g, b] = [0, x, c];
+                } else if (h < 5/6) {
+                    [r, g, b] = [x, 0, c];
+                } else {
+                    [r, g, b] = [c, 0, x];
+                }
+                
+                return {
+                    r: r + m,
+                    g: g + m,
+                    b: b + m
+                };
+            }
+
+            updateRenderer() {
+                const config = {
+                    enableHardwareAcceleration: document.getElementById('enable-hardware-accel').checked,
+                    useWillChange: document.getElementById('enable-will-change').checked,
+                    enable3dTransforms: document.getElementById('enable-3d-transforms').checked,
+                    optimizeForMobile: document.getElementById('optimize-for-mobile').checked
+                };
+                
+                this.renderer = new CssCubeRenderer(this.container, config);
+            }
+
+            updateContainerRotation() {
+                const rotX = document.getElementById('rotation-x').value;
+                const rotY = document.getElementById('rotation-y').value;
+                
+                this.container.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+            }
+
+            calculatePositions() {
+                const layoutType = document.getElementById('layout-type').value;
+                const cubeSize = parseInt(document.getElementById('cube-size').value);
+                const rect = this.container.getBoundingClientRect();
+                
+                switch (layoutType) {
+                    case 'grid':
+                        return CssCubeLayoutManager.calculateGridPositions(
+                            this.colors, rect.width, rect.height, cubeSize
+                        );
+                    case 'circle':
+                        const radius = Math.min(rect.width, rect.height) * 0.3;
+                        return CssCubeLayoutManager.calculateCircularPositions(
+                            this.colors, rect.width / 2, rect.height / 2, radius, cubeSize
+                        );
+                    case 'spiral':
+                        return CssCubeLayoutManager.calculateSpiralPositions(
+                            this.colors, rect.width / 2, rect.height / 2, cubeSize * 2, cubeSize
+                        );
+                    default:
+                        return [];
+                }
+            }
+
+            render() {
+                if (!this.renderer) return;
+
+                const startTime = performance.now();
+                
+                this.positions = this.calculatePositions();
+                this.renderer.renderCubes(this.colors, this.positions);
+                
+                const endTime = performance.now();
+                this.updatePerformanceDisplay(endTime - startTime);
+            }
+
+            updatePerformanceDisplay(renderTime) {
+                document.getElementById('render-time').textContent = `${renderTime.toFixed(1)}ms`;
+                document.getElementById('element-count').textContent = this.container.querySelectorAll('.css-cube-group').length;
+                
+                // GPU層数の推定（transform3dを使用している要素数）
+                const gpuLayers = this.container.querySelectorAll('[style*="transform"]').length;
+                document.getElementById('gpu-layers').textContent = gpuLayers;
+            }
+
+            showColorInfo(detail) {
+                const modal = document.getElementById('color-info-modal');
+                const backdrop = document.getElementById('modal-backdrop');
+                const preview = document.getElementById('color-preview');
+                const details = document.getElementById('color-details');
+
+                const { color, info } = detail;
+
+                // 色プレビュー
+                preview.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+
+                // 詳細情報
+                details.innerHTML = `
+                    <div class="color-detail-item">
+                        <div class="color-detail-label">RGB</div>
+                        <div class="color-detail-value">${info.rgb}</div>
+                    </div>
+                    <div class="color-detail-item">
+                        <div class="color-detail-label">HEX</div>
+                        <div class="color-detail-value">${info.hex}</div>
+                    </div>
+                    <div class="color-detail-item">
+                        <div class="color-detail-label">輝度</div>
+                        <div class="color-detail-value">${info.brightness}</div>
+                    </div>
+                    <div class="color-detail-item">
+                        <div class="color-detail-label">知覚輝度</div>
+                        <div class="color-detail-value">${info.perceptualBrightness}</div>
+                    </div>
+                `;
+
+                backdrop.style.display = 'block';
+                modal.style.display = 'block';
+            }
+
+            hideColorInfo() {
+                document.getElementById('color-info-modal').style.display = 'none';
+                document.getElementById('modal-backdrop').style.display = 'none';
+            }
+
+            async clearWithAnimation() {
+                if (this.renderer) {
+                    await this.renderer.clearWithAnimation(500);
+                }
+            }
+
+            async runBenchmark() {
+                const button = document.getElementById('run-benchmark');
+                const originalText = button.textContent;
+                button.textContent = 'ベンチマーク実行中...';
+                button.disabled = true;
+
+                try {
+                    const sizes = [10, 25, 50, 100, 200];
+                    const results = [];
+
+                    for (const size of sizes) {
+                        const colors = Array.from({ length: size }, (_, i) => ({
+                            r: Math.floor(Math.random() * 256),
+                            g: Math.floor(Math.random() * 256),
+                            b: Math.floor(Math.random() * 256),
+                            brightness: Math.random()
+                        }));
+
+                        const positions = CssCubeLayoutManager.calculateGridPositions(
+                            colors, 800, 600, 30
+                        );
+
+                        const startTime = performance.now();
+                        this.renderer.renderCubes(colors, positions);
+                        const endTime = performance.now();
+
+                        const performance = this.renderer.measurePerformance();
+
+                        results.push({
+                            size,
+                            renderTime: endTime - startTime,
+                            measureTime: performance.renderTime,
+                            elements: performance.elementCount
+                        });
+
+                        // UIの更新を待つ
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+
+                    console.table(results);
+                    alert('ベンチマーク完了！結果はコンソールを確認してください。');
+
+                } finally {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    
+                    // 元の状態に戻す
+                    this.render();
+                }
+            }
+        }
+
+        // デモ初期化
+        new CssDemo();
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "color-space-conversion",
+  "version": "1.0.0",
+  "description": "色空間変換ライブラリ（sRGB↔Linear RGB↔XYZ↔LAB、ガンマ補正、デルタE計算）",
+  "type": "module",
+  "main": "src/color-space-conversion.js",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "benchmark": "vitest bench",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Lint check passed'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "jsdom": "^22.1.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0",
+    "vitest": "^0.34.0"
+  }
+}

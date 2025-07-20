@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>色空間変換デモ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .panel h3 {
+            color: #343a40;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .color-input-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .color-picker {
+            width: 60px;
+            height: 60px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .color-picker:hover {
+            transform: scale(1.05);
+        }
+
+        .rgb-inputs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .input-group label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .input-group input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .color-spaces {
+            display: grid;
+            gap: 15px;
+        }
+
+        .color-space {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            transition: box-shadow 0.3s;
+        }
+
+        .color-space:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .color-space-name {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .color-values {
+            display: flex;
+            gap: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .color-value {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .color-value-label {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 2px;
+        }
+
+        .color-value-number {
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .comparison-section {
+            grid-column: 1 / -1;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .delta-e-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .delta-e-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+
+        .delta-e-method {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .delta-e-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+        }
+
+        .delta-e-interpretation {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .performance-section {
+            grid-column: 1 / -1;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .benchmark-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-bottom: 15px;
+        }
+
+        .benchmark-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .benchmark-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .benchmark-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .benchmark-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .benchmark-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .benchmark-metric-name {
+            color: #6c757d;
+        }
+
+        .benchmark-metric-value {
+            font-weight: 600;
+            color: #212529;
+            font-family: 'Courier New', monospace;
+        }
+
+        .color-preview {
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .color-input-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .rgb-inputs {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>色空間変換デモ</h1>
+            <p>sRGB ↔ Linear RGB ↔ XYZ ↔ LAB 変換とデルタE計算のリアルタイムデモ</p>
+        </div>
+
+        <div class="content">
+            <div class="panel">
+                <h3>色選択・入力</h3>
+                <div class="color-input-section">
+                    <input type="color" id="colorPicker" class="color-picker" value="#ff6b6b">
+                    <div class="rgb-inputs">
+                        <div class="input-group">
+                            <label>R</label>
+                            <input type="number" id="redInput" min="0" max="255" value="255">
+                        </div>
+                        <div class="input-group">
+                            <label>G</label>
+                            <input type="number" id="greenInput" min="0" max="255" value="107">
+                        </div>
+                        <div class="input-group">
+                            <label>B</label>
+                            <input type="number" id="blueInput" min="0" max="255" value="107">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="color-preview" id="colorPreview">
+                    選択された色
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>色空間変換結果</h3>
+                <div class="color-spaces" id="colorSpaces">
+                    <div class="color-space">
+                        <div class="color-space-name">sRGB</div>
+                        <div class="color-values">
+                            <div class="color-value">
+                                <div class="color-value-label">R</div>
+                                <div class="color-value-number" id="srgbR">255</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">G</div>
+                                <div class="color-value-number" id="srgbG">107</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">B</div>
+                                <div class="color-value-number" id="srgbB">107</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="color-space">
+                        <div class="color-space-name">Linear RGB</div>
+                        <div class="color-values">
+                            <div class="color-value">
+                                <div class="color-value-label">R</div>
+                                <div class="color-value-number" id="linearR">1.000</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">G</div>
+                                <div class="color-value-number" id="linearG">0.160</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">B</div>
+                                <div class="color-value-number" id="linearB">0.160</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="color-space">
+                        <div class="color-space-name">XYZ</div>
+                        <div class="color-values">
+                            <div class="color-value">
+                                <div class="color-value-label">X</div>
+                                <div class="color-value-number" id="xyzX">45.6</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">Y</div>
+                                <div class="color-value-number" id="xyzY">27.8</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">Z</div>
+                                <div class="color-value-number" id="xyzZ">5.1</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="color-space">
+                        <div class="color-space-name">LAB</div>
+                        <div class="color-values">
+                            <div class="color-value">
+                                <div class="color-value-label">L*</div>
+                                <div class="color-value-number" id="labL">59.7</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">a*</div>
+                                <div class="color-value-number" id="labA">51.2</div>
+                            </div>
+                            <div class="color-value">
+                                <div class="color-value-label">b*</div>
+                                <div class="color-value-number" id="labB">38.9</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="comparison-section">
+                <h3>色差計算 (vs 白色)</h3>
+                <div class="delta-e-results" id="deltaEResults">
+                    <div class="delta-e-card">
+                        <div class="delta-e-method">CIE76</div>
+                        <div class="delta-e-value" id="deltaE76">65.3</div>
+                        <div class="delta-e-interpretation">知覚可能</div>
+                    </div>
+                    <div class="delta-e-card">
+                        <div class="delta-e-method">CIE94</div>
+                        <div class="delta-e-value" id="deltaE94">48.7</div>
+                        <div class="delta-e-interpretation">明確に異なる</div>
+                    </div>
+                    <div class="delta-e-card">
+                        <div class="delta-e-method">CIEDE2000</div>
+                        <div class="delta-e-value" id="deltaE2000">41.2</div>
+                        <div class="delta-e-interpretation">完全に異なる</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="performance-section">
+                <h3>パフォーマンステスト</h3>
+                <button class="benchmark-button" onclick="runBenchmarks()">ベンチマーク実行</button>
+                <div class="benchmark-results" id="benchmarkResults">
+                    <div class="benchmark-card">
+                        <div class="benchmark-title">sRGB → LAB 変換</div>
+                        <div class="benchmark-metric">
+                            <span class="benchmark-metric-name">1000色変換</span>
+                            <span class="benchmark-metric-value" id="benchmark1">-</span>
+                        </div>
+                        <div class="benchmark-metric">
+                            <span class="benchmark-metric-name">レート</span>
+                            <span class="benchmark-metric-value" id="benchmarkRate1">-</span>
+                        </div>
+                    </div>
+                    <div class="benchmark-card">
+                        <div class="benchmark-title">デルタE計算</div>
+                        <div class="benchmark-metric">
+                            <span class="benchmark-metric-name">1000ペア (CIE76)</span>
+                            <span class="benchmark-metric-value" id="benchmark2">-</span>
+                        </div>
+                        <div class="benchmark-metric">
+                            <span class="benchmark-metric-name">1000ペア (CIEDE2000)</span>
+                            <span class="benchmark-metric-value" id="benchmark3">-</span>
+                        </div>
+                    </div>
+                    <div class="benchmark-card">
+                        <div class="benchmark-title">ImageData変換</div>
+                        <div class="benchmark-metric">
+                            <span class="benchmark-metric-name">256×256画像</span>
+                            <span class="benchmark-metric-value" id="benchmark4">-</span>
+                        </div>
+                        <div class="benchmark-metric">
+                            <span class="benchmark-metric-name">処理レート</span>
+                            <span class="benchmark-metric-value" id="benchmarkRate2">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 色空間変換ライブラリのインポート（実際の実装では適切なパスを使用）
+        // import { ColorSpaceConverter } from './src/color-space-conversion.js';
+        
+        // デモ用の簡単な実装（実際のライブラリの代替）
+        class DemoColorSpaceConverter {
+            srgbToLab(srgb) {
+                // 簡単な近似計算（実際の実装ではより正確）
+                const r = srgb.r / 255;
+                const g = srgb.g / 255;
+                const b = srgb.b / 255;
+                
+                // sRGB → Linear RGB (簡易版)
+                const toLinear = (c) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+                const lr = toLinear(r);
+                const lg = toLinear(g);
+                const lb = toLinear(b);
+                
+                // Linear RGB → XYZ (簡易版)
+                const x = lr * 0.4124 + lg * 0.3576 + lb * 0.1805;
+                const y = lr * 0.2126 + lg * 0.7152 + lb * 0.0722;
+                const z = lr * 0.0193 + lg * 0.1192 + lb * 0.9505;
+                
+                // XYZ → LAB (簡易版)
+                const fx = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x + 16/116);
+                const fy = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y + 16/116);
+                const fz = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z + 16/116);
+                
+                return {
+                    l: 116 * fy - 16,
+                    a: 500 * (fx - fy),
+                    b: 200 * (fy - fz)
+                };
+            }
+            
+            calculateDeltaE(srgb1, srgb2, method = 'CIEDE2000') {
+                const lab1 = this.srgbToLab(srgb1);
+                const lab2 = this.srgbToLab(srgb2);
+                
+                const deltaL = lab1.l - lab2.l;
+                const deltaA = lab1.a - lab2.a;
+                const deltaB = lab1.b - lab2.b;
+                
+                if (method === 'CIE76') {
+                    return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
+                } else {
+                    // 簡易版 (実際はより複雑)
+                    return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB) * 0.7;
+                }
+            }
+        }
+        
+        const converter = new DemoColorSpaceConverter();
+        
+        function updateColorSpaces() {
+            const r = parseInt(document.getElementById('redInput').value);
+            const g = parseInt(document.getElementById('greenInput').value);
+            const b = parseInt(document.getElementById('blueInput').value);
+            
+            const srgb = { r, g, b };
+            
+            // カラープレビュー更新
+            const colorPreview = document.getElementById('colorPreview');
+            colorPreview.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+            
+            // カラーピッカー更新
+            const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            document.getElementById('colorPicker').value = hex;
+            
+            // sRGB値表示
+            document.getElementById('srgbR').textContent = r;
+            document.getElementById('srgbG').textContent = g;
+            document.getElementById('srgbB').textContent = b;
+            
+            // Linear RGB計算（簡易版）
+            const toLinear = (c) => {
+                const normalized = c / 255;
+                return normalized <= 0.04045 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+            };
+            
+            const linearR = toLinear(r);
+            const linearG = toLinear(g);
+            const linearB = toLinear(b);
+            
+            document.getElementById('linearR').textContent = linearR.toFixed(3);
+            document.getElementById('linearG').textContent = linearG.toFixed(3);
+            document.getElementById('linearB').textContent = linearB.toFixed(3);
+            
+            // XYZ計算（簡易版）
+            const x = linearR * 0.4124 + linearG * 0.3576 + linearB * 0.1805;
+            const y = linearR * 0.2126 + linearG * 0.7152 + linearB * 0.0722;
+            const z = linearR * 0.0193 + linearG * 0.1192 + linearB * 0.9505;
+            
+            document.getElementById('xyzX').textContent = (x * 100).toFixed(1);
+            document.getElementById('xyzY').textContent = (y * 100).toFixed(1);
+            document.getElementById('xyzZ').textContent = (z * 100).toFixed(1);
+            
+            // LAB計算
+            const lab = converter.srgbToLab(srgb);
+            document.getElementById('labL').textContent = lab.l.toFixed(1);
+            document.getElementById('labA').textContent = lab.a.toFixed(1);
+            document.getElementById('labB').textContent = lab.b.toFixed(1);
+            
+            // デルタE計算（白色との比較）
+            const white = { r: 255, g: 255, b: 255 };
+            const deltaE76 = converter.calculateDeltaE(srgb, white, 'CIE76');
+            const deltaE94 = converter.calculateDeltaE(srgb, white, 'CIE94');
+            const deltaE2000 = converter.calculateDeltaE(srgb, white, 'CIEDE2000');
+            
+            document.getElementById('deltaE76').textContent = deltaE76.toFixed(1);
+            document.getElementById('deltaE94').textContent = deltaE94.toFixed(1);
+            document.getElementById('deltaE2000').textContent = deltaE2000.toFixed(1);
+            
+            // デルタEの解釈
+            const interpretations = [
+                document.querySelector('#deltaEResults .delta-e-card:nth-child(1) .delta-e-interpretation'),
+                document.querySelector('#deltaEResults .delta-e-card:nth-child(2) .delta-e-interpretation'),
+                document.querySelector('#deltaEResults .delta-e-card:nth-child(3) .delta-e-interpretation')
+            ];
+            
+            [deltaE76, deltaE94, deltaE2000].forEach((deltaE, index) => {
+                let interpretation = '';
+                if (deltaE < 1) interpretation = '知覚不可能';
+                else if (deltaE < 2.3) interpretation = 'わずかに知覚可能';
+                else if (deltaE < 5) interpretation = '知覚可能';
+                else if (deltaE < 25) interpretation = '明確に異なる';
+                else interpretation = '完全に異なる';
+                
+                interpretations[index].textContent = interpretation;
+            });
+        }
+        
+        function generateTestColors(count) {
+            return Array.from({ length: count }, () => ({
+                r: Math.floor(Math.random() * 256),
+                g: Math.floor(Math.random() * 256),
+                b: Math.floor(Math.random() * 256)
+            }));
+        }
+        
+        window.runBenchmarks = function() {
+            const button = document.querySelector('.benchmark-button');
+            button.textContent = '実行中...';
+            button.disabled = true;
+            
+            setTimeout(() => {
+                // ベンチマーク実行
+                const testColors = generateTestColors(1000);
+                
+                // sRGB → LAB変換テスト
+                const start1 = performance.now();
+                testColors.forEach(color => converter.srgbToLab(color));
+                const time1 = performance.now() - start1;
+                
+                document.getElementById('benchmark1').textContent = `${time1.toFixed(1)}ms`;
+                document.getElementById('benchmarkRate1').textContent = `${(1000 / time1 * 1000).toFixed(0)} colors/sec`;
+                
+                // デルタE計算テスト
+                const start2 = performance.now();
+                for (let i = 0; i < 1000 && i < testColors.length - 1; i++) {
+                    converter.calculateDeltaE(testColors[i], testColors[i + 1], 'CIE76');
+                }
+                const time2 = performance.now() - start2;
+                
+                const start3 = performance.now();
+                for (let i = 0; i < 1000 && i < testColors.length - 1; i++) {
+                    converter.calculateDeltaE(testColors[i], testColors[i + 1], 'CIEDE2000');
+                }
+                const time3 = performance.now() - start3;
+                
+                document.getElementById('benchmark2').textContent = `${time2.toFixed(1)}ms`;
+                document.getElementById('benchmark3').textContent = `${time3.toFixed(1)}ms`;
+                
+                // ImageData変換テスト（シミュレーション）
+                const pixelCount = 256 * 256;
+                const start4 = performance.now();
+                const imageColors = generateTestColors(pixelCount);
+                imageColors.forEach(color => converter.srgbToLab(color));
+                const time4 = performance.now() - start4;
+                
+                document.getElementById('benchmark4').textContent = `${time4.toFixed(1)}ms`;
+                document.getElementById('benchmarkRate2').textContent = `${(pixelCount / time4 * 1000 / 1000000).toFixed(2)} Mpixels/sec`;
+                
+                button.textContent = 'ベンチマーク実行';
+                button.disabled = false;
+            }, 100);
+        };
+        
+        // イベントリスナー設定
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            const hex = e.target.value;
+            const r = parseInt(hex.substr(1, 2), 16);
+            const g = parseInt(hex.substr(3, 2), 16);
+            const b = parseInt(hex.substr(5, 2), 16);
+            
+            document.getElementById('redInput').value = r;
+            document.getElementById('greenInput').value = g;
+            document.getElementById('blueInput').value = b;
+            
+            updateColorSpaces();
+        });
+        
+        ['redInput', 'greenInput', 'blueInput'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateColorSpaces);
+        });
+        
+        // 初期化
+        updateColorSpaces();
+    </script>
+</body>
+</html>

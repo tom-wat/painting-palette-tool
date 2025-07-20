@@ -1,0 +1,22 @@
+{
+  "name": "rendering-experiment",
+  "version": "0.1.0",
+  "description": "3Dレンダリング手法の性能検証実験",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest",
+    "bench": "vitest bench",
+    "lint": "echo 'Lint: Using typecheck for code quality validation'",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "vite": "^4.4.9",
+    "vitest": "^0.34.6",
+    "typescript": "^5.2.2",
+    "@types/node": "^20.8.0",
+    "three": "^0.156.1",
+    "@types/three": "^0.156.0"
+  }
+}

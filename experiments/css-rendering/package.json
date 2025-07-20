@@ -1,0 +1,27 @@
+{
+  "name": "css-rendering-experiment",
+  "version": "0.1.0",
+  "description": "CSS Transform擬似立方体レンダリング実験",
+  "type": "module",
+  "main": "src/css-cube.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "benchmark": "vitest bench",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'CSS rendering experiment lint check'"
+  },
+  "dependencies": {
+    "shared-utilities": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0",
+    "jsdom": "^23.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
+  }
+}

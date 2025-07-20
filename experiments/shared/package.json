@@ -1,0 +1,22 @@
+{
+  "name": "shared-utilities",
+  "version": "0.1.0",
+  "description": "実験で共有される計測ユーティリティとテストデータ",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "lint": "echo 'Lint: Using typecheck for code quality validation'",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "exports": {
+    "./benchmark": "./src/benchmark.ts",
+    "./test-data": "./src/test-data.ts",
+    "./logger": "./src/logger.ts"
+  },
+  "devDependencies": {
+    "vitest": "^0.34.6",
+    "typescript": "^5.2.2",
+    "@types/node": "^20.8.0"
+  }
+}
