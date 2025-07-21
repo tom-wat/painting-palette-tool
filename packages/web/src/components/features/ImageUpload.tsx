@@ -116,9 +116,10 @@ export default function ImageUpload({
     <Card className={className}>
       <div
         className={`
-          relative border-2 border-dashed rounded-lg p-12 text-center transition-colors
+          relative border-2 border-dashed rounded-lg p-16 text-center transition-colors min-h-[70vh]
           ${isDragging ? 'border-black bg-gray-50' : 'border-gray-300'}
           ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
+          flex items-center justify-center
         `}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -168,8 +169,8 @@ export default function ImageUpload({
         )}
 
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-md">
+            <p className="text-gray-800 text-sm font-medium">{error}</p>
           </div>
         )}
       </div>

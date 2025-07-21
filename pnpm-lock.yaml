@@ -294,11 +294,26 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.9)(jsdom@23.2.0)
 
+  packages/cube-renderer:
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.0(typescript@5.8.3)
+      typescript:
+        specifier: ^5.2.2
+        version: 5.8.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@20.19.9)(jsdom@23.2.0)
+
   packages/web:
     dependencies:
       '@palette-tool/color-engine':
         specifier: workspace:^
         version: link:../color-engine
+      '@palette-tool/cube-renderer':
+        specifier: workspace:^
+        version: link:../cube-renderer
       next:
         specifier: 14.2.5
         version: 14.2.5(react-dom@18.3.1)(react@18.3.1)

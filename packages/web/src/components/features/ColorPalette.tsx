@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
+import { 
+  exportAsPNG, 
+  exportAsJSON, 
+  exportAsASE, 
+  exportAsCSS, 
+  exportAsSCSS,
+  downloadFile, 
+  downloadTextFile 
+} from '@/lib/export-formats';
 
 interface RGBColor {
   r: number;
@@ -27,6 +36,8 @@ export default function ColorPalette({
     null
   );
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
@@ -59,6 +70,61 @@ export default function ColorPalette({
     return 'Dark';
   };
 
+  // Export functions
+  const handleExport = async (format: string) => {
+    setIsExporting(true);
+    try {
+      const timestamp = new Date().toISOString().split('T')[0];
+      const baseFilename = `palette-${timestamp}`;
+
+      switch (format) {
+        case 'png': {
+          const pngBlob = await exportAsPNG(colors);
+          downloadFile(pngBlob, `${baseFilename}.png`);
+          break;
+        }
+        
+        case 'json': {
+          const jsonContent = exportAsJSON(colors, { includeMetadata: true });
+          downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
+          break;
+        }
+        
+        case 'ase': {
+          const aseBlob = exportAsASE(colors);
+          downloadFile(aseBlob, `${baseFilename}.ase`);
+          break;
+        }
+        
+        case 'css': {
+          const cssContent = exportAsCSS(colors);
+          downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
+          break;
+        }
+        
+        case 'scss': {
+          const scssContent = exportAsSCSS(colors);
+          downloadTextFile(scssContent, `${baseFilename}.scss`, 'text/scss');
+          break;
+        }
+        
+        default:
+          throw new Error(`Unsupported format: ${format}`);
+      }
+      
+      setCopyFeedback(`Exported as ${format.toUpperCase()}`);
+      setTimeout(() => setCopyFeedback(null), 3000);
+      setShowExportModal(false);
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      setCopyFeedback('Export failed');
+      setTimeout(() => setCopyFeedback(null), 3000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (colors.length === 0) {
     return (
       <Card className={className}>
@@ -82,7 +148,7 @@ export default function ColorPalette({
         </CardHeader>
         <CardContent>
           {/* Color grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             {colors.map((extractedColor, index) => {
               const hex = rgbToHex(extractedColor.color);
               const luminance = calculateLuminance(extractedColor.color);
@@ -95,7 +161,7 @@ export default function ColorPalette({
                   onClick={() => setSelectedColor(extractedColor)}
                 >
                   <div
-                    className="w-full h-24 rounded-lg border border-gray-200 group-hover:scale-105 transition-transform shadow-sm"
+                    className="w-full aspect-square rounded-lg border border-gray-200 group-hover:scale-105 transition-transform shadow-sm"
                     style={{ backgroundColor: hex }}
                   >
                     <div
@@ -121,7 +187,7 @@ export default function ColorPalette({
 
           {/* Quick copy section */}
           <div className="border-t border-gray-200 pt-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -146,10 +212,17 @@ export default function ColorPalette({
               >
                 Copy All RGB
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExportModal(true)}
+              >
+                Export Palette
+              </Button>
             </div>
 
             {copyFeedback && (
-              <div className="mt-2 text-sm text-green-600">{copyFeedback}</div>
+              <div className="mt-2 text-sm text-gray-700 font-medium">{copyFeedback}</div>
             )}
           </div>
         </CardContent>
@@ -251,6 +324,81 @@ export default function ColorPalette({
                 </span>
               </div>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Export modal */}
+      {showExportModal && (
+        <Modal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          title="Export Palette"
+          className="sm:max-w-md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Choose a format to export your {colors.length} color palette:
+            </p>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {/* PNG Export */}
+              <button
+                onClick={() => handleExport('png')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">PNG Image</div>
+                <div className="text-sm text-gray-600">Visual palette grid for sharing</div>
+              </button>
+
+              {/* JSON Export */}
+              <button
+                onClick={() => handleExport('json')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">JSON Data</div>
+                <div className="text-sm text-gray-600">Complete color data with metadata</div>
+              </button>
+
+              {/* ASE Export */}
+              <button
+                onClick={() => handleExport('ase')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">Adobe ASE</div>
+                <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
+              </button>
+
+              {/* CSS Export */}
+              <button
+                onClick={() => handleExport('css')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">CSS Variables</div>
+                <div className="text-sm text-gray-600">CSS custom properties</div>
+              </button>
+
+              {/* SCSS Export */}
+              <button
+                onClick={() => handleExport('scss')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">SCSS Variables</div>
+                <div className="text-sm text-gray-600">Sass/SCSS variable definitions</div>
+              </button>
+            </div>
+
+            {isExporting && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+                <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
+              </div>
+            )}
           </div>
         </Modal>
       )}

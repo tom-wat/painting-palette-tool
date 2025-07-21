@@ -3,24 +3,15 @@ import React from 'react';
 interface CardProps {
   children: React.ReactNode;
   className?: string;
-  padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
 export default function Card({
   children,
   className = '',
-  padding = 'md',
 }: CardProps) {
-  const paddingClasses = {
-    none: '',
-    sm: 'p-4',
-    md: 'p-6',
-    lg: 'p-8',
-  };
-
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg shadow-sm ${paddingClasses[padding]} ${className}`}
+      className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -34,7 +25,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
   return (
-    <div className={`border-b border-gray-200 pb-4 mb-4 ${className}`}>
+    <div className={`border-b border-gray-200 p-6 mb-4 ${className}`}>
       {children}
     </div>
   );
@@ -59,5 +50,5 @@ interface CardContentProps {
 }
 
 export function CardContent({ children, className = '' }: CardContentProps) {
-  return <div className={className}>{children}</div>;
+  return <div className={`p-6 ${className}`}>{children}</div>;
 }
