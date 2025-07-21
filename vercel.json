@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm build --filter @palette-tool/color-engine --filter @palette-tool/cube-renderer && pnpm --filter @palette-tool/web build",
+  "buildCommand": "pnpm --filter @palette-tool/color-engine build && pnpm --filter @palette-tool/cube-renderer build && pnpm --filter @palette-tool/web build",
   "outputDirectory": "packages/web/.next",
   "installCommand": "pnpm install --frozen-lockfile"
 }
