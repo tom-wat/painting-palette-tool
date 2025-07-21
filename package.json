@@ -13,9 +13,10 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean",
-    "prepare": "husky",
     "lint:fix": "turbo run lint -- --fix",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "precommit": "pnpm typecheck && pnpm lint && pnpm format",
+    "quality": "pnpm typecheck && pnpm lint"
   },
   "devDependencies": {
     "@types/node": "^20.19.9",
@@ -23,8 +24,6 @@
     "@typescript-eslint/parser": "^6.10.0",
     "eslint": "^8.52.0",
     "eslint-config-prettier": "^9.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.2",
     "prettier": "^3.0.3",
     "turbo": "^1.10.15",
     "typescript": "^5.2.2"
