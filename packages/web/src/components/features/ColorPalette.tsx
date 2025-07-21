@@ -23,14 +23,28 @@ interface ExtractedColor {
   representativeness: number;
 }
 
+interface SavedPalette {
+  id: string;
+  name: string;
+  colors: ExtractedColor[];
+  createdAt: string;
+  updatedAt: string;
+  imageInfo?: {
+    filename: string;
+    selectionArea?: unknown;
+  };
+}
+
 interface ColorPaletteProps {
   colors: ExtractedColor[];
   className?: string;
+  imageFilename?: string;
 }
 
 export default function ColorPalette({
   colors,
   className = '',
+  imageFilename,
 }: ColorPaletteProps) {
   const [selectedColor, setSelectedColor] = useState<ExtractedColor | null>(
     null
@@ -38,6 +52,8 @@ export default function ColorPalette({
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [paletteName, setPaletteName] = useState('');
 
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
@@ -175,6 +191,42 @@ export default function ColorPalette({
     else if (lab.b < -10) characteristics.push('Blue-tinted');
     
     return characteristics.length > 0 ? characteristics.join(', ') : 'Neutral tint';
+  };
+
+
+  // Save palette to localStorage
+  const savePalette = (name: string) => {
+    if (!name.trim() || colors.length === 0) return;
+
+    const newPalette: SavedPalette = {
+      id: `palette-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: name.trim(),
+      colors: colors,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      imageInfo: imageFilename ? {
+        filename: imageFilename,
+      } : undefined,
+    };
+
+    try {
+      const saved = localStorage.getItem('saved-palettes');
+      const savedPalettes = saved ? JSON.parse(saved) : [];
+      const updatedPalettes = [...savedPalettes, newPalette];
+      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+      
+      // Dispatch custom event to notify SavedPalettesPanel
+      window.dispatchEvent(new CustomEvent('palettes-updated'));
+      
+      setCopyFeedback(`Palette "${name}" saved successfully!`);
+      setTimeout(() => setCopyFeedback(null), 3000);
+      setShowSaveModal(false);
+      setPaletteName('');
+    } catch (error) {
+      console.error('Failed to save palette:', error);
+      setCopyFeedback('Failed to save palette');
+      setTimeout(() => setCopyFeedback(null), 3000);
+    }
   };
 
   const copyToClipboard = async (text: string, format: string) => {
@@ -360,6 +412,13 @@ export default function ColorPalette({
                 }}
               >
                 Copy All LAB
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSaveModal(true)}
+              >
+                Save Palette
               </Button>
               <Button
                 variant="outline"
@@ -637,6 +696,71 @@ export default function ColorPalette({
           </div>
         </Modal>
       )}
+
+      {/* Save palette modal */}
+      {showSaveModal && (
+        <Modal
+          isOpen={showSaveModal}
+          onClose={() => {
+            setShowSaveModal(false);
+            setPaletteName('');
+          }}
+          title="Save Palette"
+          className="sm:max-w-md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Give your {colors.length} color palette a memorable name:
+            </p>
+            
+            <div>
+              <label htmlFor="palette-name" className="block text-sm font-medium text-black mb-2">
+                Palette Name
+              </label>
+              <input
+                id="palette-name"
+                type="text"
+                value={paletteName}
+                onChange={(e) => setPaletteName(e.target.value)}
+                placeholder="Enter palette name..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && paletteName.trim()) {
+                    savePalette(paletteName);
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+
+            {imageFilename && (
+              <div className="text-sm text-gray-500">
+                From image: {imageFilename}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setPaletteName('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => savePalette(paletteName)}
+                disabled={!paletteName.trim()}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Palette
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
     </>
   );
 }

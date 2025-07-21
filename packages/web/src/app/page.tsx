@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import ImageUpload from '@/components/features/ImageUpload';
 import ImageCanvas from '@/components/features/ImageCanvas';
 import ColorPalette from '@/components/features/ColorPalette';
 import BrightnessAnalysis from '@/components/features/BrightnessAnalysis';
+import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
 import AdvancedSelectionTools, { type SelectionMode, type AdvancedSelectionConfig } from '@/components/features/AdvancedSelectionTools';
 import { Card, CardContent, Slider, Select, Toggle } from '@/components/ui';
 import { PaletteExtractor } from '@palette-tool/color-engine';
@@ -51,11 +52,11 @@ export default function Home() {
   const [selectionConfig, setSelectionConfig] = useState<AdvancedSelectionConfig>({
     mode: 'rectangle' as SelectionMode,
   });
-  const [clearSelectionFn, setClearSelectionFn] = useState<(() => void) | null>(null);
+  const clearSelectionFnRef = useRef<(() => void) | null>(null);
   
   // Use useCallback to prevent re-rendering issues
   const handleClearSelectionCallback = useCallback((clearFn: () => void) => {
-    setClearSelectionFn(() => clearFn);
+    clearSelectionFnRef.current = clearFn;
   }, []);
   
   const [settings, setSettings] = useState<ExtractionSettings>({
@@ -308,7 +309,7 @@ export default function Home() {
                 config={selectionConfig}
                 onConfigChange={setSelectionConfig}
                 onModeChange={(mode) => setSelectionConfig(prev => ({ ...prev, mode }))}
-                onClearSelection={() => clearSelectionFn?.()}
+                onClearSelection={() => clearSelectionFnRef.current?.()}
               />
             )}
 
@@ -433,6 +434,9 @@ export default function Home() {
                 {/* Brightness Analysis */}
                 <BrightnessAnalysis analysis={brightnessAnalysis} />
 
+                {/* Saved Palettes Panel */}
+                <SavedPalettesPanel className="mt-4" />
+
                 {/* Image Upload (bottom) */}
                 <ImageUpload onImageUpload={handleImageUpload} />
               </>
@@ -445,7 +449,10 @@ export default function Home() {
           <div className="p-4">
             {uploadedImage && (
               /* Color Palette */
-              <ColorPalette colors={extractedColors} />
+              <ColorPalette 
+                colors={extractedColors} 
+                imageFilename={uploadedImage?.name}
+              />
             )}
           </div>
         </div>

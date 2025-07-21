@@ -655,7 +655,7 @@ export default function ImageCanvas({
     return () => {
       document.removeEventListener('keydown', handleKeyboard);
     };
-  }, [handleZoom, resetView, zoomToActualSize, clearSelection]);
+  }, [clearSelection]);
 
   // Touch event handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
