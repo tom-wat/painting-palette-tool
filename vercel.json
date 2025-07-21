@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd packages/web && pnpm run build",
+  "buildCommand": "pnpm --filter @palette-tool/web build",
   "outputDirectory": "packages/web/.next",
   "installCommand": "pnpm install --frozen-lockfile"
 }
