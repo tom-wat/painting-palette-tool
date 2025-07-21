@@ -640,10 +640,14 @@ export default function ImageCanvas({
     const handleKeyboard = (e: KeyboardEvent) => {
       if (!canvasRef.current) return;
 
-      // Clear selection: Escape
+      // Clear selection: Escape (only if no modal is open)
       if (e.key === 'Escape') {
-        e.preventDefault();
-        clearSelection();
+        // Check if any modal is currently open
+        const hasOpenModal = document.querySelector('[role="dialog"]');
+        if (!hasOpenModal) {
+          e.preventDefault();
+          clearSelection();
+        }
       }
     };
 

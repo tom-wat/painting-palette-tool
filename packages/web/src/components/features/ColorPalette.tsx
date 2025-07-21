@@ -52,6 +52,131 @@ export default function ColorPalette({
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
 
+  // RGB to HSL conversion
+  const rgbToHsl = (color: RGBColor): { h: number; s: number; l: number } => {
+    const r = color.r / 255;
+    const g = color.g / 255;
+    const b = color.b / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    const sum = max + min;
+
+    const l = sum / 2;
+
+    if (diff === 0) {
+      return { h: 0, s: 0, l: Math.round(l * 100) };
+    }
+
+    const s = l > 0.5 ? diff / (2 - sum) : diff / sum;
+
+    let h: number;
+    switch (max) {
+      case r:
+        h = (g - b) / diff + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / diff + 2;
+        break;
+      case b:
+        h = (r - g) / diff + 4;
+        break;
+      default:
+        h = 0;
+    }
+    h /= 6;
+
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100),
+    };
+  };
+
+  // RGB to LAB conversion
+  const rgbToLab = (color: RGBColor): { l: number; a: number; b: number } => {
+    // Convert RGB to XYZ
+    let r = color.r / 255;
+    let g = color.g / 255;
+    let b = color.b / 255;
+
+    // Apply gamma correction
+    r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+    g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+    b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+    // Convert to XYZ using sRGB matrix
+    let x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
+    let y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750;
+    let z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041;
+
+    // Normalize by D65 illuminant
+    x = x / 0.95047;
+    y = y / 1.00000;
+    z = z / 1.08883;
+
+    // Convert XYZ to LAB
+    const fx = x > 0.008856 ? Math.pow(x, 1/3) : (7.787 * x + 16/116);
+    const fy = y > 0.008856 ? Math.pow(y, 1/3) : (7.787 * y + 16/116);
+    const fz = z > 0.008856 ? Math.pow(z, 1/3) : (7.787 * z + 16/116);
+
+    const l = 116 * fy - 16;
+    const a = 500 * (fx - fy);
+    const bLab = 200 * (fy - fz);
+
+    return {
+      l: Math.round(l * 10) / 10,
+      a: Math.round(a * 10) / 10,
+      b: Math.round(bLab * 10) / 10,
+    };
+  };
+
+  // Format color values for display
+  const formatHsl = (hsl: { h: number; s: number; l: number }): string => {
+    return `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+  };
+
+  const formatLab = (lab: { l: number; a: number; b: number }): string => {
+    return `lab(${lab.l}%, ${lab.a}, ${lab.b})`;
+  };
+
+  // Get color temperature description
+  const getColorTemperature = (hsl: { h: number; s: number; l: number }): string => {
+    if (hsl.s < 10) return 'Neutral'; // Low saturation colors
+    
+    const h = hsl.h;
+    if (h >= 0 && h < 60) return 'Warm (Red-Yellow)';
+    if (h >= 60 && h < 120) return 'Cool-Warm (Yellow-Green)';
+    if (h >= 120 && h < 180) return 'Cool (Green-Cyan)';
+    if (h >= 180 && h < 240) return 'Cool (Cyan-Blue)';
+    if (h >= 240 && h < 300) return 'Cool-Warm (Blue-Magenta)';
+    if (h >= 300 && h < 360) return 'Warm (Magenta-Red)';
+    return 'Neutral';
+  };
+
+  // Get saturation description
+  const getSaturationLevel = (s: number): string => {
+    if (s < 20) return 'Very Low';
+    if (s < 40) return 'Low';
+    if (s < 60) return 'Moderate';
+    if (s < 80) return 'High';
+    return 'Very High';
+  };
+
+  // Get Lab color characteristics
+  const getLabCharacteristics = (lab: { l: number; a: number; b: number }): string => {
+    const characteristics = [];
+    
+    if (lab.a > 10) characteristics.push('Red-tinted');
+    else if (lab.a < -10) characteristics.push('Green-tinted');
+    
+    if (lab.b > 10) characteristics.push('Yellow-tinted');
+    else if (lab.b < -10) characteristics.push('Blue-tinted');
+    
+    return characteristics.length > 0 ? characteristics.join(', ') : 'Neutral tint';
+  };
+
   const copyToClipboard = async (text: string, format: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -215,6 +340,30 @@ export default function ColorPalette({
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  const hslColors = colors
+                    .map((c) => formatHsl(rgbToHsl(c.color)))
+                    .join(', ');
+                  copyToClipboard(hslColors, 'All HSL colors');
+                }}
+              >
+                Copy All HSL
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const labColors = colors
+                    .map((c) => formatLab(rgbToLab(c.color)))
+                    .join(', ');
+                  copyToClipboard(labColors, 'All LAB colors');
+                }}
+              >
+                Copy All LAB
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowExportModal(true)}
               >
                 Export Palette
@@ -295,10 +444,96 @@ export default function ColorPalette({
                   </Button>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-1">
+                  HSL
+                </label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={formatHsl(rgbToHsl(selectedColor.color))}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-l-none border-l-0"
+                    onClick={() =>
+                      copyToClipboard(
+                        formatHsl(rgbToHsl(selectedColor.color)),
+                        'HSL'
+                      )
+                    }
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-1">
+                  LAB
+                </label>
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={formatLab(rgbToLab(selectedColor.color))}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-l-none border-l-0"
+                    onClick={() =>
+                      copyToClipboard(
+                        formatLab(rgbToLab(selectedColor.color)),
+                        'LAB'
+                      )
+                    }
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Color characteristics */}
+            <div className="space-y-2 border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-semibold text-black mb-2">Color Characteristics</h4>
+              {(() => {
+                const hsl = rgbToHsl(selectedColor.color);
+                const lab = rgbToLab(selectedColor.color);
+                return (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Temperature:</span>
+                      <span className="font-medium">
+                        {getColorTemperature(hsl)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Saturation:</span>
+                      <span className="font-medium">
+                        {getSaturationLevel(hsl.s)} ({hsl.s}%)
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Lab Tint:</span>
+                      <span className="font-medium">
+                        {getLabCharacteristics(lab)}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Color metrics */}
             <div className="space-y-2 border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-semibold text-black mb-2">Extraction Data</h4>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Frequency:</span>
                 <span className="font-medium">
@@ -318,7 +553,7 @@ export default function ColorPalette({
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Luminance:</span>
+                <span className="text-gray-600">Relative Luminance:</span>
                 <span className="font-medium">
                   {(calculateLuminance(selectedColor.color) * 100).toFixed(1)}%
                 </span>
