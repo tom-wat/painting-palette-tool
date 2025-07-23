@@ -5,7 +5,6 @@ import {
   exportAsJSON, 
   exportAsASE, 
   exportAsCSS, 
-  exportAsSCSS,
   downloadFile, 
   downloadTextFile 
 } from '@/lib/export-formats';
@@ -164,11 +163,6 @@ export default function ColorPalette({
           break;
         }
         
-        case 'scss': {
-          const scssContent = exportAsSCSS(colors);
-          downloadTextFile(scssContent, `${baseFilename}.scss`, 'text/scss');
-          break;
-        }
         
         default:
           throw new Error(`Unsupported format: ${format}`);
@@ -204,9 +198,7 @@ export default function ColorPalette({
       <Card className={className}>
         <CardHeader>
           <CardTitle>Extracted Color Palette</CardTitle>
-          <p className="text-gray-600 text-sm">
-            {colors.length} colors extracted
-          </p>
+          {/* Removed colors count display */}
         </CardHeader>
         <CardContent>
           {/* Color grid */}
@@ -474,7 +466,7 @@ export default function ColorPalette({
         >
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Choose a format to export your {colors.length} color palette:
+              Choose a format to export your palette:
             </p>
             
             <div className="grid grid-cols-1 gap-3">
@@ -518,15 +510,6 @@ export default function ColorPalette({
                 <div className="text-sm text-gray-600">CSS custom properties</div>
               </button>
 
-              {/* SCSS Export */}
-              <button
-                onClick={() => handleExport('scss')}
-                disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-black">SCSS Variables</div>
-                <div className="text-sm text-gray-600">Sass/SCSS variable definitions</div>
-              </button>
             </div>
 
             {isExporting && (
@@ -552,7 +535,7 @@ export default function ColorPalette({
         >
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Give your {colors.length} color palette a memorable name:
+              Give your palette a memorable name:
             </p>
             
             <div>

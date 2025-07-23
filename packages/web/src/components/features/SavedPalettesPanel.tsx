@@ -5,7 +5,6 @@ import {
   exportAsJSON, 
   exportAsASE, 
   exportAsCSS, 
-  exportAsSCSS,
   downloadFile, 
   downloadTextFile 
 } from '@/lib/export-formats';
@@ -53,7 +52,6 @@ export default function SavedPalettesPanel({
   onLoadPalette,
 }: SavedPalettesPanelProps) {
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedPalette, setSelectedPalette] = useState<SavedPalette | null>(null);
   const [showColorDetailModal, setShowColorDetailModal] = useState(false);
   const [selectedColor, setSelectedColor] = useState<ExtractedColor | null>(null);
@@ -129,11 +127,6 @@ export default function SavedPalettesPanel({
           break;
         }
         
-        case 'scss': {
-          const scssContent = exportAsSCSS(palette.colors);
-          downloadTextFile(scssContent, `${baseFilename}.scss`, 'text/scss');
-          break;
-        }
         
         default:
           throw new Error(`Unsupported format: ${format}`);
@@ -187,11 +180,6 @@ export default function SavedPalettesPanel({
             case 'css': {
               const cssContent = exportAsCSS(palette.colors);
               downloadTextFile(cssContent, `${filename}.css`, 'text/css');
-              break;
-            }
-            case 'scss': {
-              const scssContent = exportAsSCSS(palette.colors);
-              downloadTextFile(scssContent, `${filename}.scss`, 'text/scss');
               break;
             }
           }
@@ -286,10 +274,10 @@ export default function SavedPalettesPanel({
     }
   };
 
-  // Show palette details
-  const showPaletteDetails = (palette: SavedPalette) => {
+  // Show export modal directly
+  const openExportModal = (palette: SavedPalette) => {
     setSelectedPalette(palette);
-    setShowDetailModal(true);
+    setShowExportModal(true);
   };
 
   if (savedPalettes.length === 0) {
@@ -330,7 +318,7 @@ export default function SavedPalettesPanel({
               <div
                 key={palette.id}
                 className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => showPaletteDetails(palette)}
+                onClick={() => openExportModal(palette)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -343,7 +331,6 @@ export default function SavedPalettesPanel({
                       {palette.colors.slice(0, 16).map((color, idx) => {
                         const hex = rgbToHex(color.color);
                         const hsl = rgbToHsl(color.color);
-                        const lch = rgbToLch(color.color);
                         const hscl = calculateHScL(color.color);
                         
                         return (
@@ -360,9 +347,8 @@ export default function SavedPalettesPanel({
                               className="aspect-square rounded border border-gray-200 shadow-sm mb-1"
                               style={{ backgroundColor: hex }}
                             />
-                            <div className="text-[10px] text-gray-600 leading-tight space-y-0.5">
+                            <div className="text-[12px] text-gray-600 leading-tight space-y-0.5">
                               <div>{formatColorValue('hsl', hsl)}</div>
-                              <div>{formatColorValue('lch', lch)}</div>
                               <div>{formatColorValue('hscl', hscl)}</div>
                             </div>
                           </div>
@@ -377,10 +363,7 @@ export default function SavedPalettesPanel({
                       )}
                     </div>
                     
-                    {/* Palette info */}
-                    <div className="text-xs text-gray-500">
-                      {palette.colors.length} colors
-                    </div>
+                    {/* Palette info - removed color count */}
                   </div>
                   
                   {/* Actions */}
@@ -422,77 +405,7 @@ export default function SavedPalettesPanel({
         </CardContent>
       </Card>
 
-      {/* Palette detail modal */}
-      {showDetailModal && selectedPalette && (
-        <Modal
-          isOpen={showDetailModal}
-          onClose={() => {
-            setShowDetailModal(false);
-            setSelectedPalette(null);
-          }}
-          title={selectedPalette.name}
-          className="sm:max-w-lg max-h-[90vh] no-padding"
-        >
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto px-6 py-4">
-            {/* Color grid without data display */}
-            <div className="grid grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2 flex-shrink-0">
-              {selectedPalette.colors.map((color, index) => {
-                const hex = rgbToHex(color.color);
-                
-                return (
-                  <div
-                    key={index}
-                    className="aspect-square rounded border border-gray-200 cursor-pointer"
-                    style={{ backgroundColor: hex }}
-                    onClick={() => {
-                      setSelectedColor(color);
-                      setShowColorDetailModal(true);
-                    }}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Palette metadata */}
-            <div className="border-t border-gray-200 pt-4 space-y-2 flex-shrink-0">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Colors:</span>
-                <span className="font-medium">{selectedPalette.colors.length}</span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-4 flex-shrink-0">
-              <Button
-                onClick={() => setShowExportModal(true)}
-                variant="outline"
-              >
-                Export
-              </Button>
-              {onLoadPalette && (
-                <Button
-                  onClick={() => {
-                    loadPalette(selectedPalette);
-                    setShowDetailModal(false);
-                    setSelectedPalette(null);
-                  }}
-                  variant="outline"
-                >
-                  Load Palette
-                </Button>
-              )}
-              <Button
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setSelectedPalette(null);
-                }}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Removed detail modal - export modal opens directly */}
 
       {/* Color detail modal */}
       {selectedColor && (
@@ -710,7 +623,10 @@ export default function SavedPalettesPanel({
       {showExportModal && selectedPalette && (
         <Modal
           isOpen={showExportModal}
-          onClose={() => setShowExportModal(false)}
+          onClose={() => {
+            setShowExportModal(false);
+            setSelectedPalette(null);
+          }}
           title={`Export ${selectedPalette.name}`}
           className="sm:max-w-md"
         >
@@ -756,14 +672,6 @@ export default function SavedPalettesPanel({
                 <div className="text-sm text-gray-600">CSS custom properties</div>
               </button>
 
-              <button
-                onClick={() => handleExportPalette('scss', selectedPalette)}
-                disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-black">SCSS Variables</div>
-                <div className="text-sm text-gray-600">Sass/SCSS variable definitions</div>
-              </button>
             </div>
 
             {isExporting && (
@@ -826,14 +734,6 @@ export default function SavedPalettesPanel({
                 <div className="text-sm text-gray-600">Individual CSS files for each palette</div>
               </button>
 
-              <button
-                onClick={() => handleBulkExport('scss')}
-                disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-black">SCSS Files</div>
-                <div className="text-sm text-gray-600">Individual SCSS files for each palette</div>
-              </button>
             </div>
 
             {isExporting && (

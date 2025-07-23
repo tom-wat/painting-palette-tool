@@ -4,12 +4,12 @@ import React, { useState, useCallback, useRef } from 'react';
 import ImageUpload from '@/components/features/ImageUpload';
 import ImageCanvas from '@/components/features/ImageCanvas';
 import ColorPalette from '@/components/features/ColorPalette';
-import BrightnessAnalysis from '@/components/features/BrightnessAnalysis';
+// import BrightnessAnalysis from '@/components/features/BrightnessAnalysis';
 import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
 import AdvancedSelectionTools, { type SelectionMode, type AdvancedSelectionConfig } from '@/components/features/AdvancedSelectionTools';
 import { Card, CardContent, Slider, Select, Toggle } from '@/components/ui';
 import { PaletteExtractor } from '@palette-tool/color-engine';
-import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
+// import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
 import { useProcessingPipeline } from '@/lib/processing-pipeline';
 
 interface RGBColor {
@@ -38,7 +38,7 @@ export default function Home() {
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [selectedImageData, setSelectedImageData] = useState<ImageData | null>(null);
   const [extractedColors, setExtractedColors] = useState<ExtractedColor[]>([]);
-  const [brightnessAnalysis, setBrightnessAnalysis] = useState<PaletteAnalysis | null>(null);
+  // const [brightnessAnalysis, setBrightnessAnalysis] = useState<PaletteAnalysis | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [canCancel, setCanCancel] = useState(false);
@@ -72,7 +72,7 @@ export default function Home() {
     setImageData(imgData);
     setSelectedImageData(null);
     setExtractedColors([]);
-    setBrightnessAnalysis(null);
+    // setBrightnessAnalysis(null);
 
     // Auto-extract colors with default settings from full image
     await extractColors(imgData, settings);
@@ -93,7 +93,7 @@ export default function Home() {
     const cachedResult = pipeline.getCachedResult(imgData, extractionSettings);
     if (cachedResult) {
       setExtractedColors(cachedResult.colors);
-      setBrightnessAnalysis(cachedResult.analysis);
+      // setBrightnessAnalysis(cachedResult.analysis);
       return;
     }
 
@@ -147,16 +147,16 @@ export default function Home() {
       }
 
       // Perform brightness analysis
-      const analysis = analyzePalette(colors);
+      // const analysis = analyzePalette(colors);
       
       setProcessingProgress(100);
 
       // Update state
       setExtractedColors(colors);
-      setBrightnessAnalysis(analysis);
+      // setBrightnessAnalysis(analysis);
       
       // Cache the result
-      pipeline.setCachedResult(imgData, extractionSettings, { colors, analysis });
+      pipeline.setCachedResult(imgData, extractionSettings, { colors });
       
     } catch (error) {
       if (error instanceof Error && error.message === 'Processing cancelled') {
@@ -170,11 +170,11 @@ export default function Home() {
       setExtractedColors(colors);
       
       // Perform brightness analysis on fallback colors
-      const analysis = analyzePalette(colors);
-      setBrightnessAnalysis(analysis);
+      // const analysis = analyzePalette(colors);
+      // setBrightnessAnalysis(analysis);
       
       // Cache fallback result
-      pipeline.setCachedResult(imgData, extractionSettings, { colors, analysis });
+      pipeline.setCachedResult(imgData, extractionSettings, { colors });
     } finally {
       setIsExtracting(false);
       setProcessingProgress(0);
@@ -431,8 +431,8 @@ export default function Home() {
                   onClearSelection={handleClearSelectionCallback}
                 />
 
-                {/* Brightness Analysis */}
-                <BrightnessAnalysis analysis={brightnessAnalysis} />
+                {/* Brightness Analysis - Hidden */}
+                {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
 
                 {/* Saved Palettes Panel */}
                 <SavedPalettesPanel className="mt-4" />

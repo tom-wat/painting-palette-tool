@@ -2,7 +2,10 @@
  * Export utilities for color palettes in various formats
  */
 import {
-  getAllColorSpaces
+  getAllColorSpaces,
+  rgbToHsl,
+  calculateHScL,
+  formatColorValue
 } from './color-space-conversions';
 
 export interface RGBColor {
@@ -46,35 +49,70 @@ export async function exportAsPNG(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Cannot create canvas context');
 
-  // Calculate canvas dimensions
+  // Calculate canvas dimensions (horizontal layout, 75% size)
+  const baseScale = 2; // Base scale for quality
+  const sizeScale = 0.75; // 75% size reduction
+  const scale = baseScale * sizeScale; // Combined scale (1.5x)
   const colorCount = colors.length;
-  const colorsPerRow = Math.min(8, colorCount);
-  const rows = Math.ceil(colorCount / colorsPerRow);
-  const colorSize = 80;
-  const padding = 8;
+  const colorsPerRow = colorCount; // All colors in one row
+  const rows = 1; // Single row
+  const colorSize = 100 * scale; // 75% of original size
+  const textHeight = 60 * scale; // 75% text space
+  const itemGap = 16 * scale; // 75% gaps (but proportionally wider)
+  const itemWidth = colorSize;
+  const itemHeight = colorSize + textHeight;
+  const padding = 24 * scale; // 75% padding
   
-  canvas.width = colorsPerRow * colorSize + (colorsPerRow - 1) * padding;
-  canvas.height = rows * colorSize + (rows - 1) * padding;
+  canvas.width = colorsPerRow * itemWidth + (colorsPerRow - 1) * itemGap + (padding * 2);
+  canvas.height = rows * itemHeight + (rows - 1) * itemGap + (padding * 2);
 
-  // Draw background
+  // Enable high-quality rendering
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  // Draw white background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw colors
+  // Set font properties (scaled for better quality)
+  ctx.font = `${12 * scale}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  // Draw colors with text labels (SavedPalettes style)
   colors.forEach((extractedColor, index) => {
     const row = Math.floor(index / colorsPerRow);
     const col = index % colorsPerRow;
     
-    const x = col * (colorSize + padding);
-    const y = row * (colorSize + padding);
+    const x = padding + col * (itemWidth + itemGap);
+    const y = padding + row * (itemHeight + itemGap);
     
+    // Draw color square with rounded corners effect (scaled)
+    const cornerRadius = 6 * scale; // Scaled corner radius
     ctx.fillStyle = rgbToHex(extractedColor.color);
-    ctx.fillRect(x, y, colorSize, colorSize);
     
-    // Add border
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, colorSize, colorSize);
+    // Use roundRect for better quality rounded corners
+    ctx.beginPath();
+    ctx.roundRect(x, y, colorSize, colorSize, cornerRadius);
+    ctx.fill();
+    
+    // No border
+    
+    // Calculate color values (excluding LCH)
+    const hsl = rgbToHsl(extractedColor.color);
+    const hscl = calculateHScL(extractedColor.color);
+    
+    // Draw text labels (HSL and HScL only)
+    ctx.fillStyle = '#6b7280'; // gray-500
+    const textX = x + colorSize / 2;
+    const textStartY = y + colorSize + (8 * scale); // Scaled text spacing
+    const lineHeight = 18 * scale; // Scaled line height
+    
+    // HSL line
+    ctx.fillText(formatColorValue('hsl', hsl), textX, textStartY);
+    
+    // HScL line
+    ctx.fillText(formatColorValue('hscl', hscl), textX, textStartY + lineHeight);
   });
 
   return new Promise((resolve) => {
