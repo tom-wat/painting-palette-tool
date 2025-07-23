@@ -28,6 +28,7 @@ interface ExtractedColor {
   frequency: number;
   importance: number;
   representativeness: number;
+  isAdded?: boolean;
 }
 
 interface SavedPalette {
@@ -45,11 +46,13 @@ interface SavedPalette {
 interface SavedPalettesPanelProps {
   className?: string;
   onLoadPalette?: (_palette: SavedPalette) => void;
+  onAddColorToExtracted?: (_color: ExtractedColor) => void;
 }
 
 export default function SavedPalettesPanel({
   className = '',
   onLoadPalette,
+  onAddColorToExtracted,
 }: SavedPalettesPanelProps) {
   const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
   const [selectedPalette, setSelectedPalette] = useState<SavedPalette | null>(null);
@@ -59,6 +62,8 @@ export default function SavedPalettesPanel({
   const [showBulkExportModal, setShowBulkExportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [paletteToDelete, setPaletteToDelete] = useState<SavedPalette | null>(null);
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -67,19 +72,6 @@ export default function SavedPalettesPanel({
   };
 
 
-  // Get color temperature description
-  const getColorTemperature = (hsl: { h: number; s: number; l: number }): string => {
-    if (hsl.s < 10) return 'Neutral';
-    
-    const h = hsl.h;
-    if (h >= 0 && h < 60) return 'Warm (Red-Yellow)';
-    if (h >= 60 && h < 120) return 'Cool-Warm (Yellow-Green)';
-    if (h >= 120 && h < 180) return 'Cool (Green-Cyan)';
-    if (h >= 180 && h < 240) return 'Cool (Cyan-Blue)';
-    if (h >= 240 && h < 300) return 'Cool-Warm (Blue-Magenta)';
-    if (h >= 300 && h < 360) return 'Warm (Magenta-Red)';
-    return 'Neutral';
-  };
 
 
 
@@ -244,12 +236,22 @@ export default function SavedPalettesPanel({
     };
   }, []);
 
-  // Delete palette
-  const deletePalette = (paletteId: string, e: React.MouseEvent) => {
+  // Show delete confirmation modal
+  const showDeleteConfirmation = (paletteId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening detail modal
+    const palette = savedPalettes.find(p => p.id === paletteId);
+    if (palette) {
+      setPaletteToDelete(palette);
+      setShowDeleteModal(true);
+    }
+  };
+
+  // Actually delete palette
+  const confirmDeletePalette = () => {
+    if (!paletteToDelete) return;
     
     try {
-      const updatedPalettes = savedPalettes.filter(p => p.id !== paletteId);
+      const updatedPalettes = savedPalettes.filter(p => p.id !== paletteToDelete.id);
       setSavedPalettes(updatedPalettes);
       localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
       
@@ -262,7 +264,16 @@ export default function SavedPalettesPanel({
       console.error('Failed to delete palette:', error);
       setFeedback('Failed to delete palette');
       setTimeout(() => setFeedback(null), 2000);
+    } finally {
+      setShowDeleteModal(false);
+      setPaletteToDelete(null);
     }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setPaletteToDelete(null);
   };
 
   // Load palette (if callback provided)
@@ -278,6 +289,36 @@ export default function SavedPalettesPanel({
   const openExportModal = (palette: SavedPalette) => {
     setSelectedPalette(palette);
     setShowExportModal(true);
+  };
+
+  // Delete color from saved palette
+  const handleDeleteColorFromPalette = (paletteId: string, colorToDelete: ExtractedColor) => {
+    try {
+      const updatedPalettes = savedPalettes.map(palette => {
+        if (palette.id === paletteId) {
+          const updatedColors = palette.colors.filter(color => 
+            !(color.color.r === colorToDelete.color.r &&
+              color.color.g === colorToDelete.color.g &&
+              color.color.b === colorToDelete.color.b)
+          );
+          return { ...palette, colors: updatedColors, updatedAt: new Date().toISOString() };
+        }
+        return palette;
+      });
+      
+      setSavedPalettes(updatedPalettes);
+      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('palettes-updated'));
+      
+      setFeedback('Color deleted from palette');
+      setTimeout(() => setFeedback(null), 2000);
+    } catch (error) {
+      console.error('Failed to delete color:', error);
+      setFeedback('Failed to delete color');
+      setTimeout(() => setFeedback(null), 2000);
+    }
   };
 
   if (savedPalettes.length === 0) {
@@ -340,6 +381,7 @@ export default function SavedPalettesPanel({
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedColor(color);
+                              setSelectedPalette(palette); // Set selected palette for delete functionality
                               setShowColorDetailModal(true);
                             }}
                           >
@@ -383,7 +425,7 @@ export default function SavedPalettesPanel({
                       </button>
                     )}
                     <button
-                      onClick={(e) => deletePalette(palette.id, e)}
+                      onClick={(e) => showDeleteConfirmation(palette.id, e)}
                       className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                       title="Delete palette"
                     >
@@ -414,6 +456,7 @@ export default function SavedPalettesPanel({
           onClose={() => {
             setShowColorDetailModal(false);
             setSelectedColor(null);
+            setSelectedPalette(null);
           }}
           title="Color Details"
           className="sm:max-w-md"
@@ -587,33 +630,36 @@ export default function SavedPalettesPanel({
               </div>
             </div>
 
-            {/* Color characteristics */}
-            <div className="space-y-2 border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-semibold text-black mb-2">Color Characteristics</h4>
-              {(() => {
-                const hsl = rgbToHsl(selectedColor.color);
-                return (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Temperature:</span>
-                      <span className="font-medium">
-                        {getColorTemperature(hsl)}
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* Color metrics */}
-            <div className="space-y-2 border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-semibold text-black mb-2">Extraction Data</h4>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Frequency:</span>
-                <span className="font-medium">
-                  {(selectedColor.frequency * 100).toFixed(1)}%
-                </span>
-              </div>
+            {/* Add to extracted palette and delete actions */}
+            <div className="border-t border-gray-200 pt-4 space-y-3">
+              {onAddColorToExtracted && (
+                <button
+                  onClick={() => {
+                    if (selectedColor) {
+                      onAddColorToExtracted(selectedColor);
+                      setShowColorDetailModal(false);
+                      setSelectedColor(null);
+                      setSelectedPalette(null);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  Add to Extracted Palette
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (selectedPalette && selectedColor) {
+                    handleDeleteColorFromPalette(selectedPalette.id, selectedColor);
+                    setShowColorDetailModal(false);
+                    setSelectedColor(null);
+                    setSelectedPalette(null);
+                  }
+                }}
+                className="w-full px-3 py-2 text-sm border border-orange-300 rounded-md text-orange-600 hover:bg-orange-50 transition-colors"
+              >
+                Delete This Color
+              </button>
             </div>
           </div>
         </Modal>
@@ -742,6 +788,40 @@ export default function SavedPalettesPanel({
                 <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
               </div>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && paletteToDelete && (
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={cancelDelete}
+          title="Delete Palette"
+          className="sm:max-w-md"
+        >
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Are you sure you want to delete the palette <strong>&ldquo;{paletteToDelete.name}&rdquo;</strong>?
+            </div>
+            <div className="text-sm text-gray-500">
+              This action cannot be undone. The palette contains {paletteToDelete.colors.length} colors.
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={cancelDelete}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeletePalette}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Delete Palette
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

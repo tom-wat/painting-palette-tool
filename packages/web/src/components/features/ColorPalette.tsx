@@ -27,6 +27,7 @@ interface ExtractedColor {
   frequency: number;
   importance: number;
   representativeness: number;
+  isAdded?: boolean;
 }
 
 interface SavedPalette {
@@ -45,12 +46,22 @@ interface ColorPaletteProps {
   colors: ExtractedColor[];
   className?: string;
   imageFilename?: string;
+  isAddMode?: boolean;
+  onToggleAddMode?: () => void;
+  onFinishAdding?: () => void;
+  onUndoLastAddition?: () => void;
+  onDeleteColor?: (_colorIndex: number) => void;
 }
 
 export default function ColorPalette({
   colors,
   className = '',
   imageFilename,
+  isAddMode = false,
+  onToggleAddMode,
+  onFinishAdding,
+  onUndoLastAddition,
+  onDeleteColor,
 }: ColorPaletteProps) {
   const [selectedColor, setSelectedColor] = useState<ExtractedColor | null>(
     null
@@ -68,19 +79,6 @@ export default function ColorPalette({
 
 
 
-  // Get color temperature description
-  const getColorTemperature = (hsl: { h: number; s: number; l: number }): string => {
-    if (hsl.s < 10) return 'Neutral'; // Low saturation colors
-    
-    const h = hsl.h;
-    if (h >= 0 && h < 60) return 'Warm (Red-Yellow)';
-    if (h >= 60 && h < 120) return 'Cool-Warm (Yellow-Green)';
-    if (h >= 120 && h < 180) return 'Cool (Green-Cyan)';
-    if (h >= 180 && h < 240) return 'Cool (Cyan-Blue)';
-    if (h >= 240 && h < 300) return 'Cool-Warm (Blue-Magenta)';
-    if (h >= 300 && h < 360) return 'Warm (Magenta-Red)';
-    return 'Neutral';
-  };
 
 
 
@@ -209,13 +207,22 @@ export default function ColorPalette({
               return (
                 <div
                   key={index}
-                  className="group cursor-pointer"
+                  className="group cursor-pointer relative"
                   onClick={() => setSelectedColor(extractedColor)}
                 >
                   <div
-                    className="w-full aspect-square rounded-lg border border-gray-200 group-hover:scale-105 transition-transform shadow-sm"
+                    className={`w-full aspect-square rounded-lg border-2 group-hover:scale-105 transition-transform shadow-sm ${
+                      extractedColor.isAdded 
+                        ? 'border-blue-400 border-dashed' 
+                        : 'border-gray-200'
+                    }`}
                     style={{ backgroundColor: hex }}
                   />
+                  {extractedColor.isAdded && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                      <span className="-translate-y-px">+</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -223,6 +230,44 @@ export default function ColorPalette({
 
           {/* Quick copy section */}
           <div className="border-t border-gray-200 pt-4">
+            {/* Add Mode Controls */}
+            {isAddMode ? (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-sm text-blue-800 mb-2">
+                  🎨 Add Mode: Select areas on the image to add more colors
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onFinishAdding}
+                    className="bg-white"
+                  >
+                    Finish Adding
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onUndoLastAddition}
+                    className="bg-white"
+                  >
+                    Undo Last Addition
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onToggleAddMode}
+                  className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                >
+                  + Add More Colors
+                </Button>
+              </div>
+            )}
+            
             <div className="flex flex-col sm:flex-row flex-wrap gap-2">
               <Button
                 variant="outline"
@@ -424,34 +469,29 @@ export default function ColorPalette({
               </div>
             </div>
 
-            {/* Color characteristics */}
-            <div className="space-y-2 border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-semibold text-black mb-2">Color Characteristics</h4>
-              {(() => {
-                const hsl = rgbToHsl(selectedColor.color);
-                return (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Temperature:</span>
-                      <span className="font-medium">
-                        {getColorTemperature(hsl)}
-                      </span>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* Color metrics */}
-            <div className="space-y-2 border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-semibold text-black mb-2">Extraction Data</h4>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Frequency:</span>
-                <span className="font-medium">
-                  {(selectedColor.frequency * 100).toFixed(1)}%
-                </span>
+            {/* Delete color action */}
+            {onDeleteColor && (
+              <div className="border-t border-gray-200 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const colorIndex = colors.findIndex(c => 
+                      c.color.r === selectedColor.color.r &&
+                      c.color.g === selectedColor.color.g &&
+                      c.color.b === selectedColor.color.b
+                    );
+                    if (colorIndex !== -1 && onDeleteColor) {
+                      onDeleteColor(colorIndex);
+                      setSelectedColor(null);
+                    }
+                  }}
+                  className="w-full text-orange-600 border-orange-300 hover:bg-orange-50"
+                >
+                  Delete This Color
+                </Button>
               </div>
-            </div>
+            )}
           </div>
         </Modal>
       )}

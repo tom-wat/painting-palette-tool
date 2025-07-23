@@ -336,3 +336,27 @@ export function formatColorValue(colorSpace: string, values: HSLColor | LABColor
       return '';
   }
 }
+
+/**
+ * Calculate color distance using LAB color space (more perceptually accurate)
+ * Returns a value where 0 = identical colors, higher values = more different
+ */
+export function calculateColorDistance(color1: RGBColor, color2: RGBColor): number {
+  const lab1 = rgbToLab(color1);
+  const lab2 = rgbToLab(color2);
+  
+  // Delta E CIE76 formula (simplified)
+  const deltaL = lab1.l - lab2.l;
+  const deltaA = lab1.a - lab2.a;
+  const deltaB = lab1.b - lab2.b;
+  
+  return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
+}
+
+/**
+ * Check if two colors are similar based on a threshold
+ * Threshold of ~10-15 is good for avoiding very similar colors
+ */
+export function areColorsSimilar(color1: RGBColor, color2: RGBColor, threshold: number = 12): boolean {
+  return calculateColorDistance(color1, color2) < threshold;
+}

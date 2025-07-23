@@ -11,6 +11,7 @@ import { Card, CardContent, Slider, Select, Toggle } from '@/components/ui';
 import { PaletteExtractor } from '@palette-tool/color-engine';
 // import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
 import { useProcessingPipeline } from '@/lib/processing-pipeline';
+import { areColorsSimilar } from '@/lib/color-space-conversions';
 
 interface RGBColor {
   r: number;
@@ -23,6 +24,7 @@ interface ExtractedColor {
   frequency: number;
   importance: number;
   representativeness: number;
+  isAdded?: boolean; // 追加された色かどうかのフラグ
 }
 
 interface ExtractionSettings {
@@ -42,6 +44,9 @@ export default function Home() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [canCancel, setCanCancel] = useState(false);
+  const [isAddMode, setIsAddMode] = useState(false);
+  const [, setOriginalColors] = useState<ExtractedColor[]>([]);
+  const [feedback, setFeedback] = useState<{message: string; type: 'success' | 'error'} | null>(null);
   
   
   // Processing pipeline hook
@@ -79,12 +84,60 @@ export default function Home() {
   };
 
   const handleSelectionChange = async (selectionData: ImageData | null) => {
-    setSelectedImageData(selectionData);
-    
-    // Extract colors from selection if available, otherwise from full image
-    const dataToUse = selectionData || imageData;
-    if (dataToUse) {
-      await extractColors(dataToUse, settings);
+    if (isAddMode) {
+      if (selectionData) {
+        // Add Mode: extract colors from new selection and merge with existing
+        const newColors = await extractColorsForAddMode(selectionData, settings);
+        if (newColors.length > 0) {
+          const mergedColors = mergeAndDeduplicateColors(extractedColors, newColors);
+          setExtractedColors(mergedColors);
+        }
+      }
+      // Add Mode時は選択範囲クリア（selectionData = null）を無視
+      // 既存のパレットを保持
+    } else {
+      // Normal mode: replace palette
+      setSelectedImageData(selectionData);
+      
+      // Extract colors from selection if available, otherwise from full image
+      const dataToUse = selectionData || imageData;
+      if (dataToUse) {
+        await extractColors(dataToUse, settings);
+      }
+    }
+  };
+
+  // Extract colors for Add Mode (simplified, no caching)
+  const extractColorsForAddMode = async (imgData: ImageData, extractionSettings: ExtractionSettings): Promise<ExtractedColor[]> => {
+    try {
+      // Use color-engine for extraction
+      const result = await PaletteExtractor.extractPalette(imgData, {
+        targetColorCount: Math.min(extractionSettings.colorCount, 8), // Limit for add mode
+        algorithm: extractionSettings.algorithm as any,
+        qualityThreshold: extractionSettings.quality / 10,
+      });
+
+      let colors = result.colors;
+
+      // Apply sorting
+      if (extractionSettings.sortBy === 'brightness') {
+        colors = colors.sort((a, b) => {
+          const brightnessA = (a.color.r * 0.299 + a.color.g * 0.587 + a.color.b * 0.114);
+          const brightnessB = (b.color.r * 0.299 + b.color.g * 0.587 + b.color.b * 0.114);
+          return brightnessA - brightnessB;
+        });
+      } else if (extractionSettings.sortBy === 'hue') {
+        colors = colors.sort((a, b) => {
+          const hueA = rgbToHue(a.color);
+          const hueB = rgbToHue(b.color);
+          return hueA - hueB;
+        });
+      }
+
+      return colors;
+    } catch (error) {
+      console.error('Add mode color extraction failed:', error);
+      return extractSimpleColors(imgData, Math.min(extractionSettings.colorCount, 8));
     }
   };
 
@@ -275,6 +328,30 @@ export default function Home() {
     }));
   };
 
+  // Color merging logic for Add Mode
+  const mergeAndDeduplicateColors = (
+    existing: ExtractedColor[], 
+    newColors: ExtractedColor[],
+    maxColors: number = 16
+  ): ExtractedColor[] => {
+    const merged = [...existing];
+    
+    newColors.forEach(newColor => {
+      const isDuplicate = existing.some(existingColor => 
+        areColorsSimilar(existingColor.color, newColor.color, 8)
+      );
+      
+      if (!isDuplicate) {
+        merged.push({
+          ...newColor,
+          isAdded: true // Mark as added color
+        });
+      }
+    });
+    
+    return merged.slice(0, maxColors); // Limit total colors
+  };
+
   // Algorithm and sorting options
   const algorithmOptions = [
     { value: 'kmeans', label: 'K-Means', description: 'Standard clustering algorithm' },
@@ -288,6 +365,59 @@ export default function Home() {
     { value: 'brightness', label: 'Brightness', description: 'Dark to light' },
     { value: 'hue', label: 'Hue', description: 'Rainbow order' },
   ];
+
+  // Add Mode handlers
+  const handleToggleAddMode = () => {
+    if (!isAddMode) {
+      // Entering Add Mode - save original colors
+      setOriginalColors([...extractedColors]);
+      setIsAddMode(true);
+    }
+  };
+
+  const handleFinishAdding = () => {
+    setIsAddMode(false);
+    setOriginalColors([]);
+  };
+
+  const handleUndoLastAddition = () => {
+    // Remove only the colors marked as added
+    const colorsWithoutAdded = extractedColors.filter(color => !color.isAdded);
+    setExtractedColors(colorsWithoutAdded);
+  };
+
+  const handleDeleteColor = (colorIndex: number) => {
+    const updatedColors = extractedColors.filter((_, index) => index !== colorIndex);
+    setExtractedColors(updatedColors);
+  };
+
+  const handleAddColorFromSaved = (color: ExtractedColor) => {
+    // Auto-enable Add Mode
+    if (!isAddMode) {
+      setOriginalColors([...extractedColors]);
+      setIsAddMode(true);
+    }
+    
+    // Check if color already exists
+    const isDuplicate = extractedColors.some(existingColor => 
+      areColorsSimilar(existingColor.color, color.color, 8)
+    );
+    
+    if (!isDuplicate) {
+      const newColor = {
+        ...color,
+        isAdded: true // Mark as added color
+      };
+      const updatedColors = [...extractedColors, newColor];
+      setExtractedColors(updatedColors);
+      
+      setFeedback({message: 'Color added to extracted palette', type: 'success'});
+      setTimeout(() => setFeedback(null), 2000);
+    } else {
+      setFeedback({message: 'Color already exists in palette', type: 'error'});
+      setTimeout(() => setFeedback(null), 2000);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gray-50 text-black">
@@ -435,7 +565,10 @@ export default function Home() {
                 {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
 
                 {/* Saved Palettes Panel */}
-                <SavedPalettesPanel className="mt-4" />
+                <SavedPalettesPanel 
+                  className="mt-4" 
+                  onAddColorToExtracted={handleAddColorFromSaved}
+                />
 
                 {/* Image Upload (bottom) */}
                 <ImageUpload onImageUpload={handleImageUpload} />
@@ -452,11 +585,29 @@ export default function Home() {
               <ColorPalette 
                 colors={extractedColors} 
                 imageFilename={uploadedImage?.name}
+                isAddMode={isAddMode}
+                onToggleAddMode={handleToggleAddMode}
+                onFinishAdding={handleFinishAdding}
+                onUndoLastAddition={handleUndoLastAddition}
+                onDeleteColor={handleDeleteColor}
               />
             )}
           </div>
         </div>
       </div>
+      
+      {/* Toast notification - fixed position */}
+      {feedback && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm">
+          <div className={`shadow-lg rounded-lg px-4 py-3 text-sm ${
+            feedback.type === 'success' 
+              ? 'bg-blue-50 border border-blue-200 text-blue-800'
+              : 'bg-orange-50 border border-orange-200 text-orange-800'
+          }`}>
+            {feedback.message}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
