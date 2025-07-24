@@ -33,6 +33,7 @@ export default function ImageCanvas({
   
   const [isDrawing, setIsDrawing] = useState(false);
   const [selection, setSelection] = useState<SelectionRect | null>(null);
+  const [dragSelection, setDragSelection] = useState<SelectionRect | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
@@ -143,8 +144,9 @@ export default function ImageCanvas({
     ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
     
     // Draw selection rectangle
-    if (selection) {
-      const { start, end } = selection;
+    const currentSelection = selection || dragSelection;
+    if (currentSelection) {
+      const { start, end } = currentSelection;
       const rect = {
         x: Math.min(start.x, end.x),
         y: Math.min(start.y, end.y),
@@ -152,20 +154,24 @@ export default function ImageCanvas({
         height: Math.abs(end.y - start.y),
       };
       
-      // Draw selection overlay
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Draw selection overlay only for confirmed selection (not during drag)
+      if (selection) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
       
-      // Clear selected area
-      ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
-      
-      // Redraw image in selected area only
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(rect.x, rect.y, rect.width, rect.height);
-      ctx.clip();
-      ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
-      ctx.restore();
+      // Clear selected area and redraw image for confirmed selection only
+      if (selection) {
+        ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
+        
+        // Redraw image in selected area only
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(rect.x, rect.y, rect.width, rect.height);
+        ctx.clip();
+        ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
+        ctx.restore();
+      }
       
       // Draw clean selection border with drop shadow effect
       ctx.lineWidth = 2;
@@ -327,7 +333,7 @@ export default function ImageCanvas({
         );
       }
     }
-  }, [image, scale, offset, selection, selectionMode, polygonSelection, currentMask, isDrawing]);
+  }, [image, scale, offset, selection, dragSelection, selectionMode, polygonSelection, currentMask, isDrawing]);
 
   // Zoom functionality
   const handleZoom = useCallback((delta: number, centerX: number, centerY: number) => {
@@ -372,7 +378,7 @@ export default function ImageCanvas({
   useEffect(() => {
     drawCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [selection, image, scale, offset, currentMask, polygonSelection, selectionMode]);
+  }, [selection, dragSelection, image, scale, offset, currentMask, polygonSelection, selectionMode]);
 
   // Convert screen coordinates to image coordinates
   const screenToImageCoords = useCallback((screenX: number, screenY: number): Point => {
@@ -433,41 +439,48 @@ export default function ImageCanvas({
     };
   }, [getTouchPos]);
 
+  // Extract ImageData from rectangle selection
+  const extractSelectionDataFromRect = useCallback((rectSelection: SelectionRect) => {
+    if (!image) return;
+
+    const { start, end } = rectSelection;
+    const imageStart = screenToImageCoords(Math.min(start.x, end.x), Math.min(start.y, end.y));
+    const imageEnd = screenToImageCoords(Math.max(start.x, end.x), Math.max(start.y, end.y));
+    
+    // Clamp to image bounds
+    const x = Math.max(0, Math.floor(imageStart.x));
+    const y = Math.max(0, Math.floor(imageStart.y));
+    const width = Math.min(image.width - x, Math.ceil(imageEnd.x - imageStart.x));
+    const height = Math.min(image.height - y, Math.ceil(imageEnd.y - imageStart.y));
+    
+    if (width <= 0 || height <= 0) {
+      onSelectionChange(null);
+      return;
+    }
+    
+    // Create temporary canvas for extraction
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+    
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    
+    // Draw selected portion of image
+    tempCtx.drawImage(image, x, y, width, height, 0, 0, width, height);
+    
+    // Extract ImageData
+    const imageData = tempCtx.getImageData(0, 0, width, height);
+    onSelectionChange(imageData);
+  }, [image, screenToImageCoords, onSelectionChange]);
+
   // Extract ImageData from selection
   const extractSelectionData = useCallback(() => {
     if (!sourceImageData) return;
 
-    // Rectangle selection (existing logic)
-    if (selectionMode === 'rectangle' && selection && image) {
-      const { start, end } = selection;
-      const imageStart = screenToImageCoords(Math.min(start.x, end.x), Math.min(start.y, end.y));
-      const imageEnd = screenToImageCoords(Math.max(start.x, end.x), Math.max(start.y, end.y));
-      
-      // Clamp to image bounds
-      const x = Math.max(0, Math.floor(imageStart.x));
-      const y = Math.max(0, Math.floor(imageStart.y));
-      const width = Math.min(image.width - x, Math.ceil(imageEnd.x - imageStart.x));
-      const height = Math.min(image.height - y, Math.ceil(imageEnd.y - imageStart.y));
-      
-      if (width <= 0 || height <= 0) {
-        onSelectionChange(null);
-        return;
-      }
-      
-      // Create temporary canvas for extraction
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) return;
-      
-      tempCanvas.width = width;
-      tempCanvas.height = height;
-      
-      // Draw selected portion of image
-      tempCtx.drawImage(image, x, y, width, height, 0, 0, width, height);
-      
-      // Extract ImageData
-      const imageData = tempCtx.getImageData(0, 0, width, height);
-      onSelectionChange(imageData);
+    // Rectangle selection
+    if (selectionMode === 'rectangle' && selection) {
+      extractSelectionDataFromRect(selection);
       return;
     }
 
@@ -489,13 +502,12 @@ export default function ImageCanvas({
     onSelectionChange(null);
   }, [
     selection, 
-    image, 
     sourceImageData, 
     selectionMode, 
     polygonSelection, 
     currentMask, 
-    screenToImageCoords, 
-    onSelectionChange
+    onSelectionChange,
+    extractSelectionDataFromRect
   ]);
 
   // Mouse event handlers
@@ -513,11 +525,20 @@ export default function ImageCanvas({
 
     switch (selectionMode) {
       case 'rectangle':
+        // Clear previous confirmed selection to show new drag selection
+        setSelection(null);
         setIsDrawing(true);
-        setSelection({ start: pos, end: pos });
+        setDragSelection({ start: pos, end: pos });
         break;
 
       case 'polygon':
+        // If polygon is already complete, start a new one
+        if (polygonSelection.getIsComplete()) {
+          polygonSelection.clear();
+          setCurrentMask(null);
+          setIsDrawing(false);
+        }
+        
         // Check if clicking near the first point to close polygon
         if (polygonSelection.getVertices().length > 2) {
           const firstPoint = polygonSelection.getVertices()[0];
@@ -567,8 +588,8 @@ export default function ImageCanvas({
 
     switch (selectionMode) {
       case 'rectangle':
-        if (selection) {
-          setSelection(prev => prev ? { ...prev, end: pos } : null);
+        if (dragSelection) {
+          setDragSelection(prev => prev ? { ...prev, end: pos } : null);
         }
         break;
 
@@ -577,7 +598,7 @@ export default function ImageCanvas({
         // Just redraw to show current mouse position if needed
         break;
     }
-  }, [isDrawing, selection, isPanning, lastPanPoint, getMousePos, selectionMode]);
+  }, [isDrawing, dragSelection, isPanning, lastPanPoint, getMousePos, selectionMode]);
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing) {
@@ -585,7 +606,13 @@ export default function ImageCanvas({
       
       switch (selectionMode) {
         case 'rectangle':
-          extractSelectionData();
+          // Confirm dragSelection as selection and extract data
+          if (dragSelection) {
+            setSelection(dragSelection);
+            setDragSelection(null);
+            // Extract data using dragSelection directly since state update is async
+            extractSelectionDataFromRect(dragSelection);
+          }
           break;
           
         case 'polygon':
@@ -599,12 +626,13 @@ export default function ImageCanvas({
       setIsPanning(false);
       setLastPanPoint(null);
     }
-  }, [isDrawing, isPanning, selectionMode, extractSelectionData]);
+  }, [isDrawing, isPanning, selectionMode, extractSelectionData, dragSelection]);
 
 
   // Clear selection
   const clearSelection = useCallback(() => {
     setSelection(null);
+    setDragSelection(null);
     setCurrentMask(null);
     polygonSelection.clear();
     setIsDrawing(false);
@@ -619,19 +647,47 @@ export default function ImageCanvas({
     }
   }, [clearSelection, onClearSelection]);
 
+  // Clear selection progress when selection mode changes
+  const previousSelectionMode = useRef<SelectionMode>(selectionMode);
+  useEffect(() => {
+    if (previousSelectionMode.current !== selectionMode) {
+      setSelection(null);
+      setDragSelection(null);
+      setCurrentMask(null);
+      polygonSelection.clear();
+      setIsDrawing(false);
+      onSelectionChange(null);
+      drawCanvas();
+      previousSelectionMode.current = selectionMode;
+    }
+  }, [selectionMode, polygonSelection, onSelectionChange, drawCanvas]);
+
 
 
 
   // Handle double click to complete polygon
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    if (selectionMode === 'polygon' && polygonSelection.getVertices().length > 2) {
+    if (selectionMode === 'polygon') {
       e.preventDefault();
-      polygonSelection.complete();
-      setIsDrawing(false);
-      const mask = polygonSelection.generateMask(sourceImageData?.width || 0, sourceImageData?.height || 0);
-      setCurrentMask(mask);
-      extractSelectionData();
-      drawCanvas();
+      
+      // If polygon is already complete, start a new one (same as single click)
+      if (polygonSelection.getIsComplete()) {
+        polygonSelection.clear();
+        setCurrentMask(null);
+        setIsDrawing(false);
+        drawCanvas();
+        return;
+      }
+      
+      // Complete current polygon if it has enough vertices
+      if (polygonSelection.getVertices().length > 2) {
+        polygonSelection.complete();
+        setIsDrawing(false);
+        const mask = polygonSelection.generateMask(sourceImageData?.width || 0, sourceImageData?.height || 0);
+        setCurrentMask(mask);
+        extractSelectionData();
+        drawCanvas();
+      }
     }
   }, [selectionMode, polygonSelection, sourceImageData, extractSelectionData, drawCanvas]);
 

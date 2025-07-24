@@ -369,7 +369,7 @@ export default function SavedPalettesPanel({
                     
                     {/* Color preview grid with data below squares */}
                     <div className="grid grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-1 mb-3">
-                      {palette.colors.slice(0, 16).map((color, idx) => {
+                      {palette.colors.map((color, idx) => {
                         const hex = rgbToHex(color.color);
                         const hsl = rgbToHsl(color.color);
                         const hscl = calculateHScL(color.color);
@@ -396,13 +396,6 @@ export default function SavedPalettesPanel({
                           </div>
                         );
                       })}
-                      {palette.colors.length > 16 && (
-                        <div className="text-center">
-                          <div className="aspect-square rounded border border-gray-300 bg-gray-100 flex items-center justify-center text-xs text-gray-600 mb-1">
-                            +{palette.colors.length - 16}
-                          </div>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Palette info - removed color count */}

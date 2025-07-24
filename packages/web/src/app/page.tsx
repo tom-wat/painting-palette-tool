@@ -99,10 +99,10 @@ export default function Home() {
       // Normal mode: replace palette
       setSelectedImageData(selectionData);
       
-      // Extract colors from selection if available, otherwise from full image
-      const dataToUse = selectionData || imageData;
-      if (dataToUse) {
-        await extractColors(dataToUse, settings);
+      // Extract colors from selection only if selection is provided
+      // When selection is cleared (selectionData = null), keep current palette
+      if (selectionData) {
+        await extractColors(selectionData, settings);
       }
     }
   };
