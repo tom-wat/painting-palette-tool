@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
 import { 
   exportAsPNG, 
@@ -8,6 +8,7 @@ import {
   downloadFile, 
   downloadTextFile 
 } from '@/lib/export-formats';
+import html2canvas from 'html2canvas';
 import {
   rgbToHsl,
   rgbToLab,
@@ -75,6 +76,8 @@ export default function SavedPalettesPanel({
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [editingTagInput, setEditingTagInput] = useState<string>('');
   const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<Record<string, boolean>>({});
+  const [showAllLabels, setShowAllLabels] = useState<boolean>(false);
+  const paletteRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -178,6 +181,106 @@ export default function SavedPalettesPanel({
 
 
 
+
+  // Export individual palette as PNG
+  const exportIndividualPaletteAsPNG = async (palette: SavedPalette) => {
+    const paletteElement = paletteRefs.current[palette.id];
+    if (!paletteElement) return;
+    
+    setIsExporting(true);
+    try {
+      // Scroll to top to fix text positioning issues
+      const originalScrollY = window.scrollY;
+      window.scrollTo(0, 0);
+      
+      // Small delay to ensure scroll is complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(paletteElement, {
+        backgroundColor: '#ffffff',
+        scale: window.devicePixelRatio || 1,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        foreignObjectRendering: false,
+        scrollX: 0,
+        scrollY: 0,
+      });
+      
+      // Restore original scroll position
+      window.scrollTo(0, originalScrollY);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const timestamp = new Date().toISOString().split('T')[0];
+          const filename = `${palette.name}-palette-${timestamp}.png`;
+          downloadFile(blob, filename);
+        }
+      }, 'image/png', 0.95);
+      
+    } catch (error) {
+      console.error('PNG export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Export all palettes as single PNG
+  const exportAllPalettesAsPNG = async () => {
+    const palettesContainer = document.querySelector('[data-palettes-container]') as HTMLElement;
+    if (!palettesContainer) return;
+    
+    setIsExporting(true);
+    try {
+      // Scroll to top to fix text positioning issues
+      const originalScrollY = window.scrollY;
+      window.scrollTo(0, 0);
+      
+      // Small delay to ensure scroll is complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(palettesContainer, {
+        backgroundColor: '#ffffff',
+        scale: window.devicePixelRatio || 1,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        foreignObjectRendering: false,
+        scrollX: 0,
+        scrollY: 0,
+      });
+      
+      // Restore original scroll position
+      window.scrollTo(0, originalScrollY);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const timestamp = new Date().toISOString().split('T')[0];
+          const filename = `all-palettes-${timestamp}.png`;
+          downloadFile(blob, filename);
+        }
+      }, 'image/png', 0.95);
+      
+    } catch (error) {
+      console.error('PNG export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Toggle all labels
+  const handleToggleAllLabels = () => {
+    const newShowAll = !showAllLabels;
+    setShowAllLabels(newShowAll);
+    
+    // Set all palettes to the same state
+    const newLabelsState: Record<string, boolean> = {};
+    filteredPalettes.forEach(palette => {
+      newLabelsState[palette.id] = newShowAll;
+    });
+    setShowColorSpaceLabels(newLabelsState);
+  };
+
   // Copy to clipboard function
   const copyToClipboard = async (text: string, format: string) => {
     try {
@@ -199,8 +302,29 @@ export default function SavedPalettesPanel({
 
       switch (format) {
         case 'png': {
-          const pngBlob = await exportAsPNG(palette.colors);
-          downloadFile(pngBlob, `${baseFilename}.png`);
+          // Check if called from modal and use modal element
+          const modalKey = `modal-${palette.id}`;
+          const modalElement = paletteRefs.current[modalKey];
+          
+          if (modalElement) {
+            // Use html2canvas for modal export
+            const canvas = await html2canvas(modalElement, {
+              backgroundColor: '#ffffff',
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+            });
+            
+            canvas.toBlob((blob) => {
+              if (blob) {
+                downloadFile(blob, `${baseFilename}.png`);
+              }
+            }, 'image/png', 0.95);
+          } else {
+            // Fallback to original PNG export
+            const pngBlob = await exportAsPNG(palette.colors);
+            downloadFile(pngBlob, `${baseFilename}.png`);
+          }
           break;
         }
         
@@ -557,14 +681,32 @@ export default function SavedPalettesPanel({
         <CardHeader>
           <div className="flex items-center justify-between mb-3">
             <CardTitle>Saved Palettes ({tagFilter ? filteredPalettes.length : savedPalettes.length})</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowBulkExportModal(true)}
-              disabled={savedPalettes.length === 0}
-            >
-              Export All
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleAllLabels}
+                disabled={savedPalettes.length === 0}
+              >
+                {showAllLabels ? 'Hide All' : 'Show All'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportAllPalettesAsPNG()}
+                disabled={savedPalettes.length === 0 || isExporting}
+              >
+                PNG All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBulkExportModal(true)}
+                disabled={savedPalettes.length === 0}
+              >
+                Export All
+              </Button>
+            </div>
           </div>
           
           {/* Tag filter */}
@@ -636,11 +778,17 @@ export default function SavedPalettesPanel({
               <div className="text-sm">Try selecting a different tag or clear the filter</div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" data-palettes-container>
               {filteredPalettes.map((palette) => (
               <div
                 key={palette.id}
+                ref={(el) => {
+                  if (el) {
+                    paletteRefs.current[palette.id] = el;
+                  }
+                }}
                 className="border border-gray-200 rounded-lg p-3 hover:border-gray-300 transition-colors cursor-pointer"
+                style={{ transform: 'translateZ(0)' }}
                 onClick={() => openPaletteDetailModal(palette)}
               >
                 <div className="flex items-start justify-between">
@@ -709,6 +857,19 @@ export default function SavedPalettesPanel({
                   
                   {/* Actions */}
                   <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        exportIndividualPaletteAsPNG(palette);
+                      }}
+                      className="p-1 text-gray-400 hover:text-green-500 transition-colors"
+                      title="Export as PNG"
+                      disabled={isExporting}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    </button>
                     {onLoadPalette && (
                       <button
                         onClick={(e) => {
@@ -818,7 +979,13 @@ export default function SavedPalettesPanel({
             </div>
 
             {/* Color Grid */}
-            <div>
+            <div 
+              ref={(el) => {
+                if (el && editingPalette) {
+                  paletteRefs.current[`modal-${editingPalette.id}`] = el;
+                }
+              }}
+            >
               <label className="block text-sm font-medium text-black mb-2">
                 Colors ({editingPalette.colors.length})
               </label>
@@ -842,14 +1009,7 @@ export default function SavedPalettesPanel({
               <label className="block text-sm font-medium text-black mb-3">
                 Export Palette
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <button
-                  onClick={() => handleExportPalette('png', editingPalette)}
-                  disabled={isExporting}
-                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  PNG
-                </button>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <button
                   onClick={() => handleExportPalette('json', editingPalette)}
                   disabled={isExporting}
@@ -1202,15 +1362,6 @@ export default function SavedPalettesPanel({
               >
                 <div className="font-semibold text-black">JSON Collection</div>
                 <div className="text-sm text-gray-600">Single file with all palettes and metadata</div>
-              </button>
-
-              <button
-                onClick={() => handleBulkExport('png')}
-                disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-black">PNG Images</div>
-                <div className="text-sm text-gray-600">Individual PNG files for each palette</div>
               </button>
 
               <button
