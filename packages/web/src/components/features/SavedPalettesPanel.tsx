@@ -74,7 +74,7 @@ export default function SavedPalettesPanel({
   const [editingName, setEditingName] = useState<string>('');
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [editingTagInput, setEditingTagInput] = useState<string>('');
-  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<boolean>(false);
+  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<Record<string, boolean>>({});
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -82,14 +82,56 @@ export default function SavedPalettesPanel({
     return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
   };
 
+  // Helper function to get bar color based on color space and type
+  const getBarColor = (colorSpace: 'hsl' | 'hscl', type: 'H' | 'S' | 'L' | 'Sc', value: number, color: RGBColor) => {
+    const hsl = rgbToHsl(color);
+    const hscl = calculateHScL(color);
+    
+    switch(colorSpace) {
+      case 'hsl':
+        switch(type) {
+          case 'H': return `hsl(${value}, 50%, 50%)`;
+          case 'S': return `hsl(${hsl.h}, ${value}%, 60%)`;
+          case 'L': return `hsl(${hsl.h}, 50%, 60%)`;
+          default: return '#9ca3af'; // gray-400
+        }
+      
+      case 'hscl':
+        switch(type) {
+          case 'H': return `hsl(${value}, 50%, 50%)`;
+          case 'Sc': return `hsl(${hscl.h}, ${value}%, 60%)`;
+          case 'L': return `hsl(${hscl.h}, 50%, 60%)`;
+          default: return '#9ca3af'; // gray-400
+        }
+      
+      default:
+        return '#9ca3af'; // gray-400
+    }
+  };
+
   // Component for rendering horizontal bar graphs
-  const ColorValueBars = ({ color }: { color: ExtractedColor }) => {
+  const ColorValueBars = ({ color, paletteId }: { color: ExtractedColor; paletteId: string }) => {
     const hsl = rgbToHsl(color.color);
     const hscl = calculateHScL(color.color);
+    const showLabels = showColorSpaceLabels[paletteId] || false;
     
-    const BarGraph = ({ label, value, max, suffix = '' }: { label: string; value: number; max: number; suffix?: string }) => (
-      <div className={`text-[12px] ${showColorSpaceLabels ? 'space-y-0.5' : 'mb-1'}`}>
-        {showColorSpaceLabels && (
+    const BarGraph = ({ 
+      label, 
+      value, 
+      max, 
+      suffix = '', 
+      colorSpace, 
+      type 
+    }: { 
+      label: string; 
+      value: number; 
+      max: number; 
+      suffix?: string;
+      colorSpace: 'hsl' | 'hscl';
+      type: 'H' | 'S' | 'L' | 'Sc';
+    }) => (
+      <div className={`text-[12px] ${showLabels ? 'space-y-0.5' : 'mb-1'}`}>
+        {showLabels && (
           <div className="flex justify-between">
             <span className="text-gray-500 tracking-wide">{label}</span>
             <span className="text-gray-700 font-mono">{value}{suffix}</span>
@@ -97,8 +139,11 @@ export default function SavedPalettesPanel({
         )}
         <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gray-600 rounded-full transition-all duration-200"
-            style={{ width: `${Math.min((value / max) * 100, 100)}%` }}
+            className="h-full rounded-full transition-all duration-200"
+            style={{ 
+              width: `${Math.min((value / max) * 100, 100)}%`,
+              backgroundColor: getBarColor(colorSpace, type, value, color.color)
+            }}
           />
         </div>
       </div>
@@ -107,23 +152,23 @@ export default function SavedPalettesPanel({
     return (
       <div className="p-1">
         {/* HSL Values */}
-        {showColorSpaceLabels && (
+        {showLabels && (
           <div className="text-[12px] text-gray-500 font-medium mb-1">HSL</div>
         )}
         <div className="space-y-1">
-          <BarGraph label="H" value={hsl.h} max={360} suffix="°" />
-          <BarGraph label="S" value={hsl.s} max={100} suffix="%" />
-          <BarGraph label="L" value={hsl.l} max={100} suffix="%" />
+          <BarGraph label="H" value={hsl.h} max={360} suffix="°" colorSpace="hsl" type="H" />
+          <BarGraph label="S" value={hsl.s} max={100} suffix="%" colorSpace="hsl" type="S" />
+          <BarGraph label="L" value={hsl.l} max={100} suffix="%" colorSpace="hsl" type="L" />
         </div>
         
         {/* HScL Values */}
-        {showColorSpaceLabels && (
+        {showLabels && (
           <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">HScL</div>
         )}
-        <div className={`space-y-1 ${!showColorSpaceLabels ? 'mt-3' : ''}`}>
-          <BarGraph label="H" value={hscl.h} max={360} suffix="°" />
-          <BarGraph label="Sc" value={hscl.sc} max={100} suffix="%" />
-          <BarGraph label="L" value={hscl.l} max={100} suffix="%" />
+        <div className={`space-y-1 ${!showLabels ? 'mt-3' : ''}`}>
+          <BarGraph label="H" value={hscl.h} max={360} suffix="°" colorSpace="hscl" type="H" />
+          <BarGraph label="Sc" value={hscl.sc} max={100} suffix="%" colorSpace="hscl" type="Sc" />
+          <BarGraph label="L" value={hscl.l} max={100} suffix="%" colorSpace="hscl" type="L" />
         </div>
       </div>
     );
@@ -512,23 +557,14 @@ export default function SavedPalettesPanel({
         <CardHeader>
           <div className="flex items-center justify-between mb-3">
             <CardTitle>Saved Palettes ({tagFilter ? filteredPalettes.length : savedPalettes.length})</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowColorSpaceLabels(!showColorSpaceLabels)}
-              >
-                {showColorSpaceLabels ? 'Hide Labels' : 'Show Labels'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowBulkExportModal(true)}
-                disabled={savedPalettes.length === 0}
-              >
-                Export All
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBulkExportModal(true)}
+              disabled={savedPalettes.length === 0}
+            >
+              Export All
+            </Button>
           </div>
           
           {/* Tag filter */}
@@ -604,14 +640,29 @@ export default function SavedPalettesPanel({
               {filteredPalettes.map((palette) => (
               <div
                 key={palette.id}
-                className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="border border-gray-200 rounded-lg p-3 hover:border-gray-300 transition-colors cursor-pointer"
                 onClick={() => openPaletteDetailModal(palette)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-black text-sm mb-2 truncate">
-                      {palette.name}
-                    </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-black text-sm truncate">
+                        {palette.name}
+                      </h4>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowColorSpaceLabels(prev => ({
+                            ...prev,
+                            [palette.id]: !prev[palette.id]
+                          }));
+                        }}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors ml-2 flex-shrink-0"
+                        title={showColorSpaceLabels[palette.id] ? 'Hide labels' : 'Show labels'}
+                      >
+                        {showColorSpaceLabels[palette.id] ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
                     
                     {/* Tags display */}
                     {palette.tags && palette.tags.length > 0 && (
@@ -647,7 +698,7 @@ export default function SavedPalettesPanel({
                               className="aspect-square rounded border border-gray-200 shadow-sm mb-1"
                               style={{ backgroundColor: hex }}
                             />
-                            <ColorValueBars color={color} />
+                            <ColorValueBars color={color} paletteId={palette.id} />
                           </div>
                         );
                       })}
