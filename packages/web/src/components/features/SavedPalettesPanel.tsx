@@ -74,11 +74,59 @@ export default function SavedPalettesPanel({
   const [editingName, setEditingName] = useState<string>('');
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [editingTagInput, setEditingTagInput] = useState<string>('');
+  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<boolean>(false);
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
     return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
+  };
+
+  // Component for rendering horizontal bar graphs
+  const ColorValueBars = ({ color }: { color: ExtractedColor }) => {
+    const hsl = rgbToHsl(color.color);
+    const hscl = calculateHScL(color.color);
+    
+    const BarGraph = ({ label, value, max, suffix = '' }: { label: string; value: number; max: number; suffix?: string }) => (
+      <div className={`text-[12px] ${showColorSpaceLabels ? 'space-y-0.5' : 'mb-1'}`}>
+        {showColorSpaceLabels && (
+          <div className="flex justify-between">
+            <span className="text-gray-500 tracking-wide">{label}</span>
+            <span className="text-gray-700 font-mono">{value}{suffix}</span>
+          </div>
+        )}
+        <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gray-600 rounded-full transition-all duration-200"
+            style={{ width: `${Math.min((value / max) * 100, 100)}%` }}
+          />
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="p-1">
+        {/* HSL Values */}
+        {showColorSpaceLabels && (
+          <div className="text-[12px] text-gray-500 font-medium mb-1">HSL</div>
+        )}
+        <div className="space-y-1">
+          <BarGraph label="H" value={hsl.h} max={360} suffix="°" />
+          <BarGraph label="S" value={hsl.s} max={100} suffix="%" />
+          <BarGraph label="L" value={hsl.l} max={100} suffix="%" />
+        </div>
+        
+        {/* HScL Values */}
+        {showColorSpaceLabels && (
+          <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">HScL</div>
+        )}
+        <div className={`space-y-1 ${!showColorSpaceLabels ? 'mt-3' : ''}`}>
+          <BarGraph label="H" value={hscl.h} max={360} suffix="°" />
+          <BarGraph label="Sc" value={hscl.sc} max={100} suffix="%" />
+          <BarGraph label="L" value={hscl.l} max={100} suffix="%" />
+        </div>
+      </div>
+    );
   };
 
 
@@ -464,14 +512,23 @@ export default function SavedPalettesPanel({
         <CardHeader>
           <div className="flex items-center justify-between mb-3">
             <CardTitle>Saved Palettes ({tagFilter ? filteredPalettes.length : savedPalettes.length})</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowBulkExportModal(true)}
-              disabled={savedPalettes.length === 0}
-            >
-              Export All
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowColorSpaceLabels(!showColorSpaceLabels)}
+              >
+                {showColorSpaceLabels ? 'Hide Labels' : 'Show Labels'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBulkExportModal(true)}
+                disabled={savedPalettes.length === 0}
+              >
+                Export All
+              </Button>
+            </div>
           </div>
           
           {/* Tag filter */}
@@ -574,8 +631,6 @@ export default function SavedPalettesPanel({
                     <div className="grid grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-1 mb-3">
                       {palette.colors.map((color, idx) => {
                         const hex = rgbToHex(color.color);
-                        const hsl = rgbToHsl(color.color);
-                        const hscl = calculateHScL(color.color);
                         
                         return (
                           <div
@@ -592,10 +647,7 @@ export default function SavedPalettesPanel({
                               className="aspect-square rounded border border-gray-200 shadow-sm mb-1"
                               style={{ backgroundColor: hex }}
                             />
-                            <div className="text-[12px] text-gray-600 leading-tight space-y-0.5">
-                              <div>{formatColorValue('hsl', hsl)}</div>
-                              <div>{formatColorValue('hscl', hscl)}</div>
-                            </div>
+                            <ColorValueBars color={color} />
                           </div>
                         );
                       })}

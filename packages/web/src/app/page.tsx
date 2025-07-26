@@ -47,6 +47,7 @@ export default function Home() {
   const [isAddMode, setIsAddMode] = useState(false);
   const [, setOriginalColors] = useState<ExtractedColor[]>([]);
   const [feedback, setFeedback] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+  const [isGreyscale, setIsGreyscale] = useState(false);
   
   
   // Processing pipeline hook
@@ -420,13 +421,24 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 text-black">
+    <main className={`min-h-screen bg-gray-50 text-black ${isGreyscale ? 'grayscale' : ''}`}>
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-xl font-bold">Painting Palette Tool</h1>
-        <p className="text-sm text-gray-600">
-          Extract optimized color palettes from reference images for painting
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Painting Palette Tool</h1>
+            <p className="text-sm text-gray-600">
+              Extract optimized color palettes from reference images for painting
+            </p>
+          </div>
+          <button
+            onClick={() => setIsGreyscale(!isGreyscale)}
+            className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            title={isGreyscale ? 'Show colors' : 'Show grayscale'}
+          >
+            {isGreyscale ? 'Color' : 'Gray'}
+          </button>
+        </div>
       </header>
 
       <div className="flex h-[calc(100vh-80px)]">
