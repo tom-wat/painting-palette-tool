@@ -66,9 +66,9 @@ export default function SavedPalettesPanel({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paletteToDelete, setPaletteToDelete] = useState<SavedPalette | null>(null);
-  const [tagFilter, setTagFilter] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeTagFilter, setActiveTagFilter] = useState<string>('');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [tagSearchQuery, setTagSearchQuery] = useState<string>('');
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showPaletteDetailModal, setShowPaletteDetailModal] = useState(false);
   const [editingPalette, setEditingPalette] = useState<SavedPalette | null>(null);
@@ -488,24 +488,39 @@ export default function SavedPalettesPanel({
   }, []);
 
   // Filter palettes based on selected tag
-  const filteredPalettes = tagFilter 
-    ? savedPalettes.filter(palette => 
-        palette.tags && palette.tags.includes(tagFilter)
-      )
-    : savedPalettes;
-
-  // Filter tags based on search query
-  const filteredAvailableTags = availableTags.filter(tag =>
-    tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
-  );
+  // Filter palettes by search query (name and tags) and active tag filter
+  const filteredPalettes = savedPalettes.filter(palette => {
+    // Parse search query into individual keywords (split by space, filter out empty strings)
+    const searchKeywords = searchQuery.trim().toLowerCase().split(/\s+/).filter(keyword => keyword.length > 0);
+    
+    // First apply search query filter (searches both name and tags)
+    const matchesSearch = searchKeywords.length === 0 || searchKeywords.every(keyword => {
+      // Check if keyword exists in palette name
+      const nameMatch = palette.name.toLowerCase().includes(keyword);
+      
+      // Check if keyword exists in any tag
+      const tagMatch = palette.tags && palette.tags.some(tag => 
+        tag.toLowerCase().includes(keyword)
+      );
+      
+      // Keyword must match either name or tags
+      return nameMatch || tagMatch;
+    });
+    
+    // Then apply active tag filter
+    const matchesTagFilter = activeTagFilter === '' || 
+      (palette.tags && palette.tags.includes(activeTagFilter));
+    
+    return matchesSearch && matchesTagFilter;
+  });
 
   // Limit displayed tags (first 10 by default)
   const TAG_DISPLAY_LIMIT = 10;
   const displayedTags = showAllTags 
-    ? filteredAvailableTags 
-    : filteredAvailableTags.slice(0, TAG_DISPLAY_LIMIT);
+    ? availableTags 
+    : availableTags.slice(0, TAG_DISPLAY_LIMIT);
 
-  const hasMoreTags = filteredAvailableTags.length > TAG_DISPLAY_LIMIT;
+  const hasMoreTags = availableTags.length > TAG_DISPLAY_LIMIT;
 
   // Show delete confirmation modal
   const showDeleteConfirmation = (paletteId: string, e: React.MouseEvent) => {
@@ -680,7 +695,7 @@ export default function SavedPalettesPanel({
       <Card className={className}>
         <CardHeader>
           <div className="flex items-center justify-between mb-3">
-            <CardTitle>Saved Palettes ({tagFilter ? filteredPalettes.length : savedPalettes.length})</CardTitle>
+            <CardTitle>Saved Palettes ({(searchQuery || activeTagFilter) ? filteredPalettes.length : savedPalettes.length})</CardTitle>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
@@ -712,17 +727,14 @@ export default function SavedPalettesPanel({
           {/* Tag filter */}
           {availableTags.length > 0 && (
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-black">
-                Filter by tag:
-              </label>
               
               {/* Tag search input */}
               <div>
                 <input
                   type="text"
-                  value={tagSearchQuery}
-                  onChange={(e) => setTagSearchQuery(e.target.value)}
-                  placeholder="Search tags..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search palettes by name or tag (use spaces for multiple keywords)..."
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -731,9 +743,9 @@ export default function SavedPalettesPanel({
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => setTagFilter('')}
+                    onClick={() => setActiveTagFilter('')}
                     className={`px-3 py-1 text-xs rounded-md border transition-colors ${
-                      !tagFilter 
+                      !activeTagFilter 
                         ? 'bg-black text-white border-black' 
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
@@ -745,9 +757,9 @@ export default function SavedPalettesPanel({
                     return (
                       <button
                         key={tag}
-                        onClick={() => setTagFilter(tag)}
+                        onClick={() => setActiveTagFilter(tag)}
                         className={`px-3 py-1 text-xs rounded-md border transition-colors ${
-                          tagFilter === tag 
+                          activeTagFilter === tag 
                             ? 'bg-black text-white border-black' 
                             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                         }`}
@@ -759,12 +771,12 @@ export default function SavedPalettesPanel({
                 </div>
                 
                 {/* Show more/less button */}
-                {hasMoreTags && !tagSearchQuery && (
+                {hasMoreTags && (
                   <button
                     onClick={() => setShowAllTags(!showAllTags)}
                     className="text-xs text-blue-600 hover:text-blue-800 underline"
                   >
-                    {showAllTags ? 'Show less' : `Show more (${filteredAvailableTags.length - TAG_DISPLAY_LIMIT} more)`}
+                    {showAllTags ? 'Show less' : `Show more (${availableTags.length - TAG_DISPLAY_LIMIT} more)`}
                   </button>
                 )}
               </div>
@@ -772,10 +784,17 @@ export default function SavedPalettesPanel({
           )}
         </CardHeader>
         <CardContent>
-          {filteredPalettes.length === 0 && tagFilter ? (
+          {filteredPalettes.length === 0 && (searchQuery || activeTagFilter) ? (
             <div className="text-center py-6 text-gray-500">
-              <div className="mb-2">No palettes found with tag &ldquo;{tagFilter}&rdquo;</div>
-              <div className="text-sm">Try selecting a different tag or clear the filter</div>
+              <div className="mb-2">
+                {searchQuery && activeTagFilter 
+                  ? `No palettes found matching "${searchQuery}" with tag "${activeTagFilter}"`
+                  : searchQuery
+                  ? `No palettes found matching "${searchQuery}"`
+                  : `No palettes found with tag "${activeTagFilter}"`
+                }
+              </div>
+              <div className="text-sm">Try adjusting your search or clear the filters</div>
             </div>
           ) : (
             <div className="space-y-3" data-palettes-container>
