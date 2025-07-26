@@ -21,10 +21,24 @@ export interface ExtractedColor {
   representativeness: number;
 }
 
+export interface SavedPalette {
+  id: string;
+  name: string;
+  colors: ExtractedColor[];
+  createdAt: string;
+  updatedAt: string;
+  tags?: string[];
+  imageInfo?: {
+    filename: string;
+    selectionArea?: unknown;
+  };
+}
+
 export interface ExportOptions {
   filename?: string;
   includeMetadata?: boolean;
   sortBy?: 'frequency' | 'brightness' | 'hue';
+  includeAllColorSpaces?: boolean;
 }
 
 /**
@@ -133,7 +147,7 @@ export function exportAsJSON(
   colors: ExtractedColor[],
   options: ExportOptions = {}
 ): string {
-  const { includeMetadata = true } = options;
+  const { includeMetadata = true, includeAllColorSpaces = false } = options;
   
   const exportData = {
     metadata: includeMetadata ? {
@@ -143,23 +157,69 @@ export function exportAsJSON(
       colorCount: colors.length,
     } : undefined,
     colors: colors.map((extractedColor, index) => {
-      const allColorSpaces = getAllColorSpaces(extractedColor.color);
-      return {
+      const baseColorData = {
         index: index + 1,
-        hex: rgbToHex(extractedColor.color),
         rgb: {
           r: extractedColor.color.r,
           g: extractedColor.color.g,
           b: extractedColor.color.b,
         },
-        hsl: allColorSpaces.hsl,
-        lab: allColorSpaces.lab,
-        lch: allColorSpaces.lch,
-        oklch: allColorSpaces.oklch,
-        frequency: parseFloat((extractedColor.frequency * 100).toFixed(2)),
-        importance: parseFloat((extractedColor.importance * 100).toFixed(2)),
-        representativeness: parseFloat((extractedColor.representativeness * 100).toFixed(2)),
       };
+
+      if (includeAllColorSpaces) {
+        const allColorSpaces = getAllColorSpaces(extractedColor.color);
+        return {
+          ...baseColorData,
+          hsl: allColorSpaces.hsl,
+          lab: allColorSpaces.lab,
+          lch: allColorSpaces.lch,
+          oklch: allColorSpaces.oklch,
+        };
+      }
+
+      return baseColorData;
+    }),
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+
+/**
+ * Export saved palette with full information as JSON
+ */
+export function exportSavedPaletteAsJSON(
+  palette: SavedPalette,
+  options: ExportOptions = {}
+): string {
+  const { includeAllColorSpaces = false } = options;
+  
+  const exportData = {
+    palette: {
+      name: palette.name,
+      tags: palette.tags || [],
+    },
+    colors: palette.colors.map((extractedColor, index) => {
+      const baseColorData = {
+        index: index + 1,
+        rgb: {
+          r: extractedColor.color.r,
+          g: extractedColor.color.g,
+          b: extractedColor.color.b,
+        },
+      };
+
+      if (includeAllColorSpaces) {
+        const allColorSpaces = getAllColorSpaces(extractedColor.color);
+        return {
+          ...baseColorData,
+          hsl: allColorSpaces.hsl,
+          lab: allColorSpaces.lab,
+          lch: allColorSpaces.lch,
+          oklch: allColorSpaces.oklch,
+        };
+      }
+
+      return baseColorData;
     }),
   };
 

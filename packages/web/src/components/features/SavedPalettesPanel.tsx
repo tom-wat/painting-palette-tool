@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
 import { 
   exportAsPNG, 
-  exportAsJSON, 
+  exportSavedPaletteAsJSON,
   exportAsASE, 
   exportAsCSS, 
   downloadFile, 
@@ -112,7 +112,7 @@ export default function SavedPalettesPanel({
         }
         
         case 'json': {
-          const jsonContent = exportAsJSON(palette.colors, { includeMetadata: true });
+          const jsonContent = exportSavedPaletteAsJSON(palette);
           downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
           break;
         }
@@ -159,9 +159,20 @@ export default function SavedPalettesPanel({
 
       if (format === 'json') {
         const bulkData = {
-          exportDate: new Date().toISOString(),
-          totalPalettes: savedPalettes.length,
-          palettes: savedPalettes
+          palettes: savedPalettes.map(palette => ({
+            palette: {
+              name: palette.name,
+              tags: palette.tags || [],
+            },
+            colors: palette.colors.map((extractedColor, index) => ({
+              index: index + 1,
+              rgb: {
+                r: extractedColor.color.r,
+                g: extractedColor.color.g,
+                b: extractedColor.color.b,
+              },
+            }))
+          }))
         };
         const jsonContent = JSON.stringify(bulkData, null, 2);
         downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
