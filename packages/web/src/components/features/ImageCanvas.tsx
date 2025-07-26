@@ -626,7 +626,7 @@ export default function ImageCanvas({
       setIsPanning(false);
       setLastPanPoint(null);
     }
-  }, [isDrawing, isPanning, selectionMode, extractSelectionData, dragSelection]);
+  }, [isDrawing, isPanning, selectionMode, dragSelection, extractSelectionDataFromRect]);
 
 
   // Clear selection
