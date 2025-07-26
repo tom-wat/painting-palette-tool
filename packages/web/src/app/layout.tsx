@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: 'Painting Palette Tool',
   description:
     'Extract optimized color palettes from reference images for painting',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
