@@ -37,6 +37,7 @@ interface SavedPalette {
   colors: ExtractedColor[];
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
   imageInfo?: {
     filename: string;
     selectionArea?: unknown;
@@ -64,6 +65,15 @@ export default function SavedPalettesPanel({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paletteToDelete, setPaletteToDelete] = useState<SavedPalette | null>(null);
+  const [tagFilter, setTagFilter] = useState<string>('');
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [tagSearchQuery, setTagSearchQuery] = useState<string>('');
+  const [showAllTags, setShowAllTags] = useState<boolean>(false);
+  const [showPaletteDetailModal, setShowPaletteDetailModal] = useState(false);
+  const [editingPalette, setEditingPalette] = useState<SavedPalette | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
+  const [editingTags, setEditingTags] = useState<string[]>([]);
+  const [editingTagInput, setEditingTagInput] = useState<string>('');
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -127,6 +137,9 @@ export default function SavedPalettesPanel({
       setFeedback(`Exported ${palette.name} as ${format.toUpperCase()}`);
       setTimeout(() => setFeedback(null), 3000);
       setShowExportModal(false);
+      if (showPaletteDetailModal) {
+        setShowPaletteDetailModal(false);
+      }
       
     } catch (error) {
       console.error('Export failed:', error);
@@ -203,9 +216,19 @@ export default function SavedPalettesPanel({
         const saved = localStorage.getItem('saved-palettes');
         if (saved) {
           const palettes = JSON.parse(saved);
-          setSavedPalettes(palettes.sort((a: SavedPalette, b: SavedPalette) => 
+          const sortedPalettes = palettes.sort((a: SavedPalette, b: SavedPalette) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          ));
+          );
+          setSavedPalettes(sortedPalettes);
+          
+          // Extract unique tags
+          const allTags = new Set<string>();
+          sortedPalettes.forEach((palette: SavedPalette) => {
+            if (palette.tags) {
+              palette.tags.forEach(tag => allTags.add(tag));
+            }
+          });
+          setAvailableTags(Array.from(allTags).sort());
         }
       } catch (error) {
         console.error('Failed to load saved palettes:', error);
@@ -235,6 +258,26 @@ export default function SavedPalettesPanel({
       window.removeEventListener('palettes-updated', handleCustomUpdate);
     };
   }, []);
+
+  // Filter palettes based on selected tag
+  const filteredPalettes = tagFilter 
+    ? savedPalettes.filter(palette => 
+        palette.tags && palette.tags.includes(tagFilter)
+      )
+    : savedPalettes;
+
+  // Filter tags based on search query
+  const filteredAvailableTags = availableTags.filter(tag =>
+    tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
+  );
+
+  // Limit displayed tags (first 10 by default)
+  const TAG_DISPLAY_LIMIT = 10;
+  const displayedTags = showAllTags 
+    ? filteredAvailableTags 
+    : filteredAvailableTags.slice(0, TAG_DISPLAY_LIMIT);
+
+  const hasMoreTags = filteredAvailableTags.length > TAG_DISPLAY_LIMIT;
 
   // Show delete confirmation modal
   const showDeleteConfirmation = (paletteId: string, e: React.MouseEvent) => {
@@ -285,10 +328,77 @@ export default function SavedPalettesPanel({
     }
   };
 
-  // Show export modal directly
-  const openExportModal = (palette: SavedPalette) => {
-    setSelectedPalette(palette);
-    setShowExportModal(true);
+
+  // Open palette detail modal
+  const openPaletteDetailModal = (palette: SavedPalette) => {
+    setEditingPalette(palette);
+    setEditingName(palette.name);
+    setEditingTags(palette.tags || []);
+    setEditingTagInput('');
+    setShowPaletteDetailModal(true);
+  };
+
+  // Tag editing functions for detail modal
+  const addEditingTag = (tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !editingTags.includes(trimmedTag)) {
+      setEditingTags([...editingTags, trimmedTag]);
+    }
+    setEditingTagInput('');
+  };
+
+  const removeEditingTag = (tagToRemove: string) => {
+    setEditingTags(editingTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleEditingTagInputKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addEditingTag(editingTagInput);
+    } else if (e.key === ',' && editingTagInput.trim()) {
+      e.preventDefault();
+      addEditingTag(editingTagInput);
+    }
+  };
+
+  // Save palette changes
+  const savePaletteChanges = () => {
+    if (!editingPalette || !editingName.trim()) return;
+
+    try {
+      const updatedPalette: SavedPalette = {
+        ...editingPalette,
+        name: editingName.trim(),
+        tags: editingTags.length > 0 ? editingTags : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const updatedPalettes = savedPalettes.map(palette =>
+        palette.id === editingPalette.id ? updatedPalette : palette
+      );
+
+      setSavedPalettes(updatedPalettes);
+      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+
+      // Update available tags
+      const allTags = new Set<string>();
+      updatedPalettes.forEach((palette: SavedPalette) => {
+        if (palette.tags) {
+          palette.tags.forEach(tag => allTags.add(tag));
+        }
+      });
+      setAvailableTags(Array.from(allTags).sort());
+
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('palettes-updated'));
+
+      setFeedback(`Palette "${editingName.trim()}" updated successfully!`);
+      setTimeout(() => setFeedback(null), 3000);
+      setShowPaletteDetailModal(false);
+    } catch (error) {
+      setFeedback('Failed to update palette');
+      setTimeout(() => setFeedback(null), 3000);
+    }
   };
 
   // Delete color from saved palette
@@ -341,8 +451,8 @@ export default function SavedPalettesPanel({
     <>
       <Card className={className}>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Saved Palettes ({savedPalettes.length})</CardTitle>
+          <div className="flex items-center justify-between mb-3">
+            <CardTitle>Saved Palettes ({tagFilter ? filteredPalettes.length : savedPalettes.length})</CardTitle>
             <Button
               variant="outline"
               size="sm"
@@ -352,20 +462,102 @@ export default function SavedPalettesPanel({
               Export All
             </Button>
           </div>
+          
+          {/* Tag filter */}
+          {availableTags.length > 0 && (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-black">
+                Filter by tag:
+              </label>
+              
+              {/* Tag search input */}
+              <div>
+                <input
+                  type="text"
+                  value={tagSearchQuery}
+                  onChange={(e) => setTagSearchQuery(e.target.value)}
+                  placeholder="Search tags..."
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              {/* Tag buttons */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setTagFilter('')}
+                    className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                      !tagFilter 
+                        ? 'bg-black text-white border-black' 
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    All ({savedPalettes.length})
+                  </button>
+                  {displayedTags.map(tag => {
+                    const count = savedPalettes.filter(p => p.tags?.includes(tag)).length;
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => setTagFilter(tag)}
+                        className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                          tagFilter === tag 
+                            ? 'bg-black text-white border-black' 
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {tag} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Show more/less button */}
+                {hasMoreTags && !tagSearchQuery && (
+                  <button
+                    onClick={() => setShowAllTags(!showAllTags)}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {showAllTags ? 'Show less' : `Show more (${filteredAvailableTags.length - TAG_DISPLAY_LIMIT} more)`}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {savedPalettes.map((palette) => (
+          {filteredPalettes.length === 0 && tagFilter ? (
+            <div className="text-center py-6 text-gray-500">
+              <div className="mb-2">No palettes found with tag &ldquo;{tagFilter}&rdquo;</div>
+              <div className="text-sm">Try selecting a different tag or clear the filter</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredPalettes.map((palette) => (
               <div
                 key={palette.id}
                 className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => openExportModal(palette)}
+                onClick={() => openPaletteDetailModal(palette)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-black text-sm mb-2 truncate">
                       {palette.name}
                     </h4>
+                    
+                    {/* Tags display */}
+                    {palette.tags && palette.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {palette.tags.map((tag, tagIndex) => (
+                          <span
+                            key={tagIndex}
+                            className="inline-block px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-md"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     
                     {/* Color preview grid with data below squares */}
                     <div className="grid grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-1 mb-3">
@@ -431,6 +623,7 @@ export default function SavedPalettesPanel({
               </div>
             ))}
           </div>
+          )}
           
           {feedback && (
             <div className="mt-3 text-sm text-gray-700 font-medium">
@@ -440,7 +633,158 @@ export default function SavedPalettesPanel({
         </CardContent>
       </Card>
 
-      {/* Removed detail modal - export modal opens directly */}
+      {/* Palette Detail Modal */}
+      {showPaletteDetailModal && editingPalette && (
+        <Modal
+          isOpen={showPaletteDetailModal}
+          onClose={() => {
+            setShowPaletteDetailModal(false);
+            setEditingPalette(null);
+            setEditingName('');
+            setEditingTags([]);
+            setEditingTagInput('');
+          }}
+          title="Edit Palette"
+          className="sm:max-w-2xl"
+        >
+          <div className="space-y-6">
+            {/* Palette Name */}
+            <div>
+              <label htmlFor="edit-palette-name" className="block text-sm font-medium text-black mb-2">
+                Palette Name
+              </label>
+              <input
+                id="edit-palette-name"
+                type="text"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Enter palette name..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              />
+            </div>
+
+            {/* Tags */}
+            <div>
+              <label htmlFor="edit-palette-tags" className="block text-sm font-medium text-black mb-2">
+                Tags
+              </label>
+              <input
+                id="edit-palette-tags"
+                type="text"
+                value={editingTagInput}
+                onChange={(e) => setEditingTagInput(e.target.value)}
+                onKeyDown={handleEditingTagInputKeyPress}
+                placeholder="Enter tags separated by comma or press Enter..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Press Enter or comma to add tags
+              </p>
+              
+              {editingTags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {editingTags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-md"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeEditingTag(tag)}
+                        className="ml-1 text-gray-500 hover:text-gray-700"
+                        aria-label={`Remove tag ${tag}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Color Grid */}
+            <div>
+              <label className="block text-sm font-medium text-black mb-2">
+                Colors ({editingPalette.colors.length})
+              </label>
+              <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 p-4 bg-gray-50 rounded-lg">
+                {editingPalette.colors.map((color, idx) => {
+                  const hsl = rgbToHsl(color.color);
+                  return (
+                    <div
+                      key={idx}
+                      className="aspect-square rounded border border-gray-200 shadow-sm"
+                      style={{ backgroundColor: rgbToHex(color.color) }}
+                      title={formatColorValue('hsl', hsl)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Export Section */}
+            <div className="border-t border-gray-200 pt-4">
+              <label className="block text-sm font-medium text-black mb-3">
+                Export Palette
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button
+                  onClick={() => handleExportPalette('png', editingPalette)}
+                  disabled={isExporting}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  PNG
+                </button>
+                <button
+                  onClick={() => handleExportPalette('json', editingPalette)}
+                  disabled={isExporting}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  JSON
+                </button>
+                <button
+                  onClick={() => handleExportPalette('ase', editingPalette)}
+                  disabled={isExporting}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  ASE
+                </button>
+                <button
+                  onClick={() => handleExportPalette('css', editingPalette)}
+                  disabled={isExporting}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  CSS
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPaletteDetailModal(false);
+                  setEditingPalette(null);
+                  setEditingName('');
+                  setEditingTags([]);
+                  setEditingTagInput('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={savePaletteChanges}
+                disabled={!editingName.trim()}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Color detail modal */}
       {selectedColor && (

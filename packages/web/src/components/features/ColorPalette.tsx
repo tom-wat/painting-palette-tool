@@ -36,6 +36,7 @@ interface SavedPalette {
   colors: ExtractedColor[];
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
   imageInfo?: {
     filename: string;
     selectionArea?: unknown;
@@ -71,10 +72,34 @@ export default function ColorPalette({
   const [isExporting, setIsExporting] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [paletteName, setPaletteName] = useState('');
+  const [paletteTags, setPaletteTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
 
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
     return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
+  };
+
+  const addTag = (tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !paletteTags.includes(trimmedTag)) {
+      setPaletteTags([...paletteTags, trimmedTag]);
+    }
+    setTagInput('');
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setPaletteTags(paletteTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleTagInputKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === ',' && tagInput.trim()) {
+      e.preventDefault();
+      addTag(tagInput);
+    }
   };
 
 
@@ -92,6 +117,7 @@ export default function ColorPalette({
       colors: colors,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      tags: paletteTags.length > 0 ? paletteTags : undefined,
       imageInfo: imageFilename ? {
         filename: imageFilename,
       } : undefined,
@@ -110,6 +136,8 @@ export default function ColorPalette({
       setTimeout(() => setCopyFeedback(null), 3000);
       setShowSaveModal(false);
       setPaletteName('');
+      setPaletteTags([]);
+      setTagInput('');
     } catch (error) {
       console.error('Failed to save palette:', error);
       setCopyFeedback('Failed to save palette');
@@ -569,6 +597,8 @@ export default function ColorPalette({
           onClose={() => {
             setShowSaveModal(false);
             setPaletteName('');
+            setPaletteTags([]);
+            setTagInput('');
           }}
           title="Save Palette"
           className="sm:max-w-md"
@@ -598,6 +628,45 @@ export default function ColorPalette({
               />
             </div>
 
+            <div>
+              <label htmlFor="palette-tags" className="block text-sm font-medium text-black mb-2">
+                Tags (optional)
+              </label>
+              <input
+                id="palette-tags"
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagInputKeyPress}
+                placeholder="Enter tags separated by comma or press Enter..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Press Enter or comma to add tags
+              </p>
+              
+              {paletteTags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {paletteTags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-md"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="ml-1 text-gray-500 hover:text-gray-700"
+                        aria-label={`Remove tag ${tag}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {imageFilename && (
               <div className="text-sm text-gray-500">
                 From image: {imageFilename}
@@ -610,6 +679,8 @@ export default function ColorPalette({
                 onClick={() => {
                   setShowSaveModal(false);
                   setPaletteName('');
+                  setPaletteTags([]);
+                  setTagInput('');
                 }}
               >
                 Cancel
