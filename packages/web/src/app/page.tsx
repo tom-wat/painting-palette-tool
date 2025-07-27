@@ -285,10 +285,6 @@ export default function Home() {
     pipeline.cancelProcessing();
   };
 
-  // Clear cache
-  const handleClearCache = () => {
-    pipeline.clearCache();
-  };
 
   // Simple color extraction for demo purposes
   const extractSimpleColors = (
@@ -530,22 +526,6 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* Cache Controls */}
-                  {!isExtracting && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="space-y-3 text-sm">
-                        <div className="text-gray-600">
-                          Cache: {pipeline.getCacheStats().entries} entries ({Math.round(pipeline.getCacheStats().sizeBytes / 1024)}KB)
-                        </div>
-                        <button
-                          onClick={handleClearCache}
-                          className="px-3 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors w-full"
-                        >
-                          Clear Cache
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
