@@ -75,6 +75,7 @@ export default function SavedPalettesPanel({
   const [editingName, setEditingName] = useState<string>('');
   const [editingTags, setEditingTags] = useState<string[]>([]);
   const [editingTagInput, setEditingTagInput] = useState<string>('');
+  const [isComposing, setIsComposing] = useState<boolean>(false);
   const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<Record<string, boolean>>({});
   const [showAllLabels, setShowAllLabels] = useState<boolean>(false);
   const paletteRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -595,7 +596,7 @@ export default function SavedPalettesPanel({
   };
 
   const handleEditingTagInputKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isComposing) {
       e.preventDefault();
       addEditingTag(editingTagInput);
     } else if (e.key === ',' && editingTagInput.trim()) {
@@ -968,6 +969,8 @@ export default function SavedPalettesPanel({
                 value={editingTagInput}
                 onChange={(e) => setEditingTagInput(e.target.value)}
                 onKeyDown={handleEditingTagInputKeyPress}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={() => setIsComposing(false)}
                 placeholder="Enter tags separated by comma or press Enter..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
               />
