@@ -69,7 +69,6 @@ export default function SavedPalettesPanel({
   const [showExportModal, setShowExportModal] = useState(false);
   const [showBulkExportModal, setShowBulkExportModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paletteToDelete, setPaletteToDelete] = useState<SavedPalette | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -84,7 +83,9 @@ export default function SavedPalettesPanel({
   const [isComposing, setIsComposing] = useState<boolean>(false);
   const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<Record<string, boolean>>({});
   const [showAllLabels, setShowAllLabels] = useState<boolean>(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const paletteRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -289,14 +290,11 @@ export default function SavedPalettesPanel({
   };
 
   // Copy to clipboard function
-  const copyToClipboard = async (text: string, format: string) => {
+  const copyToClipboard = async (text: string, _format: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setFeedback(`${format} copied!`);
-      setTimeout(() => setFeedback(null), 2000);
     } catch (err) {
-      setFeedback('Failed to copy');
-      setTimeout(() => setFeedback(null), 2000);
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -347,8 +345,6 @@ export default function SavedPalettesPanel({
             downloadFile(aseBlob, `${baseFilename}.ase`);
           } catch (error) {
             console.error('ASE export failed:', error);
-            setFeedback('ASE export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -365,8 +361,6 @@ export default function SavedPalettesPanel({
             downloadFile(acoBlob, `${baseFilename}.aco`);
           } catch (error) {
             console.error('Adobe Color export failed:', error);
-            setFeedback('Adobe Color export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -377,8 +371,6 @@ export default function SavedPalettesPanel({
             downloadFile(swatchesBlob, `${baseFilename}.swatches`);
           } catch (error) {
             console.error('Procreate export failed:', error);
-            setFeedback('Procreate export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -387,8 +379,6 @@ export default function SavedPalettesPanel({
           throw new Error(`Unsupported format: ${format}`);
       }
       
-      setFeedback(`Exported ${palette.name} as ${format.toUpperCase()}`);
-      setTimeout(() => setFeedback(null), 3000);
       setShowExportModal(false);
       if (showPaletteDetailModal) {
         setShowPaletteDetailModal(false);
@@ -396,8 +386,6 @@ export default function SavedPalettesPanel({
       
     } catch (error) {
       console.error('Export failed:', error);
-      setFeedback('Export failed');
-      setTimeout(() => setFeedback(null), 3000);
     } finally {
       setIsExporting(false);
     }
@@ -439,8 +427,6 @@ export default function SavedPalettesPanel({
             downloadFile(aseBlob, `${baseFilename}.ase`);
           } catch (error) {
             console.error('Bulk ASE export failed:', error);
-            setFeedback('Bulk ASE export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -451,8 +437,6 @@ export default function SavedPalettesPanel({
             downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
           } catch (error) {
             console.error('Bulk CSS export failed:', error);
-            setFeedback('Bulk CSS export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -463,8 +447,6 @@ export default function SavedPalettesPanel({
             downloadFile(acoBlob, `${baseFilename}.aco`);
           } catch (error) {
             console.error('Bulk Adobe Color export failed:', error);
-            setFeedback('Bulk Adobe Color export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -475,8 +457,6 @@ export default function SavedPalettesPanel({
             downloadFile(swatchesBlob, `${baseFilename}.swatches`);
           } catch (error) {
             console.error('Bulk Procreate export failed:', error);
-            setFeedback('Bulk Procreate export failed');
-            setTimeout(() => setFeedback(null), 3000);
           }
           break;
         }
@@ -506,16 +486,155 @@ export default function SavedPalettesPanel({
           throw new Error(`Unsupported format: ${format}`);
       }
       
-      setFeedback(`Exported ${savedPalettes.length} palettes as ${format.toUpperCase()}`);
-      setTimeout(() => setFeedback(null), 3000);
       setShowBulkExportModal(false);
       
     } catch (error) {
       console.error('Bulk export failed:', error);
-      setFeedback('Bulk export failed');
-      setTimeout(() => setFeedback(null), 3000);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  // Import JSON palette
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const jsonContent = e.target?.result as string;
+        const importData = JSON.parse(jsonContent);
+
+        // Validate and convert imported data
+        let importedPalette: SavedPalette;
+
+        if (importData.palette && importData.colors) {
+          // Single palette format (from exportSavedPaletteAsJSON)
+          importedPalette = {
+            id: `palette-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: importData.palette.name || 'Imported Palette',
+            colors: importData.colors.map((colorData: any) => ({
+              color: {
+                r: colorData.rgb.r,
+                g: colorData.rgb.g,
+                b: colorData.rgb.b,
+              },
+              frequency: 0.1, // Default values for missing properties
+              importance: 0.8,
+              representativeness: 0.9,
+            })),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: importData.palette.tags || [],
+          };
+        } else if (importData.colors && Array.isArray(importData.colors)) {
+          // Simple colors format (from exportAsJSON)
+          importedPalette = {
+            id: `palette-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: 'Imported Palette',
+            colors: importData.colors.map((colorData: any) => ({
+              color: {
+                r: colorData.rgb.r,
+                g: colorData.rgb.g,
+                b: colorData.rgb.b,
+              },
+              frequency: 0.1,
+              importance: 0.8,
+              representativeness: 0.9,
+            })),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: [],
+          };
+        } else if (importData.palettes && Array.isArray(importData.palettes)) {
+          // Multiple palettes format (from bulk export) - import all palettes
+          if (importData.palettes.length === 0) {
+            throw new Error('No palettes found in the imported file');
+          }
+          
+          // Process all palettes
+          const importedPalettes: SavedPalette[] = importData.palettes.map((paletteData: any) => ({
+            id: `palette-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: paletteData.palette.name || 'Imported Palette',
+            colors: paletteData.colors.map((colorData: any) => ({
+              color: {
+                r: colorData.rgb.r,
+                g: colorData.rgb.g,
+                b: colorData.rgb.b,
+              },
+              frequency: 0.1,
+              importance: 0.8,
+              representativeness: 0.9,
+            })),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            tags: paletteData.palette.tags || [],
+          }));
+
+          // Save all palettes to localStorage
+          const saved = localStorage.getItem('saved-palettes');
+          const savedPalettes = saved ? JSON.parse(saved) : [];
+          const updatedPalettes = [...savedPalettes, ...importedPalettes];
+          localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+
+          // Update state
+          setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          ));
+
+          // Update available tags
+          const allTags = new Set<string>();
+          updatedPalettes.forEach((palette: SavedPalette) => {
+            if (palette.tags) {
+              palette.tags.forEach(tag => allTags.add(tag));
+            }
+          });
+          setAvailableTags(Array.from(allTags).sort());
+
+          // Dispatch custom event to notify other components
+          window.dispatchEvent(new CustomEvent('palettes-updated'));
+
+          setShowImportModal(false);
+          return; // Exit early since we handled everything here
+        } else {
+          throw new Error('Invalid JSON format. Expected palette data with colors.');
+        }
+
+        // Save to localStorage
+        const saved = localStorage.getItem('saved-palettes');
+        const savedPalettes = saved ? JSON.parse(saved) : [];
+        const updatedPalettes = [...savedPalettes, importedPalette];
+        localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+
+        // Update state
+        setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
+
+        // Update available tags
+        const allTags = new Set<string>();
+        updatedPalettes.forEach((palette: SavedPalette) => {
+          if (palette.tags) {
+            palette.tags.forEach(tag => allTags.add(tag));
+          }
+        });
+        setAvailableTags(Array.from(allTags).sort());
+
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('palettes-updated'));
+
+        setShowImportModal(false);
+
+      } catch (error) {
+        console.error('JSON import failed:', error);
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -625,13 +744,8 @@ export default function SavedPalettesPanel({
       
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('palettes-updated'));
-      
-      setFeedback('Palette deleted');
-      setTimeout(() => setFeedback(null), 2000);
     } catch (error) {
       console.error('Failed to delete palette:', error);
-      setFeedback('Failed to delete palette');
-      setTimeout(() => setFeedback(null), 2000);
     } finally {
       setShowDeleteModal(false);
       setPaletteToDelete(null);
@@ -648,8 +762,6 @@ export default function SavedPalettesPanel({
   const loadPalette = (palette: SavedPalette) => {
     if (onLoadPalette) {
       onLoadPalette(palette);
-      setFeedback(`Loaded palette: ${palette.name}`);
-      setTimeout(() => setFeedback(null), 2000);
     }
   };
 
@@ -717,12 +829,9 @@ export default function SavedPalettesPanel({
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('palettes-updated'));
 
-      setFeedback(`Palette "${editingName.trim()}" updated successfully!`);
-      setTimeout(() => setFeedback(null), 3000);
       setShowPaletteDetailModal(false);
     } catch (error) {
-      setFeedback('Failed to update palette');
-      setTimeout(() => setFeedback(null), 3000);
+      console.error('Failed to update palette:', error);
     }
   };
 
@@ -746,29 +855,84 @@ export default function SavedPalettesPanel({
       
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('palettes-updated'));
-      
-      setFeedback('Color deleted from palette');
-      setTimeout(() => setFeedback(null), 2000);
     } catch (error) {
       console.error('Failed to delete color:', error);
-      setFeedback('Failed to delete color');
-      setTimeout(() => setFeedback(null), 2000);
     }
   };
 
   if (savedPalettes.length === 0) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Saved Palettes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-6 text-gray-500">
-            <div className="mb-2">No saved palettes yet</div>
-            <div className="text-sm">Save palettes to see them here</div>
-          </div>
-        </CardContent>
-      </Card>
+      <>
+        <Card className={className}>
+          <CardHeader>
+            <div className="flex items-center justify-between mb-3">
+              <CardTitle>Saved Palettes (0)</CardTitle>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowImportModal(true)}
+                >
+                  Import JSON
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-6 text-gray-500">
+              <div className="mb-2">No saved palettes yet</div>
+              <div className="text-sm">Save palettes or import JSON files to see them here</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* JSON Import modal */}
+        {showImportModal && (
+          <Modal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            title="Import JSON Palette"
+            className="sm:max-w-md"
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Select a JSON file exported from this tool to import a palette:
+              </p>
+              
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportJSON}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Supports JSON files exported from individual palettes or color extractions
+                </p>
+              </div>
+
+              <div className="text-sm text-gray-600">
+                <strong>Supported formats:</strong>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li>Individual palette JSON (from palette export)</li>
+                  <li>Color extraction JSON (from color palette export)</li>
+                  <li>Bulk export JSON (imports first palette)</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowImportModal(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </>
     );
   }
 
@@ -782,18 +946,29 @@ export default function SavedPalettesPanel({
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowImportModal(true)}
+              >
+                Import JSON
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleToggleAllLabels}
                 disabled={savedPalettes.length === 0}
               >
-                {showAllLabels ? 'Hide All' : 'Show All'}
+                {showAllLabels ? 'Hide All Data' : 'Show All Data'}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => exportAllPalettesAsPNG()}
                 disabled={savedPalettes.length === 0 || isExporting}
+                className="flex items-center space-x-1"
               >
-                PNG All
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>PNG All</span>
               </Button>
               <Button
                 variant="outline"
@@ -898,19 +1073,58 @@ export default function SavedPalettesPanel({
                       <h4 className="font-medium text-black text-sm truncate">
                         {palette.name}
                       </h4>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowColorSpaceLabels(prev => ({
-                            ...prev,
-                            [palette.id]: !prev[palette.id]
-                          }));
-                        }}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors ml-2 flex-shrink-0"
-                        title={showColorSpaceLabels[palette.id] ? 'Hide labels' : 'Show labels'}
-                      >
-                        {showColorSpaceLabels[palette.id] ? 'Hide' : 'Show'}
-                      </button>
+                      <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowColorSpaceLabels(prev => ({
+                              ...prev,
+                              [palette.id]: !prev[palette.id]
+                            }));
+                          }}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors min-h-[30px] flex items-center space-x-1"
+                          title={showColorSpaceLabels[palette.id] ? 'Hide data' : 'Show data'}
+                        >
+{showColorSpaceLabels[palette.id] ? 'Hide Data' : 'Show Data'}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            exportIndividualPaletteAsPNG(palette);
+                          }}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1 min-h-[30px]"
+                          title="Export as PNG"
+                          disabled={isExporting}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span>PNG</span>
+                        </button>
+                        {onLoadPalette && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              loadPalette(palette);
+                            }}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-colors min-h-[30px] flex items-center justify-center"
+                            title="Load palette"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
+                            </svg>
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => showDeleteConfirmation(palette.id, e)}
+                          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors min-h-[30px] flex items-center justify-center"
+                          title="Delete palette"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     
                     {/* Tags display */}
@@ -955,56 +1169,10 @@ export default function SavedPalettesPanel({
                     
                     {/* Palette info - removed color count */}
                   </div>
-                  
-                  {/* Actions */}
-                  <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        exportIndividualPaletteAsPNG(palette);
-                      }}
-                      className="p-1 text-gray-400 hover:text-green-500 transition-colors"
-                      title="Export as PNG"
-                      disabled={isExporting}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    </button>
-                    {onLoadPalette && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          loadPalette(palette);
-                        }}
-                        className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                        title="Load palette"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                      </button>
-                    )}
-                    <button
-                      onClick={(e) => showDeleteConfirmation(palette.id, e)}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete palette"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
               </div>
             ))}
           </div>
-          )}
-          
-          {feedback && (
-            <div className="mt-3 text-sm text-gray-700 font-medium">
-              {feedback}
-            </div>
           )}
         </CardContent>
       </Card>
@@ -1575,6 +1743,53 @@ export default function SavedPalettesPanel({
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
                 Delete Palette
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* JSON Import modal */}
+      {showImportModal && (
+        <Modal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          title="Import JSON Palette"
+          className="sm:max-w-md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Select a JSON file exported from this tool to import a palette:
+            </p>
+            
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportJSON}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Supports JSON files exported from individual palettes or color extractions
+              </p>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              <strong>Supported formats:</strong>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Individual palette JSON (from palette export)</li>
+                <li>Color extraction JSON (from color palette export)</li>
+                <li>Bulk export JSON (imports first palette)</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowImportModal(false)}
+              >
+                Cancel
               </Button>
             </div>
           </div>

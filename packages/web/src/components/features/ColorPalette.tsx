@@ -215,8 +215,6 @@ export default function ColorPalette({
           throw new Error(`Unsupported format: ${format}`);
       }
       
-      setCopyFeedback(`Exported as ${format.toUpperCase()}`);
-      setTimeout(() => setCopyFeedback(null), 3000);
       setShowExportModal(false);
       
     } catch (error) {

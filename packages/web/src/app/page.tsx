@@ -429,15 +429,13 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            {uploadedImage && (
-              <button
-                onClick={() => setActiveTab(activeTab === 'image' ? 'palette' : 'image')}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-                title={activeTab === 'image' ? 'Show saved palettes' : 'Show image canvas'}
-              >
-                {activeTab === 'image' ? 'Palette' : 'Image'}
-              </button>
-            )}
+            <button
+              onClick={() => setActiveTab(activeTab === 'image' ? 'palette' : 'image')}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              title={activeTab === 'image' ? 'Show saved palettes' : 'Show image canvas'}
+            >
+              {activeTab === 'image' ? 'Palette' : 'Image'}
+            </button>
             <button
               onClick={() => setIsGreyscale(!isGreyscale)}
               className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
@@ -454,110 +452,119 @@ export default function Home() {
         <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4 space-y-4">
             {/* Advanced Selection Tools */}
-            {uploadedImage && (
+            {uploadedImage ? (
               <AdvancedSelectionTools
                 config={selectionConfig}
                 onConfigChange={setSelectionConfig}
                 onModeChange={(mode) => setSelectionConfig(prev => ({ ...prev, mode }))}
                 onClearSelection={() => clearSelectionFnRef.current?.()}
               />
+            ) : (
+              <Card>
+                <CardContent>
+                  <div className="text-center py-6 text-gray-500">
+                    <div className="mb-2">Selection Tools</div>
+                    <div className="text-sm">Upload an image to access selection tools</div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Settings */}
-            {imageData && (
             <Card>
               <CardContent>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Extraction Settings</h3>
-                  
-                  <div className="grid grid-cols-1 gap-4">
-                    <Slider
-                      label="Number of Colors"
-                      value={settings.colorCount}
-                      onChange={(value) => updateSettings({ colorCount: value })}
-                      min={3}
-                      max={16}
-                      step={1}
-                    />
+                {imageData ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Extraction Settings</h3>
                     
-                    <Select
-                      label="Algorithm"
-                      value={settings.algorithm}
-                      onChange={(value) => updateSettings({ algorithm: value })}
-                      options={algorithmOptions}
+                    <div className="grid grid-cols-1 gap-4">
+                      <Slider
+                        label="Number of Colors"
+                        value={settings.colorCount}
+                        onChange={(value) => updateSettings({ colorCount: value })}
+                        min={3}
+                        max={16}
+                        step={1}
+                      />
+                      
+                      <Select
+                        label="Algorithm"
+                        value={settings.algorithm}
+                        onChange={(value) => updateSettings({ algorithm: value })}
+                        options={algorithmOptions}
+                      />
+
+                      <Select
+                        label="Sort By"
+                        value={settings.sortBy}
+                        onChange={(value) => updateSettings({ sortBy: value })}
+                        options={sortOptions}
+                      />
+                      
+                      <Slider
+                        label="Quality"
+                        value={settings.quality}
+                        onChange={(value) => updateSettings({ quality: value })}
+                        min={1}
+                        max={10}
+                        step={1}
+                      />
+                    </div>
+                    
+                    <Toggle
+                      label="Include Transparent Colors"
+                      checked={settings.includeTransparent}
+                      onChange={(checked) => updateSettings({ includeTransparent: checked })}
                     />
 
-                    <Select
-                      label="Sort By"
-                      value={settings.sortBy}
-                      onChange={(value) => updateSettings({ sortBy: value })}
-                      options={sortOptions}
-                    />
-                    
-                    <Slider
-                      label="Quality"
-                      value={settings.quality}
-                      onChange={(value) => updateSettings({ quality: value })}
-                      min={1}
-                      max={10}
-                      step={1}
-                    />
-                  </div>
-                  
-                  <Toggle
-                    label="Include Transparent Colors"
-                    checked={settings.includeTransparent}
-                    onChange={(checked) => updateSettings({ includeTransparent: checked })}
-                  />
-
-                  {isExtracting && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                          <span>Extracting colors...</span>
+                    {isExtracting && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 text-gray-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                            <span>Extracting colors...</span>
+                          </div>
+                          {canCancel && (
+                            <button
+                              onClick={handleCancelProcessing}
+                              className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
                         </div>
-                        {canCancel && (
-                          <button
-                            onClick={handleCancelProcessing}
-                            className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                        
+                        {processingProgress > 0 && (
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-black h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${processingProgress}%` }}
+                            />
+                          </div>
                         )}
                       </div>
-                      
-                      {processingProgress > 0 && (
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-black h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${processingProgress}%` }}
-                          />
-                        </div>
-                      )}
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Extraction Settings</h3>
+                    <div className="text-center py-6 text-gray-500">
+                      <div className="mb-2">Configure extraction parameters</div>
+                      <div className="text-sm">Upload an image to access settings</div>
                     </div>
-                  )}
-
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
-            )}
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="p-4 space-y-6">
-            {!uploadedImage && (
-              /* Image Upload - Full width when no image */
-              <div className="w-full">
-                <ImageUpload onImageUpload={handleImageUpload} />
-              </div>
-            )}
-            
-            {uploadedImage && (
+            {activeTab === 'image' ? (
               <>
-                {activeTab === 'image' ? (
+                {uploadedImage ? (
                   <>
                     {/* Image Canvas */}
                     <ImageCanvas
@@ -574,13 +581,18 @@ export default function Home() {
                     <ImageUpload onImageUpload={handleImageUpload} />
                   </>
                 ) : (
-                  <>
-                    {/* Saved Palettes Panel */}
-                    <SavedPalettesPanel 
-                      onAddColorToExtracted={handleAddColorFromSaved}
-                    />
-                  </>
+                  /* Image Upload - Full width when no image */
+                  <div className="w-full">
+                    <ImageUpload onImageUpload={handleImageUpload} />
+                  </div>
                 )}
+              </>
+            ) : (
+              <>
+                {/* Saved Palettes Panel - Always accessible */}
+                <SavedPalettesPanel 
+                  onAddColorToExtracted={handleAddColorFromSaved}
+                />
               </>
             )}
           </div>
@@ -589,18 +601,15 @@ export default function Home() {
         {/* Right Sidebar */}
         <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
           <div className="p-4">
-            {uploadedImage && (
-              /* Color Palette */
-              <ColorPalette 
-                colors={extractedColors} 
-                imageFilename={uploadedImage?.name}
-                isAddMode={isAddMode}
-                onToggleAddMode={handleToggleAddMode}
-                onFinishAdding={handleFinishAdding}
-                onUndoLastAddition={handleUndoLastAddition}
-                onDeleteColor={handleDeleteColor}
-              />
-            )}
+            <ColorPalette 
+              colors={extractedColors} 
+              imageFilename={uploadedImage?.name}
+              isAddMode={isAddMode}
+              onToggleAddMode={handleToggleAddMode}
+              onFinishAdding={handleFinishAdding}
+              onUndoLastAddition={handleUndoLastAddition}
+              onDeleteColor={handleDeleteColor}
+            />
           </div>
         </div>
       </div>
