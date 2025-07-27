@@ -48,6 +48,7 @@ export default function Home() {
   const [, setOriginalColors] = useState<ExtractedColor[]>([]);
   const [feedback, setFeedback] = useState<{message: string; type: 'success' | 'error'} | null>(null);
   const [isGreyscale, setIsGreyscale] = useState(false);
+  const [activeTab, setActiveTab] = useState<'image' | 'palette'>('image');
   
   
   // Processing pipeline hook
@@ -427,13 +428,24 @@ export default function Home() {
               Extract optimized color palettes from reference images for painting
             </p>
           </div>
-          <button
-            onClick={() => setIsGreyscale(!isGreyscale)}
-            className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-            title={isGreyscale ? 'Show colors' : 'Show grayscale'}
-          >
-            {isGreyscale ? 'Color' : 'Gray'}
-          </button>
+          <div className="flex items-center space-x-2">
+            {uploadedImage && (
+              <button
+                onClick={() => setActiveTab(activeTab === 'image' ? 'palette' : 'image')}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                title={activeTab === 'image' ? 'Show saved palettes' : 'Show image canvas'}
+              >
+                {activeTab === 'image' ? 'Palette' : 'Image'}
+              </button>
+            )}
+            <button
+              onClick={() => setIsGreyscale(!isGreyscale)}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              title={isGreyscale ? 'Show colors' : 'Show grayscale'}
+            >
+              {isGreyscale ? 'Color' : 'Greyscale'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -545,25 +557,30 @@ export default function Home() {
             
             {uploadedImage && (
               <>
-                {/* Image Canvas */}
-                <ImageCanvas
-                  imageFile={uploadedImage}
-                  onSelectionChange={handleSelectionChange}
-                  selectionMode={selectionConfig.mode}
-                  onClearSelection={handleClearSelectionCallback}
-                />
+                {activeTab === 'image' ? (
+                  <>
+                    {/* Image Canvas */}
+                    <ImageCanvas
+                      imageFile={uploadedImage}
+                      onSelectionChange={handleSelectionChange}
+                      selectionMode={selectionConfig.mode}
+                      onClearSelection={handleClearSelectionCallback}
+                    />
 
-                {/* Brightness Analysis - Hidden */}
-                {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
+                    {/* Brightness Analysis - Hidden */}
+                    {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
 
-                {/* Saved Palettes Panel */}
-                <SavedPalettesPanel 
-                  className="mt-4" 
-                  onAddColorToExtracted={handleAddColorFromSaved}
-                />
-
-                {/* Image Upload (bottom) */}
-                <ImageUpload onImageUpload={handleImageUpload} />
+                    {/* Image Upload (bottom) */}
+                    <ImageUpload onImageUpload={handleImageUpload} />
+                  </>
+                ) : (
+                  <>
+                    {/* Saved Palettes Panel */}
+                    <SavedPalettesPanel 
+                      onAddColorToExtracted={handleAddColorFromSaved}
+                    />
+                  </>
+                )}
               </>
             )}
           </div>

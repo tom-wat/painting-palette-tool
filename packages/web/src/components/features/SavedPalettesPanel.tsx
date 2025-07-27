@@ -4,7 +4,13 @@ import {
   exportAsPNG, 
   exportSavedPaletteAsJSON,
   exportAsASE, 
-  exportAsCSS, 
+  exportAsCSS,
+  exportAsAdobe,
+  exportAsProcreate,
+  exportMultiplePalettesAsASE,
+  exportMultiplePalettesAsCSS,
+  exportMultiplePalettesAsAdobe,
+  exportMultiplePalettesAsProcreate,
   downloadFile, 
   downloadTextFile 
 } from '@/lib/export-formats';
@@ -336,8 +342,14 @@ export default function SavedPalettesPanel({
         }
         
         case 'ase': {
-          const aseBlob = exportAsASE(palette.colors);
-          downloadFile(aseBlob, `${baseFilename}.ase`);
+          try {
+            const aseBlob = exportAsASE(palette.colors);
+            downloadFile(aseBlob, `${baseFilename}.ase`);
+          } catch (error) {
+            console.error('ASE export failed:', error);
+            setFeedback('ASE export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
           break;
         }
         
@@ -347,6 +359,29 @@ export default function SavedPalettesPanel({
           break;
         }
         
+        case 'adobe': {
+          try {
+            const acoBlob = exportAsAdobe(palette.colors);
+            downloadFile(acoBlob, `${baseFilename}.aco`);
+          } catch (error) {
+            console.error('Adobe Color export failed:', error);
+            setFeedback('Adobe Color export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
+          break;
+        }
+        
+        case 'procreate': {
+          try {
+            const swatchesBlob = exportAsProcreate(palette.colors);
+            downloadFile(swatchesBlob, `${baseFilename}.swatches`);
+          } catch (error) {
+            console.error('Procreate export failed:', error);
+            setFeedback('Procreate export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
+          break;
+        }
         
         default:
           throw new Error(`Unsupported format: ${format}`);
@@ -375,54 +410,100 @@ export default function SavedPalettesPanel({
       const timestamp = new Date().toISOString().split('T')[0];
       const baseFilename = `all-palettes-${timestamp}`;
 
-      if (format === 'json') {
-        const bulkData = {
-          palettes: savedPalettes.map(palette => ({
-            palette: {
-              name: palette.name,
-              tags: palette.tags || [],
-            },
-            colors: palette.colors.map((extractedColor, index) => ({
-              index: index + 1,
-              rgb: {
-                r: extractedColor.color.r,
-                g: extractedColor.color.g,
-                b: extractedColor.color.b,
+      switch (format) {
+        case 'json': {
+          const bulkData = {
+            palettes: savedPalettes.map(palette => ({
+              palette: {
+                name: palette.name,
+                tags: palette.tags || [],
               },
+              colors: palette.colors.map((extractedColor, index) => ({
+                index: index + 1,
+                rgb: {
+                  r: extractedColor.color.r,
+                  g: extractedColor.color.g,
+                  b: extractedColor.color.b,
+                },
+              }))
             }))
-          }))
-        };
-        const jsonContent = JSON.stringify(bulkData, null, 2);
-        downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
-      } else {
-        // For other formats, export each palette separately
-        for (let i = 0; i < savedPalettes.length; i++) {
-          const palette = savedPalettes[i];
-          const filename = `${palette.name}-${timestamp}`;
-          
-          switch (format) {
-            case 'png': {
+          };
+          const jsonContent = JSON.stringify(bulkData, null, 2);
+          downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
+          break;
+        }
+        
+        case 'ase': {
+          try {
+            const aseBlob = exportMultiplePalettesAsASE(savedPalettes);
+            downloadFile(aseBlob, `${baseFilename}.ase`);
+          } catch (error) {
+            console.error('Bulk ASE export failed:', error);
+            setFeedback('Bulk ASE export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
+          break;
+        }
+        
+        case 'css': {
+          try {
+            const cssContent = exportMultiplePalettesAsCSS(savedPalettes);
+            downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
+          } catch (error) {
+            console.error('Bulk CSS export failed:', error);
+            setFeedback('Bulk CSS export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
+          break;
+        }
+        
+        case 'adobe': {
+          try {
+            const acoBlob = exportMultiplePalettesAsAdobe(savedPalettes);
+            downloadFile(acoBlob, `${baseFilename}.aco`);
+          } catch (error) {
+            console.error('Bulk Adobe Color export failed:', error);
+            setFeedback('Bulk Adobe Color export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
+          break;
+        }
+        
+        case 'procreate': {
+          try {
+            const swatchesBlob = exportMultiplePalettesAsProcreate(savedPalettes);
+            downloadFile(swatchesBlob, `${baseFilename}.swatches`);
+          } catch (error) {
+            console.error('Bulk Procreate export failed:', error);
+            setFeedback('Bulk Procreate export failed');
+            setTimeout(() => setFeedback(null), 3000);
+          }
+          break;
+        }
+        
+        case 'png': {
+          // PNG exports remain separate files due to visual nature
+          for (let i = 0; i < savedPalettes.length; i++) {
+            const palette = savedPalettes[i];
+            const filename = `${palette.name}-${timestamp}`;
+            
+            try {
               const pngBlob = await exportAsPNG(palette.colors);
               downloadFile(pngBlob, `${filename}.png`);
-              break;
+            } catch (error) {
+              console.error('PNG export failed for', palette.name, ':', error);
             }
-            case 'ase': {
-              const aseBlob = await exportAsASE(palette.colors);
-              downloadFile(aseBlob, `${filename}.ase`);
-              break;
-            }
-            case 'css': {
-              const cssContent = exportAsCSS(palette.colors);
-              downloadTextFile(cssContent, `${filename}.css`, 'text/css');
-              break;
+            
+            // Small delay to prevent browser blocking multiple downloads
+            if (i < savedPalettes.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
-          
-          // Small delay to prevent browser blocking multiple downloads
-          if (i < savedPalettes.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          break;
         }
+        
+        default:
+          throw new Error(`Unsupported format: ${format}`);
       }
       
       setFeedback(`Exported ${savedPalettes.length} palettes as ${format.toUpperCase()}`);
@@ -1040,6 +1121,13 @@ export default function SavedPalettesPanel({
                   JSON
                 </button>
                 <button
+                  onClick={() => handleExportPalette('css', editingPalette)}
+                  disabled={isExporting}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  CSS
+                </button>
+                <button
                   onClick={() => handleExportPalette('ase', editingPalette)}
                   disabled={isExporting}
                   className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -1047,11 +1135,18 @@ export default function SavedPalettesPanel({
                   ASE
                 </button>
                 <button
-                  onClick={() => handleExportPalette('css', editingPalette)}
+                  onClick={() => handleExportPalette('adobe', editingPalette)}
                   disabled={isExporting}
                   className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  CSS
+                  Adobe Color
+                </button>
+                <button
+                  onClick={() => handleExportPalette('procreate', editingPalette)}
+                  disabled={isExporting}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Procreate
                 </button>
               </div>
             </div>
@@ -1334,6 +1429,15 @@ export default function SavedPalettesPanel({
               </button>
 
               <button
+                onClick={() => handleExportPalette('css', selectedPalette)}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">CSS Variables</div>
+                <div className="text-sm text-gray-600">CSS custom properties</div>
+              </button>
+
+              <button
                 onClick={() => handleExportPalette('ase', selectedPalette)}
                 disabled={isExporting}
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1343,12 +1447,21 @@ export default function SavedPalettesPanel({
               </button>
 
               <button
-                onClick={() => handleExportPalette('css', selectedPalette)}
+                onClick={() => handleExportPalette('adobe', selectedPalette)}
                 disabled={isExporting}
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">CSS Variables</div>
-                <div className="text-sm text-gray-600">CSS custom properties</div>
+                <div className="font-semibold text-black">Adobe Color</div>
+                <div className="text-sm text-gray-600">ACO palette file for Adobe products</div>
+              </button>
+
+              <button
+                onClick={() => handleExportPalette('procreate', selectedPalette)}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">Procreate</div>
+                <div className="text-sm text-gray-600">Swatches file for Procreate</div>
               </button>
 
             </div>
@@ -1387,21 +1500,39 @@ export default function SavedPalettesPanel({
               </button>
 
               <button
-                onClick={() => handleBulkExport('ase')}
-                disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-black">Adobe ASE Files</div>
-                <div className="text-sm text-gray-600">Individual ASE files for each palette</div>
-              </button>
-
-              <button
                 onClick={() => handleBulkExport('css')}
                 disabled={isExporting}
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">CSS Files</div>
-                <div className="text-sm text-gray-600">Individual CSS files for each palette</div>
+                <div className="font-semibold text-black">CSS File</div>
+                <div className="text-sm text-gray-600">Single CSS file with all palette variables</div>
+              </button>
+
+              <button
+                onClick={() => handleBulkExport('ase')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">Adobe ASE File</div>
+                <div className="text-sm text-gray-600">Single ASE file with all palette colors</div>
+              </button>
+
+              <button
+                onClick={() => handleBulkExport('adobe')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">Adobe Color File</div>
+                <div className="text-sm text-gray-600">Single ACO file with all palette colors</div>
+              </button>
+
+              <button
+                onClick={() => handleBulkExport('procreate')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">Procreate File</div>
+                <div className="text-sm text-gray-600">Single swatches file with all palette colors</div>
               </button>
 
             </div>

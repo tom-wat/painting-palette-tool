@@ -4,7 +4,9 @@ import {
   exportAsPNG, 
   exportAsJSON, 
   exportAsASE, 
-  exportAsCSS, 
+  exportAsCSS,
+  exportAsAdobe,
+  exportAsProcreate,
   downloadFile, 
   downloadTextFile 
 } from '@/lib/export-formats';
@@ -189,6 +191,25 @@ export default function ColorPalette({
           break;
         }
         
+        case 'adobe': {
+          try {
+            const acoBlob = exportAsAdobe(colors);
+            downloadFile(acoBlob, `${baseFilename}.aco`);
+          } catch (error) {
+            console.error('Adobe Color export failed:', error);
+          }
+          break;
+        }
+        
+        case 'procreate': {
+          try {
+            const swatchesBlob = exportAsProcreate(colors);
+            downloadFile(swatchesBlob, `${baseFilename}.swatches`);
+          } catch (error) {
+            console.error('Procreate export failed:', error);
+          }
+          break;
+        }
         
         default:
           throw new Error(`Unsupported format: ${format}`);
@@ -558,16 +579,6 @@ export default function ColorPalette({
                 <div className="text-sm text-gray-600">Complete color data with metadata</div>
               </button>
 
-              {/* ASE Export */}
-              <button
-                onClick={() => handleExport('ase')}
-                disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="font-semibold text-black">Adobe ASE</div>
-                <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
-              </button>
-
               {/* CSS Export */}
               <button
                 onClick={() => handleExport('css')}
@@ -576,6 +587,16 @@ export default function ColorPalette({
               >
                 <div className="font-semibold text-black">CSS Variables</div>
                 <div className="text-sm text-gray-600">CSS custom properties</div>
+              </button>
+
+              {/* ASE Export */}
+              <button
+                onClick={() => handleExport('ase')}
+                disabled={isExporting}
+                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="font-semibold text-black">Adobe ASE</div>
+                <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
               </button>
 
             </div>
