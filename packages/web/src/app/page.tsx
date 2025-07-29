@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
-import ImageUpload from '@/components/features/ImageUpload';
-import ImageCanvas from '@/components/features/ImageCanvas';
 import ColorPalette from '@/components/features/ColorPalette';
+import ImageCanvas from '@/components/features/ImageCanvas';
+import ImageUpload from '@/components/features/ImageUpload';
+import { useCallback, useRef, useState } from 'react';
 // import BrightnessAnalysis from '@/components/features/BrightnessAnalysis';
+import AdvancedSelectionTools, {
+  type AdvancedSelectionConfig,
+  type SelectionMode,
+} from '@/components/features/AdvancedSelectionTools';
 import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
-import AdvancedSelectionTools, { type SelectionMode, type AdvancedSelectionConfig } from '@/components/features/AdvancedSelectionTools';
-import { Card, CardContent, Slider, Select, Toggle } from '@/components/ui';
+import { Card, CardContent, Select, Slider, Toggle } from '@/components/ui';
 import { PaletteExtractor } from '@palette-tool/color-engine';
 // import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
-import { useProcessingPipeline } from '@/lib/processing-pipeline';
 import { areColorsSimilar } from '@/lib/color-space-conversions';
+import { useProcessingPipeline } from '@/lib/processing-pipeline';
 
 interface RGBColor {
   r: number;
@@ -38,7 +41,9 @@ interface ExtractionSettings {
 export default function Home() {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [imageData, setImageData] = useState<ImageData | null>(null);
-  const [selectedImageData, setSelectedImageData] = useState<ImageData | null>(null);
+  const [selectedImageData, setSelectedImageData] = useState<ImageData | null>(
+    null
+  );
   const [extractedColors, setExtractedColors] = useState<ExtractedColor[]>([]);
   // const [brightnessAnalysis, setBrightnessAnalysis] = useState<PaletteAnalysis | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -46,26 +51,28 @@ export default function Home() {
   const [canCancel, setCanCancel] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
   const [, setOriginalColors] = useState<ExtractedColor[]>([]);
-  const [feedback, setFeedback] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+  const [feedback, setFeedback] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
   const [isGreyscale, setIsGreyscale] = useState(false);
   const [activeTab, setActiveTab] = useState<'image' | 'palette'>('image');
-  
-  
+
   // Processing pipeline hook
   const pipeline = useProcessingPipeline();
 
-
   // Advanced selection tools state
-  const [selectionConfig, setSelectionConfig] = useState<AdvancedSelectionConfig>({
-    mode: 'rectangle' as SelectionMode,
-  });
+  const [selectionConfig, setSelectionConfig] =
+    useState<AdvancedSelectionConfig>({
+      mode: 'rectangle' as SelectionMode,
+    });
   const clearSelectionFnRef = useRef<(() => void) | null>(null);
-  
+
   // Use useCallback to prevent re-rendering issues
   const handleClearSelectionCallback = useCallback((clearFn: () => void) => {
     clearSelectionFnRef.current = clearFn;
   }, []);
-  
+
   const [settings, setSettings] = useState<ExtractionSettings>({
     colorCount: 8,
     algorithm: 'hybrid',
@@ -89,9 +96,15 @@ export default function Home() {
     if (isAddMode) {
       if (selectionData) {
         // Add Mode: extract colors from new selection and merge with existing
-        const newColors = await extractColorsForAddMode(selectionData, settings);
+        const newColors = await extractColorsForAddMode(
+          selectionData,
+          settings
+        );
         if (newColors.length > 0) {
-          const mergedColors = mergeAndDeduplicateColors(extractedColors, newColors);
+          const mergedColors = mergeAndDeduplicateColors(
+            extractedColors,
+            newColors
+          );
           setExtractedColors(mergedColors);
         }
       }
@@ -100,7 +113,7 @@ export default function Home() {
     } else {
       // Normal mode: replace palette
       setSelectedImageData(selectionData);
-      
+
       // Extract colors from selection only if selection is provided
       // When selection is cleared (selectionData = null), keep current palette
       if (selectionData) {
@@ -110,7 +123,10 @@ export default function Home() {
   };
 
   // Extract colors for Add Mode (simplified, no caching)
-  const extractColorsForAddMode = async (imgData: ImageData, extractionSettings: ExtractionSettings): Promise<ExtractedColor[]> => {
+  const extractColorsForAddMode = async (
+    imgData: ImageData,
+    extractionSettings: ExtractionSettings
+  ): Promise<ExtractedColor[]> => {
     try {
       // Use color-engine for extraction
       const result = await PaletteExtractor.extractPalette(imgData, {
@@ -124,8 +140,10 @@ export default function Home() {
       // Apply sorting
       if (extractionSettings.sortBy === 'brightness') {
         colors = colors.sort((a, b) => {
-          const brightnessA = (a.color.r * 0.299 + a.color.g * 0.587 + a.color.b * 0.114);
-          const brightnessB = (b.color.r * 0.299 + b.color.g * 0.587 + b.color.b * 0.114);
+          const brightnessA =
+            a.color.r * 0.299 + a.color.g * 0.587 + a.color.b * 0.114;
+          const brightnessB =
+            b.color.r * 0.299 + b.color.g * 0.587 + b.color.b * 0.114;
           return brightnessA - brightnessB;
         });
       } else if (extractionSettings.sortBy === 'hue') {
@@ -139,11 +157,17 @@ export default function Home() {
       return colors;
     } catch (error) {
       console.error('Add mode color extraction failed:', error);
-      return extractSimpleColors(imgData, Math.min(extractionSettings.colorCount, 8));
+      return extractSimpleColors(
+        imgData,
+        Math.min(extractionSettings.colorCount, 8)
+      );
     }
   };
 
-  const extractColors = async (imgData: ImageData, extractionSettings: ExtractionSettings) => {
+  const extractColors = async (
+    imgData: ImageData,
+    extractionSettings: ExtractionSettings
+  ) => {
     // Check cache first
     const cachedResult = pipeline.getCachedResult(imgData, extractionSettings);
     if (cachedResult) {
@@ -155,7 +179,7 @@ export default function Home() {
     setIsExtracting(true);
     setProcessingProgress(0);
     setCanCancel(true);
-    
+
     // Start processing with cancellation support
     const abortController = pipeline.startProcessing();
 
@@ -181,8 +205,10 @@ export default function Home() {
       // Apply sorting
       if (extractionSettings.sortBy === 'brightness') {
         colors = colors.sort((a, b) => {
-          const brightnessA = (a.color.r * 0.299 + a.color.g * 0.587 + a.color.b * 0.114);
-          const brightnessB = (b.color.r * 0.299 + b.color.g * 0.587 + b.color.b * 0.114);
+          const brightnessA =
+            a.color.r * 0.299 + a.color.g * 0.587 + a.color.b * 0.114;
+          const brightnessB =
+            b.color.r * 0.299 + b.color.g * 0.587 + b.color.b * 0.114;
           return brightnessA - brightnessB;
         });
       } else if (extractionSettings.sortBy === 'hue') {
@@ -203,31 +229,33 @@ export default function Home() {
 
       // Perform brightness analysis
       // const analysis = analyzePalette(colors);
-      
+
       setProcessingProgress(100);
 
       // Update state
       setExtractedColors(colors);
       // setBrightnessAnalysis(analysis);
-      
+
       // Cache the result
       pipeline.setCachedResult(imgData, extractionSettings, { colors });
-      
     } catch (error) {
       if (error instanceof Error && error.message === 'Processing cancelled') {
         console.log('Color extraction cancelled');
         return;
       }
-      
+
       console.error('Color extraction failed:', error);
       // Fallback to simple extraction
-      const colors = extractSimpleColors(imgData, extractionSettings.colorCount);
+      const colors = extractSimpleColors(
+        imgData,
+        extractionSettings.colorCount
+      );
       setExtractedColors(colors);
-      
+
       // Perform brightness analysis on fallback colors
       // const analysis = analyzePalette(colors);
       // setBrightnessAnalysis(analysis);
-      
+
       // Cache fallback result
       pipeline.setCachedResult(imgData, extractionSettings, { colors });
     } finally {
@@ -242,13 +270,13 @@ export default function Home() {
     const r = rgb.r / 255;
     const g = rgb.g / 255;
     const b = rgb.b / 255;
-    
+
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     const delta = max - min;
-    
+
     if (delta === 0) return 0;
-    
+
     let hue = 0;
     if (max === r) {
       hue = ((g - b) / delta) % 6;
@@ -257,7 +285,7 @@ export default function Home() {
     } else {
       hue = (r - g) / delta + 4;
     }
-    
+
     return hue * 60;
   };
 
@@ -265,7 +293,7 @@ export default function Home() {
   const updateSettings = (updates: Partial<ExtractionSettings>) => {
     const newSettings = { ...settings, ...updates };
     setSettings(newSettings);
-    
+
     // Debounced re-extraction to avoid rapid successive calls
     const debouncedExtraction = pipeline.debounce(
       'settings-update',
@@ -274,7 +302,7 @@ export default function Home() {
       },
       300 // 300ms delay
     );
-    
+
     const dataToUse = selectedImageData || imageData;
     if (dataToUse) {
       debouncedExtraction(dataToUse, newSettings);
@@ -285,7 +313,6 @@ export default function Home() {
   const handleCancelProcessing = () => {
     pipeline.cancelProcessing();
   };
-
 
   // Simple color extraction for demo purposes
   const extractSimpleColors = (
@@ -328,38 +355,58 @@ export default function Home() {
 
   // Color merging logic for Add Mode
   const mergeAndDeduplicateColors = (
-    existing: ExtractedColor[], 
+    existing: ExtractedColor[],
     newColors: ExtractedColor[],
     maxColors: number = 16
   ): ExtractedColor[] => {
     const merged = [...existing];
-    
-    newColors.forEach(newColor => {
-      const isDuplicate = existing.some(existingColor => 
+
+    newColors.forEach((newColor) => {
+      const isDuplicate = existing.some((existingColor) =>
         areColorsSimilar(existingColor.color, newColor.color, 8)
       );
-      
+
       if (!isDuplicate) {
         merged.push({
           ...newColor,
-          isAdded: true // Mark as added color
+          isAdded: true, // Mark as added color
         });
       }
     });
-    
+
     return merged.slice(0, maxColors); // Limit total colors
   };
 
   // Algorithm and sorting options
   const algorithmOptions = [
-    { value: 'kmeans', label: 'K-Means', description: 'Standard clustering algorithm' },
-    { value: 'octree', label: 'Octree', description: 'Fast color quantization' },
-    { value: 'mediancut', label: 'Median Cut', description: 'Traditional color reduction' },
-    { value: 'hybrid', label: 'Hybrid', description: 'Best quality (recommended)' },
+    {
+      value: 'kmeans',
+      label: 'K-Means',
+      description: 'Standard clustering algorithm',
+    },
+    {
+      value: 'octree',
+      label: 'Octree',
+      description: 'Fast color quantization',
+    },
+    {
+      value: 'mediancut',
+      label: 'Median Cut',
+      description: 'Traditional color reduction',
+    },
+    {
+      value: 'hybrid',
+      label: 'Hybrid',
+      description: 'Best quality (recommended)',
+    },
   ];
 
   const sortOptions = [
-    { value: 'frequency', label: 'Frequency', description: 'Most common colors first' },
+    {
+      value: 'frequency',
+      label: 'Frequency',
+      description: 'Most common colors first',
+    },
     { value: 'brightness', label: 'Brightness', description: 'Dark to light' },
     { value: 'hue', label: 'Hue', description: 'Rainbow order' },
   ];
@@ -380,12 +427,16 @@ export default function Home() {
 
   const handleUndoLastAddition = () => {
     // Remove only the colors marked as added
-    const colorsWithoutAdded = extractedColors.filter(color => !color.isAdded);
+    const colorsWithoutAdded = extractedColors.filter(
+      (color) => !color.isAdded
+    );
     setExtractedColors(colorsWithoutAdded);
   };
 
   const handleDeleteColor = (colorIndex: number) => {
-    const updatedColors = extractedColors.filter((_, index) => index !== colorIndex);
+    const updatedColors = extractedColors.filter(
+      (_, index) => index !== colorIndex
+    );
     setExtractedColors(updatedColors);
   };
 
@@ -395,44 +446,59 @@ export default function Home() {
       setOriginalColors([...extractedColors]);
       setIsAddMode(true);
     }
-    
+
     // Check if color already exists
-    const isDuplicate = extractedColors.some(existingColor => 
+    const isDuplicate = extractedColors.some((existingColor) =>
       areColorsSimilar(existingColor.color, color.color, 8)
     );
-    
+
     if (!isDuplicate) {
       const newColor = {
         ...color,
-        isAdded: true // Mark as added color
+        isAdded: true, // Mark as added color
       };
       const updatedColors = [...extractedColors, newColor];
       setExtractedColors(updatedColors);
-      
-      setFeedback({message: 'Color added to extracted palette', type: 'success'});
+
+      setFeedback({
+        message: 'Color added to extracted palette',
+        type: 'success',
+      });
       setTimeout(() => setFeedback(null), 2000);
     } else {
-      setFeedback({message: 'Color already exists in palette', type: 'error'});
+      setFeedback({
+        message: 'Color already exists in palette',
+        type: 'error',
+      });
       setTimeout(() => setFeedback(null), 2000);
     }
   };
 
   return (
-    <main className={`min-h-screen bg-gray-50 text-black ${isGreyscale ? 'grayscale' : ''}`}>
+    <main
+      className={`min-h-screen bg-gray-50 text-black ${isGreyscale ? 'grayscale' : ''}`}
+    >
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold">Painting Palette Tool</h1>
             <p className="text-sm text-gray-600">
-              Extract optimized color palettes from reference images for painting
+              Extract optimized color palettes from reference images for
+              painting
             </p>
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => setActiveTab(activeTab === 'image' ? 'palette' : 'image')}
+              onClick={() =>
+                setActiveTab(activeTab === 'image' ? 'palette' : 'image')
+              }
               className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-              title={activeTab === 'image' ? 'Show saved palettes' : 'Show image canvas'}
+              title={
+                activeTab === 'image'
+                  ? 'Show saved palettes'
+                  : 'Show image canvas'
+              }
             >
               {activeTab === 'image' ? 'Palette' : 'Image'}
             </button>
@@ -447,7 +513,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-80px)]">
+      <div className="flex h-[calc(100vh-81px)]">
         {/* Left Sidebar */}
         <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4 space-y-4">
@@ -456,7 +522,9 @@ export default function Home() {
               <AdvancedSelectionTools
                 config={selectionConfig}
                 onConfigChange={setSelectionConfig}
-                onModeChange={(mode) => setSelectionConfig(prev => ({ ...prev, mode }))}
+                onModeChange={(mode) =>
+                  setSelectionConfig((prev) => ({ ...prev, mode }))
+                }
                 onClearSelection={() => clearSelectionFnRef.current?.()}
               />
             ) : (
@@ -464,7 +532,9 @@ export default function Home() {
                 <CardContent>
                   <div className="text-center py-6 text-gray-500">
                     <div className="mb-2">Selection Tools</div>
-                    <div className="text-sm">Upload an image to access selection tools</div>
+                    <div className="text-sm">
+                      Upload an image to access selection tools
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -475,22 +545,28 @@ export default function Home() {
               <CardContent>
                 {imageData ? (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Extraction Settings</h3>
-                    
+                    <h3 className="text-lg font-semibold">
+                      Extraction Settings
+                    </h3>
+
                     <div className="grid grid-cols-1 gap-4">
                       <Slider
                         label="Number of Colors"
                         value={settings.colorCount}
-                        onChange={(value) => updateSettings({ colorCount: value })}
+                        onChange={(value) =>
+                          updateSettings({ colorCount: value })
+                        }
                         min={3}
                         max={16}
                         step={1}
                       />
-                      
+
                       <Select
                         label="Algorithm"
                         value={settings.algorithm}
-                        onChange={(value) => updateSettings({ algorithm: value })}
+                        onChange={(value) =>
+                          updateSettings({ algorithm: value })
+                        }
                         options={algorithmOptions}
                       />
 
@@ -500,7 +576,7 @@ export default function Home() {
                         onChange={(value) => updateSettings({ sortBy: value })}
                         options={sortOptions}
                       />
-                      
+
                       <Slider
                         label="Quality"
                         value={settings.quality}
@@ -510,11 +586,13 @@ export default function Home() {
                         step={1}
                       />
                     </div>
-                    
+
                     <Toggle
                       label="Include Transparent Colors"
                       checked={settings.includeTransparent}
-                      onChange={(checked) => updateSettings({ includeTransparent: checked })}
+                      onChange={(checked) =>
+                        updateSettings({ includeTransparent: checked })
+                      }
                     />
 
                     {isExtracting && (
@@ -533,7 +611,7 @@ export default function Home() {
                             </button>
                           )}
                         </div>
-                        
+
                         {processingProgress > 0 && (
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
@@ -547,10 +625,16 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Extraction Settings</h3>
+                    <h3 className="text-lg font-semibold">
+                      Extraction Settings
+                    </h3>
                     <div className="text-center py-6 text-gray-500">
-                      <div className="mb-2">Configure extraction parameters</div>
-                      <div className="text-sm">Upload an image to access settings</div>
+                      <div className="mb-2">
+                        Configure extraction parameters
+                      </div>
+                      <div className="text-sm">
+                        Upload an image to access settings
+                      </div>
                     </div>
                   </div>
                 )}
@@ -590,7 +674,7 @@ export default function Home() {
             ) : (
               <>
                 {/* Saved Palettes Panel - Always accessible */}
-                <SavedPalettesPanel 
+                <SavedPalettesPanel
                   onAddColorToExtracted={handleAddColorFromSaved}
                 />
               </>
@@ -601,8 +685,8 @@ export default function Home() {
         {/* Right Sidebar */}
         <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
           <div className="p-4">
-            <ColorPalette 
-              colors={extractedColors} 
+            <ColorPalette
+              colors={extractedColors}
               imageFilename={uploadedImage?.name}
               isAddMode={isAddMode}
               onToggleAddMode={handleToggleAddMode}
@@ -613,15 +697,17 @@ export default function Home() {
           </div>
         </div>
       </div>
-      
+
       {/* Toast notification - fixed position */}
       {feedback && (
         <div className="fixed top-4 right-4 z-50 max-w-sm">
-          <div className={`shadow-lg rounded-lg px-4 py-3 text-sm ${
-            feedback.type === 'success' 
-              ? 'bg-blue-50 border border-blue-200 text-blue-800'
-              : 'bg-orange-50 border border-orange-200 text-orange-800'
-          }`}>
+          <div
+            className={`shadow-lg rounded-lg px-4 py-3 text-sm ${
+              feedback.type === 'success'
+                ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                : 'bg-orange-50 border border-orange-200 text-orange-800'
+            }`}
+          >
             {feedback.message}
           </div>
         </div>
