@@ -833,9 +833,7 @@ export default function ImageCanvas({
             className={`absolute inset-0 ${
               isPanning 
                 ? 'cursor-move' 
-                : selectionMode === 'polygon' 
-                  ? 'cursor-pointer' 
-                  : 'cursor-crosshair'
+                : 'cursor-crosshair'
             } touch-none`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
