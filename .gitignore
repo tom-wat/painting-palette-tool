@@ -28,3 +28,7 @@ out/
 *.tmp
 *.temp
 .cache/
+
+# Build cache
+*.tsbuildinfo
+.turbo/
