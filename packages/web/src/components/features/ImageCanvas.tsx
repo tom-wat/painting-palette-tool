@@ -766,6 +766,16 @@ export default function ImageCanvas({
     setTouchStartScale(1);
   }, [isDrawing, extractSelectionData]);
 
+  // Handle wheel events for zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    
+    const pos = getMousePos(e as any);
+    const delta = -e.deltaY; // Invert to make scroll up = zoom in
+    
+    handleZoom(delta, pos.x, pos.y);
+  }, [getMousePos, handleZoom]);
+
   return (
     <Card className={className}>
       <CardContent>
@@ -840,6 +850,7 @@ export default function ImageCanvas({
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onDoubleClick={handleDoubleClick}
+            onWheel={handleWheel}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -863,7 +874,7 @@ export default function ImageCanvas({
           )}
           <p className="text-xs text-gray-500">
             <span className="hidden sm:inline">
-              Controls: Shift + drag to pan • ESC to clear selection
+              Controls: Scroll wheel to zoom • Shift + drag to pan • ESC to clear selection
             </span>
             <span className="sm:hidden">
               Touch: Tap and drag to select • Two fingers to zoom and pan

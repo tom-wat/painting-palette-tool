@@ -4,11 +4,13 @@ import { Card } from '../ui';
 interface ImageUploadProps {
   onImageUpload: (_file: File, _imageData: ImageData) => void;
   className?: string;
+  hasUploadedImage?: boolean;
 }
 
 export default function ImageUpload({
   onImageUpload,
   className = '',
+  hasUploadedImage = false,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -111,6 +113,10 @@ export default function ImageUpload({
     },
     [processFile]
   );
+
+  if (hasUploadedImage) {
+    return null;
+  }
 
   return (
     <Card className={className}>

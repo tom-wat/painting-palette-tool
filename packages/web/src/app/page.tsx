@@ -662,12 +662,18 @@ export default function Home() {
                     {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
 
                     {/* Image Upload (bottom) */}
-                    <ImageUpload onImageUpload={handleImageUpload} />
+                    <ImageUpload 
+                      onImageUpload={handleImageUpload} 
+                      hasUploadedImage={!!uploadedImage}
+                    />
                   </>
                 ) : (
                   /* Image Upload - Full width when no image */
                   <div className="w-full">
-                    <ImageUpload onImageUpload={handleImageUpload} />
+                    <ImageUpload 
+                      onImageUpload={handleImageUpload}
+                      hasUploadedImage={!!uploadedImage}
+                    />
                   </div>
                 )}
               </>
