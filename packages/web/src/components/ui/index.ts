@@ -6,3 +6,4 @@ export { default as Slider } from './Slider';
 export { default as Select } from './Select';
 export { default as Toggle } from './Toggle';
 export { default as Modal, ModalFooter } from './Modal';
+export { default as Tooltip, type TooltipProps } from './Tooltip';

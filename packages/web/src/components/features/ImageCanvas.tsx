@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Card, CardContent } from '../ui';
-import { 
+import { Card, CardContent, Tooltip } from '../ui';
+import {
   PolygonSelection,
   extractImageDataFromMask,
   type SelectionMask,
@@ -50,6 +50,11 @@ export default function ImageCanvas({
   const [polygonSelection] = useState(() => new PolygonSelection());
   const [currentMask, setCurrentMask] = useState<SelectionMask | null>(null);
   const [sourceImageData, setSourceImageData] = useState<ImageData | null>(null);
+
+  // Tooltip state for point mode
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [tooltipColor, setTooltipColor] = useState({ r: 0, g: 0, b: 0 });
 
   // Load and display image
   useEffect(() => {
@@ -597,19 +602,39 @@ export default function ImageCanvas({
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const pos = getMousePos(e);
-    
+
     if (isPanning && lastPanPoint) {
       // Pan the image
       const deltaX = pos.x - lastPanPoint.x;
       const deltaY = pos.y - lastPanPoint.y;
-      
+
       setOffset((prev: Point) => ({
         x: prev.x + deltaX,
         y: prev.y + deltaY,
       }));
-      
+
       setLastPanPoint(pos);
       return;
+    }
+
+    // Handle tooltip for point mode
+    if (selectionMode === 'point' && !isDrawing && !isPanning) {
+      const imagePos = screenToImageCoords(pos.x, pos.y);
+      const color = extractPixelColor(imagePos.x, imagePos.y);
+
+      if (color && imagePos.x >= 0 && imagePos.y >= 0 && image &&
+          imagePos.x < image.width && imagePos.y < image.height) {
+        setTooltipPosition({
+          x: pos.x,
+          y: pos.y
+        });
+        setTooltipColor(color);
+        setTooltipVisible(true);
+      } else {
+        setTooltipVisible(false);
+      }
+    } else {
+      setTooltipVisible(false);
     }
 
     if (!isDrawing) return;
@@ -626,7 +651,7 @@ export default function ImageCanvas({
         // Just redraw to show current mouse position if needed
         break;
     }
-  }, [isDrawing, dragSelection, isPanning, lastPanPoint, getMousePos, selectionMode]);
+  }, [isDrawing, dragSelection, isPanning, lastPanPoint, getMousePos, selectionMode, screenToImageCoords, extractPixelColor, image]);
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing) {
@@ -684,6 +709,7 @@ export default function ImageCanvas({
       setCurrentMask(null);
       polygonSelection.clear();
       setIsDrawing(false);
+      setTooltipVisible(false);
       onSelectionChange(null);
       drawCanvas();
       previousSelectionMode.current = selectionMode;
@@ -876,7 +902,10 @@ export default function ImageCanvas({
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            onMouseLeave={() => {
+              handleMouseUp();
+              setTooltipVisible(false);
+            }}
             onDoubleClick={handleDoubleClick}
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}
@@ -885,6 +914,14 @@ export default function ImageCanvas({
             onContextMenu={(e) => {
               e.preventDefault(); // Prevent context menu
             }}
+          />
+
+          {/* Tooltip for point mode */}
+          <Tooltip
+            x={tooltipPosition.x}
+            y={tooltipPosition.y}
+            color={tooltipColor}
+            visible={tooltipVisible && selectionMode === 'point'}
           />
         </div>
         
