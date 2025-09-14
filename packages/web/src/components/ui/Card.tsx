@@ -5,10 +5,7 @@ interface CardProps {
   className?: string;
 }
 
-export default function Card({
-  children,
-  className = '',
-}: CardProps) {
+export default function Card({ children, className = '' }: CardProps) {
   return (
     <div
       className={`bg-white border border-gray-200 rounded-lg shadow-sm ${className}`}
@@ -25,7 +22,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
   return (
-    <div className={`border-b border-gray-200 p-6 mb-4 ${className}`}>
+    <div className={`border-b border-gray-200 p-6 ${className}`}>
       {children}
     </div>
   );
