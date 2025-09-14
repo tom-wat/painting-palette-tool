@@ -57,7 +57,7 @@ export default function ImageCanvas({
   const [tooltipColor, setTooltipColor] = useState({ r: 0, g: 0, b: 0 });
 
   // Tooltip performance optimization refs
-  const tooltipDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const tooltipDebounceRef = useRef<number | null>(null);
   const tooltipThrottleRef = useRef<number>(0);
 
   // Load and display image
@@ -660,7 +660,7 @@ export default function ImageCanvas({
       }
 
       // Short debounce for final stabilization (50ms)
-      tooltipDebounceRef.current = setTimeout(updateTooltip, 50);
+      tooltipDebounceRef.current = setTimeout(updateTooltip, 50) as unknown as number;
     } else {
       // Clear debounce timeout and hide tooltip immediately
       if (tooltipDebounceRef.current) {
