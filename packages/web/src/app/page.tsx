@@ -28,6 +28,7 @@ interface ExtractedColor {
   importance: number;
   representativeness: number;
   isAdded?: boolean; // 追加された色かどうかのフラグ
+  id?: string; // 色の一意識別子
 }
 
 interface ExtractionSettings {
@@ -49,8 +50,7 @@ export default function Home() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [canCancel, setCanCancel] = useState(false);
-  const [isAddMode, setIsAddMode] = useState(false);
-  const [, setOriginalColors] = useState<ExtractedColor[]>([]);
+  const [lastAddedColorIds, setLastAddedColorIds] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{
     message: string;
     type: 'success' | 'error';
@@ -64,7 +64,7 @@ export default function Home() {
   // Advanced selection tools state
   const [selectionConfig, setSelectionConfig] =
     useState<AdvancedSelectionConfig>({
-      mode: 'rectangle' as SelectionMode,
+      mode: 'point' as SelectionMode,
     });
   const clearSelectionFnRef = useRef<(() => void) | null>(null);
 
@@ -93,33 +93,23 @@ export default function Home() {
   };
 
   const handleSelectionChange = async (selectionData: ImageData | null) => {
-    if (isAddMode) {
-      if (selectionData) {
-        // Add Mode: extract colors from new selection and merge with existing
-        const newColors = await extractColorsForAddMode(
-          selectionData,
-          settings
+    if (selectionData) {
+      // Always add colors from new selection to existing palette
+      const newColors = await extractColorsForAddMode(
+        selectionData,
+        settings
+      );
+      if (newColors.length > 0) {
+        const { mergedColors, newColorIds } = mergeAndDeduplicateColors(
+          extractedColors,
+          newColors
         );
-        if (newColors.length > 0) {
-          const mergedColors = mergeAndDeduplicateColors(
-            extractedColors,
-            newColors
-          );
-          setExtractedColors(mergedColors);
-        }
-      }
-      // Add Mode時は選択範囲クリア（selectionData = null）を無視
-      // 既存のパレットを保持
-    } else {
-      // Normal mode: replace palette
-      setSelectedImageData(selectionData);
-
-      // Extract colors from selection only if selection is provided
-      // When selection is cleared (selectionData = null), keep current palette
-      if (selectionData) {
-        await extractColors(selectionData, settings);
+        setExtractedColors(mergedColors);
+        // Update last added color IDs (only keep the new ones)
+        setLastAddedColorIds(new Set(newColorIds));
       }
     }
+    setSelectedImageData(selectionData);
   };
 
   // Extract colors for Add Mode (simplified, no caching)
@@ -358,8 +348,9 @@ export default function Home() {
     existing: ExtractedColor[],
     newColors: ExtractedColor[],
     maxColors: number = 16
-  ): ExtractedColor[] => {
+  ): { mergedColors: ExtractedColor[], newColorIds: string[] } => {
     const merged = [...existing];
+    const newColorIds: string[] = [];
 
     newColors.forEach((newColor) => {
       const isDuplicate = existing.some((existingColor) =>
@@ -367,14 +358,20 @@ export default function Home() {
       );
 
       if (!isDuplicate) {
+        const colorId = generateColorId(newColor.color);
         merged.push({
           ...newColor,
           isAdded: true, // Mark as added color
+          id: colorId
         });
+        newColorIds.push(colorId);
       }
     });
 
-    return merged.slice(0, maxColors); // Limit total colors
+    return {
+      mergedColors: merged.slice(0, maxColors), // Limit total colors
+      newColorIds
+    };
   };
 
   // Algorithm and sorting options
@@ -411,27 +408,6 @@ export default function Home() {
     { value: 'hue', label: 'Hue', description: 'Rainbow order' },
   ];
 
-  // Add Mode handlers
-  const handleToggleAddMode = () => {
-    if (!isAddMode) {
-      // Entering Add Mode - save original colors
-      setOriginalColors([...extractedColors]);
-      setIsAddMode(true);
-    }
-  };
-
-  const handleFinishAdding = () => {
-    setIsAddMode(false);
-    setOriginalColors([]);
-  };
-
-  const handleUndoLastAddition = () => {
-    // Remove only the colors marked as added
-    const colorsWithoutAdded = extractedColors.filter(
-      (color) => !color.isAdded
-    );
-    setExtractedColors(colorsWithoutAdded);
-  };
 
   const handleDeleteColor = (colorIndex: number) => {
     const updatedColors = extractedColors.filter(
@@ -440,23 +416,13 @@ export default function Home() {
     setExtractedColors(updatedColors);
   };
 
+  // Generate unique ID for colors
+  const generateColorId = (color: {r: number, g: number, b: number}): string => {
+    return `${color.r}-${color.g}-${color.b}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  };
+
   // Handle point color addition
   const handlePointColorAdd = (color: {r: number, g: number, b: number}) => {
-    // Auto-enable Add Mode if not already enabled
-    if (!isAddMode) {
-      setOriginalColors([...extractedColors]);
-      setIsAddMode(true);
-    }
-
-    // Create ExtractedColor object from pixel color
-    const newExtractedColor: ExtractedColor = {
-      color,
-      frequency: 0.01, // Minimal frequency for single pixel
-      importance: 0.8, // High importance as user-selected
-      representativeness: 0.9, // High representativeness
-      isAdded: true
-    };
-
     // Check if exact same color already exists (only for point selection)
     const isExactDuplicate = extractedColors.some((existingColor) =>
       existingColor.color.r === color.r &&
@@ -465,14 +431,22 @@ export default function Home() {
     );
 
     if (!isExactDuplicate) {
+      // Create ExtractedColor object from pixel color
+      const colorId = generateColorId(color);
+      const newExtractedColor: ExtractedColor = {
+        color,
+        frequency: 0.01, // Minimal frequency for single pixel
+        importance: 0.8, // High importance as user-selected
+        representativeness: 0.9, // High representativeness
+        isAdded: true,
+        id: colorId
+      };
+
       const updatedColors = [...extractedColors, newExtractedColor];
       setExtractedColors(updatedColors);
 
-      setFeedback({
-        message: 'Color added to palette',
-        type: 'success',
-      });
-      setTimeout(() => setFeedback(null), 1500);
+      // Update last added color IDs (only keep the new one)
+      setLastAddedColorIds(new Set([colorId]));
     } else {
       setFeedback({
         message: 'Exact same color already exists in palette',
@@ -483,30 +457,23 @@ export default function Home() {
   };
 
   const handleAddColorFromSaved = (color: ExtractedColor) => {
-    // Auto-enable Add Mode
-    if (!isAddMode) {
-      setOriginalColors([...extractedColors]);
-      setIsAddMode(true);
-    }
-
     // Check if color already exists
     const isDuplicate = extractedColors.some((existingColor) =>
       areColorsSimilar(existingColor.color, color.color, 8)
     );
 
     if (!isDuplicate) {
+      const colorId = generateColorId(color.color);
       const newColor = {
         ...color,
         isAdded: true, // Mark as added color
+        id: colorId
       };
       const updatedColors = [...extractedColors, newColor];
       setExtractedColors(updatedColors);
 
-      setFeedback({
-        message: 'Color added to extracted palette',
-        type: 'success',
-      });
-      setTimeout(() => setFeedback(null), 2000);
+      // Update last added color IDs (only keep the new one)
+      setLastAddedColorIds(new Set([colorId]));
     } else {
       setFeedback({
         message: 'Color already exists in palette',
@@ -519,9 +486,8 @@ export default function Home() {
   // Reset palette function
   const handleResetPalette = () => {
     setExtractedColors([]);
-    setOriginalColors([]);
-    setIsAddMode(false);
     setSelectedImageData(null);
+    setLastAddedColorIds(new Set());
   };
 
   return (
@@ -745,10 +711,7 @@ export default function Home() {
             <ColorPalette
               colors={extractedColors}
               imageFilename={uploadedImage?.name}
-              isAddMode={isAddMode}
-              onToggleAddMode={handleToggleAddMode}
-              onFinishAdding={handleFinishAdding}
-              onUndoLastAddition={handleUndoLastAddition}
+              lastAddedColorIds={lastAddedColorIds}
               onDeleteColor={handleDeleteColor}
               onResetPalette={handleResetPalette}
             />

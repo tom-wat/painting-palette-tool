@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
-import { 
-  exportAsPNG, 
-  exportAsJSON, 
-  exportAsASE, 
+import {
+  exportAsPNG,
+  exportAsJSON,
+  exportAsASE,
   exportAsCSS,
   exportAsAdobe,
   exportAsProcreate,
-  downloadFile, 
-  downloadTextFile 
+  downloadFile,
+  downloadTextFile
 } from '@/lib/export-formats';
 import {
   rgbToHsl,
   rgbToLab,
   rgbToLch,
   rgbToOklch,
+  calculateHScL,
   formatColorValue
 } from '@/lib/color-space-conversions';
 
@@ -30,6 +31,7 @@ interface ExtractedColor {
   importance: number;
   representativeness: number;
   isAdded?: boolean;
+  id?: string;
 }
 
 interface SavedPalette {
@@ -49,22 +51,107 @@ interface ColorPaletteProps {
   colors: ExtractedColor[];
   className?: string;
   imageFilename?: string;
-  isAddMode?: boolean;
-  onToggleAddMode?: () => void;
-  onFinishAdding?: () => void;
-  onUndoLastAddition?: () => void;
+  lastAddedColorIds?: Set<string>;
   onDeleteColor?: (_colorIndex: number) => void;
   onResetPalette?: () => void;
 }
+
+// Helper function to get bar color based on color space and type
+const getBarColor = (colorSpace: 'hsl' | 'hscl', type: 'H' | 'S' | 'L' | 'Sc', value: number, color: RGBColor) => {
+  const hsl = rgbToHsl(color);
+  const hscl = calculateHScL(color);
+
+  switch(colorSpace) {
+    case 'hsl':
+      switch(type) {
+        case 'H': return `hsl(${value}, 50%, 50%)`;
+        case 'S': return `hsl(${hsl.h}, ${value}%, 60%)`;
+        case 'L': return `hsl(${hsl.h}, 50%, 60%)`;
+        default: return '#9ca3af'; // gray-400
+      }
+
+    case 'hscl':
+      switch(type) {
+        case 'H': return `hsl(${value}, 50%, 50%)`;
+        case 'Sc': return `hsl(${hscl.h}, ${value}%, 60%)`;
+        case 'L': return `hsl(${hscl.h}, 50%, 60%)`;
+        default: return '#9ca3af'; // gray-400
+      }
+
+    default:
+      return '#9ca3af'; // gray-400
+  }
+};
+
+// Component for rendering horizontal bar graphs
+const ColorValueBars = ({ color, showLabels = false }: { color: ExtractedColor; showLabels?: boolean }) => {
+  const hsl = rgbToHsl(color.color);
+  const hscl = calculateHScL(color.color);
+
+  const BarGraph = ({
+    label,
+    value,
+    max,
+    suffix = '',
+    colorSpace,
+    type
+  }: {
+    label: string;
+    value: number;
+    max: number;
+    suffix?: string;
+    colorSpace: 'hsl' | 'hscl';
+    type: 'H' | 'S' | 'L' | 'Sc';
+  }) => (
+    <div className={`text-[12px] ${showLabels ? 'space-y-0.5' : 'mb-1'}`}>
+      {showLabels && (
+        <div className="flex justify-between">
+          <span className="text-gray-500 tracking-wide">{label}</span>
+          <span className="text-gray-700 font-mono">{value}{suffix}</span>
+        </div>
+      )}
+      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-200"
+          style={{
+            width: `${Math.min((value / max) * 100, 100)}%`,
+            backgroundColor: getBarColor(colorSpace, type, value, color.color)
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-1">
+      {/* HSL Values */}
+      {showLabels && (
+        <div className="text-[12px] text-gray-500 font-medium mb-1">HSL</div>
+      )}
+      <div className="space-y-1">
+        <BarGraph label="H" value={hsl.h} max={360} suffix="°" colorSpace="hsl" type="H" />
+        <BarGraph label="S" value={hsl.s} max={100} suffix="%" colorSpace="hsl" type="S" />
+        <BarGraph label="L" value={hsl.l} max={100} suffix="%" colorSpace="hsl" type="L" />
+      </div>
+
+      {/* HScL Values */}
+      {showLabels && (
+        <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">HScL</div>
+      )}
+      <div className={`space-y-1 ${!showLabels ? 'mt-3' : ''}`}>
+        <BarGraph label="H" value={hscl.h} max={360} suffix="°" colorSpace="hscl" type="H" />
+        <BarGraph label="Sc" value={hscl.sc} max={100} suffix="%" colorSpace="hscl" type="Sc" />
+        <BarGraph label="L" value={hscl.l} max={100} suffix="%" colorSpace="hscl" type="L" />
+      </div>
+    </div>
+  );
+};
 
 export default function ColorPalette({
   colors,
   className = '',
   imageFilename,
-  isAddMode = false,
-  onToggleAddMode,
-  onFinishAdding,
-  onUndoLastAddition,
+  lastAddedColorIds = new Set(),
   onDeleteColor,
   onResetPalette,
 }: ColorPaletteProps) {
@@ -78,6 +165,7 @@ export default function ColorPalette({
   const [paletteName, setPaletteName] = useState('');
   const [paletteTags, setPaletteTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState(false);
 
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
@@ -258,10 +346,40 @@ export default function ColorPalette({
       <Card className={className}>
         <CardHeader>
           <CardTitle>Extracted Color Palette</CardTitle>
-          {/* Removed colors count display */}
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowColorSpaceLabels(!showColorSpaceLabels)}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors min-h-[30px] flex items-center space-x-1"
+                title={showColorSpaceLabels ? 'Hide data' : 'Show data'}
+              >
+                {showColorSpaceLabels ? 'Hide Data' : 'Show Data'}
+              </button>
+              <button
+                onClick={onResetPalette}
+                className="px-2 py-1 text-xs border border-red-200 rounded-md bg-white text-red-400 hover:bg-red-25 transition-colors min-h-[30px] flex items-center space-x-1"
+              >
+                Reset Palette
+              </button>
+            </div>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+              <button
+                onClick={() => setShowSaveModal(true)}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors min-h-[30px] flex items-center space-x-1"
+              >
+                Save Palette
+              </button>
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors min-h-[30px] flex items-center space-x-1"
+              >
+                Export Palette
+              </button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {/* Color grid */}
+          {/* Color grid with data below squares */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             {colors.map((extractedColor, index) => {
               const hex = rgbToHex(extractedColor.color);
@@ -269,96 +387,30 @@ export default function ColorPalette({
               return (
                 <div
                   key={index}
-                  className="group cursor-pointer relative"
+                  className="cursor-pointer text-center relative"
                   onClick={() => setSelectedColor(extractedColor)}
                 >
                   <div
-                    className={`w-full aspect-square rounded-lg border-2 group-hover:scale-105 transition-transform shadow-sm ${
-                      extractedColor.isAdded 
-                        ? 'border-blue-400 border-dashed' 
-                        : 'border-gray-200'
-                    }`}
+                    className="aspect-square rounded border border-gray-200 shadow-sm mb-1 hover:scale-105 transition-transform"
                     style={{ backgroundColor: hex }}
                   />
-                  {extractedColor.isAdded && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {extractedColor.id && lastAddedColorIds.has(extractedColor.id) && (
+                    <div className="absolute top-0 right-0 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
                       <span className="-translate-y-px">+</span>
                     </div>
                   )}
+                  <ColorValueBars color={extractedColor} showLabels={showColorSpaceLabels} />
                 </div>
               );
             })}
           </div>
 
-          {/* Quick copy section */}
-          <div className="border-t border-gray-200 pt-4">
-            {/* Add Mode Controls */}
-            {isAddMode ? (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="text-sm text-blue-800 mb-2">
-                  🎨 Add Mode: Select areas on the image to add more colors
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onFinishAdding}
-                    className="bg-white"
-                  >
-                    Finish Adding
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onUndoLastAddition}
-                    className="bg-white"
-                  >
-                    Undo Last Addition
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-4 space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onToggleAddMode}
-                  className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
-                >
-                  + Add More Colors
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onResetPalette}
-                  className="w-full text-red-400 border-red-200 hover:bg-red-25"
-                >
-                  Reset Palette
-                </Button>
-              </div>
-            )}
-            
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSaveModal(true)}
-              >
-                Save Palette
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowExportModal(true)}
-              >
-                Export Palette
-              </Button>
+          {/* Copy feedback section */}
+          {copyFeedback && (
+            <div className="border-t border-gray-200 pt-4">
+              <div className="text-sm text-gray-700 font-medium">{copyFeedback}</div>
             </div>
-
-            {copyFeedback && (
-              <div className="mt-2 text-sm text-gray-700 font-medium">{copyFeedback}</div>
-            )}
-          </div>
+          )}
         </CardContent>
       </Card>
 

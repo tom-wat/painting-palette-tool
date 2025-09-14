@@ -117,7 +117,7 @@ export default function AdvancedSelectionTools({
           )}
 
           {config.mode === 'point' && (
-            <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="bg-gray-50 p-3 rounded-lg">
               <p className="text-sm text-gray-600">
                 Click anywhere on the image
               </p>
