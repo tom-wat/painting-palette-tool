@@ -1,4 +1,5 @@
 import React from 'react';
+import { calculateHScL } from '@/lib/color-space-conversions';
 
 export interface TooltipProps {
   x: number;
@@ -44,19 +45,44 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   };
 }
 
+
 export default function Tooltip({ x, y, color, visible }: TooltipProps) {
   if (!visible) return null;
 
   const { r, g, b } = color;
   const { h, s, l } = rgbToHsl(r, g, b);
+  const hscl = calculateHScL(color);
+
+  // Calculate tooltip positioning to avoid screen edges
+  const tooltipWidth = 120; // Approximate tooltip width
+  const tooltipHeight = 60; // Approximate tooltip height (increased for two lines)
+  const offset = 10;
+
+  // Determine horizontal position
+  let leftPosition = x + offset;
+  let rightTransform = false;
+
+  if (x + offset + tooltipWidth > window.innerWidth) {
+    leftPosition = x - offset;
+    rightTransform = true;
+  }
+
+  // Determine vertical position
+  let topPosition = y - offset;
+  let bottomTransform = false;
+
+  if (y - offset - tooltipHeight < 0) {
+    topPosition = y + offset;
+    bottomTransform = true;
+  }
 
   return (
     <div
-      className="absolute pointer-events-none z-50 bg-black text-white text-xs px-2 py-1 rounded shadow-lg border border-gray-700"
+      className="fixed pointer-events-none z-50 bg-black text-white text-xs px-2 py-1 rounded shadow-lg border border-gray-700"
       style={{
-        left: x + 10,
-        top: y - 10,
-        transform: x > window.innerWidth - 120 ? 'translateX(-100%)' : 'none',
+        left: leftPosition,
+        top: topPosition,
+        transform: `${rightTransform ? 'translateX(-100%)' : ''} ${bottomTransform ? 'translateY(0%)' : 'translateY(-100%)'}`.trim(),
       }}
     >
       <div className="flex items-center space-x-2">
@@ -65,9 +91,9 @@ export default function Tooltip({ x, y, color, visible }: TooltipProps) {
           style={{ backgroundColor: `rgb(${r}, ${g}, ${b})` }}
         />
         <div>
-          <div className="font-mono">H: {h}°</div>
+          <div className="font-mono">{h} {s} {l}</div>
           <div className="text-gray-300 font-mono">
-            S: {s}% L: {l}%
+            {hscl.h} {hscl.sc} {hscl.l}
           </div>
         </div>
       </div>

@@ -56,6 +56,10 @@ export default function ImageCanvas({
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [tooltipColor, setTooltipColor] = useState({ r: 0, g: 0, b: 0 });
 
+  // Tooltip performance optimization refs
+  const tooltipDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const tooltipThrottleRef = useRef<number>(0);
+
   // Load and display image
   useEffect(() => {
     const img = new Image();
@@ -617,23 +621,52 @@ export default function ImageCanvas({
       return;
     }
 
-    // Handle tooltip for point mode
+    // Handle tooltip for point mode with throttle and minimal debounce
     if (selectionMode === 'point' && !isDrawing && !isPanning) {
-      const imagePos = screenToImageCoords(pos.x, pos.y);
-      const color = extractPixelColor(imagePos.x, imagePos.y);
-
-      if (color && imagePos.x >= 0 && imagePos.y >= 0 && image &&
-          imagePos.x < image.width && imagePos.y < image.height) {
-        setTooltipPosition({
-          x: pos.x,
-          y: pos.y
-        });
-        setTooltipColor(color);
-        setTooltipVisible(true);
-      } else {
-        setTooltipVisible(false);
+      // Throttle: Limit updates to every 16ms (~60fps) for performance
+      const now = Date.now();
+      if (now - tooltipThrottleRef.current < 16) {
+        return;
       }
+      tooltipThrottleRef.current = now;
+
+      const updateTooltip = () => {
+        const imagePos = screenToImageCoords(pos.x, pos.y);
+        const color = extractPixelColor(imagePos.x, imagePos.y);
+
+        if (color && imagePos.x >= 0 && imagePos.y >= 0 && image &&
+            imagePos.x < image.width && imagePos.y < image.height) {
+          // Convert canvas coordinates to page coordinates
+          const rect = canvasRef.current?.getBoundingClientRect();
+          if (rect) {
+            setTooltipPosition({
+              x: rect.left + pos.x,
+              y: rect.top + pos.y
+            });
+            setTooltipColor(color);
+            setTooltipVisible(true);
+          }
+        } else {
+          setTooltipVisible(false);
+        }
+      };
+
+      // Immediate update for responsive feedback
+      updateTooltip();
+
+      // Clear any existing debounce timeout
+      if (tooltipDebounceRef.current) {
+        clearTimeout(tooltipDebounceRef.current);
+      }
+
+      // Short debounce for final stabilization (50ms)
+      tooltipDebounceRef.current = setTimeout(updateTooltip, 50);
     } else {
+      // Clear debounce timeout and hide tooltip immediately
+      if (tooltipDebounceRef.current) {
+        clearTimeout(tooltipDebounceRef.current);
+        tooltipDebounceRef.current = null;
+      }
       setTooltipVisible(false);
     }
 
@@ -709,6 +742,11 @@ export default function ImageCanvas({
       setCurrentMask(null);
       polygonSelection.clear();
       setIsDrawing(false);
+      // Clear tooltip debounce timeout when mode changes
+      if (tooltipDebounceRef.current) {
+        clearTimeout(tooltipDebounceRef.current);
+        tooltipDebounceRef.current = null;
+      }
       setTooltipVisible(false);
       onSelectionChange(null);
       drawCanvas();
@@ -904,6 +942,11 @@ export default function ImageCanvas({
             onMouseUp={handleMouseUp}
             onMouseLeave={() => {
               handleMouseUp();
+              // Clear debounce timeout and hide tooltip immediately
+              if (tooltipDebounceRef.current) {
+                clearTimeout(tooltipDebounceRef.current);
+                tooltipDebounceRef.current = null;
+              }
               setTooltipVisible(false);
             }}
             onDoubleClick={handleDoubleClick}
@@ -914,14 +957,6 @@ export default function ImageCanvas({
             onContextMenu={(e) => {
               e.preventDefault(); // Prevent context menu
             }}
-          />
-
-          {/* Tooltip for point mode */}
-          <Tooltip
-            x={tooltipPosition.x}
-            y={tooltipPosition.y}
-            color={tooltipColor}
-            visible={tooltipVisible && selectionMode === 'point'}
           />
         </div>
         
@@ -950,6 +985,14 @@ export default function ImageCanvas({
         </div>
         </div>
       </CardContent>
+
+      {/* Tooltip for point mode - positioned relative to page */}
+      <Tooltip
+        x={tooltipPosition.x}
+        y={tooltipPosition.y}
+        color={tooltipColor}
+        visible={tooltipVisible && selectionMode === 'point'}
+      />
     </Card>
   );
 }
