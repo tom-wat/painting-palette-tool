@@ -3,7 +3,7 @@ import React from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Painting Palette Tool',
+  title: 'Painting Palette',
   description:
     'Extract optimized color palettes from reference images for painting',
   icons: {

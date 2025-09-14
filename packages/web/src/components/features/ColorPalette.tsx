@@ -54,6 +54,7 @@ interface ColorPaletteProps {
   onFinishAdding?: () => void;
   onUndoLastAddition?: () => void;
   onDeleteColor?: (_colorIndex: number) => void;
+  onResetPalette?: () => void;
 }
 
 export default function ColorPalette({
@@ -65,6 +66,7 @@ export default function ColorPalette({
   onFinishAdding,
   onUndoLastAddition,
   onDeleteColor,
+  onResetPalette,
 }: ColorPaletteProps) {
   const [selectedColor, setSelectedColor] = useState<ExtractedColor | null>(
     null
@@ -226,12 +228,25 @@ export default function ColorPalette({
     }
   };
 
+  // Check if we have an uploaded image but no colors
+  const hasUploadedImage = !!imageFilename;
+
   if (colors.length === 0) {
     return (
       <Card className={className}>
+        <CardHeader>
+          <CardTitle>Extracted Color Palette</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-gray-500">
-            Upload an image to extract colors
+            {hasUploadedImage ? (
+              <>
+                <div className="mb-2">No colors extracted yet</div>
+                <div className="text-sm">Select an area on the image or use Point mode to extract colors</div>
+              </>
+            ) : (
+              'Upload an image to extract colors'
+            )}
           </div>
         </CardContent>
       </Card>
@@ -303,14 +318,22 @@ export default function ColorPalette({
                 </div>
               </div>
             ) : (
-              <div className="mb-4">
+              <div className="mb-4 space-y-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onToggleAddMode}
-                  className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                  className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
                 >
                   + Add More Colors
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onResetPalette}
+                  className="w-full text-red-400 border-red-200 hover:bg-red-25"
+                >
+                  Reset Palette
                 </Button>
               </div>
             )}

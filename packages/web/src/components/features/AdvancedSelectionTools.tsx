@@ -1,7 +1,7 @@
-import React, { useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui';
+import { useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui';
 
-export type SelectionMode = 'rectangle' | 'polygon';
+export type SelectionMode = 'rectangle' | 'polygon' | 'point';
 
 export interface AdvancedSelectionConfig {
   mode: SelectionMode;
@@ -22,12 +22,19 @@ export default function AdvancedSelectionTools({
   onClearSelection: _onClearSelection,
   className = '',
 }: AdvancedSelectionToolsProps) {
+  const handleModeChange = useCallback(
+    (mode: SelectionMode) => {
+      onModeChange(mode);
+      onConfigChange({ ...config, mode });
+    },
+    [config, onConfigChange, onModeChange]
+  );
 
-  const handleModeChange = useCallback((mode: SelectionMode) => {
-    onModeChange(mode);
-    onConfigChange({ ...config, mode });
-  }, [config, onConfigChange, onModeChange]);
-
+  const pointMode = {
+    id: 'point' as SelectionMode,
+    name: 'Point',
+    description: 'Click to select individual pixels and add colors to palette',
+  };
 
   const selectionModes = [
     {
@@ -46,9 +53,6 @@ export default function AdvancedSelectionTools({
     <Card className={className}>
       <CardHeader>
         <CardTitle>Selection Tools</CardTitle>
-        <p className="text-gray-600 text-sm">
-          Choose selection mode for more precise color extraction
-        </p>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -57,6 +61,22 @@ export default function AdvancedSelectionTools({
             <label className="block text-sm font-medium text-black mb-2">
               Selection Mode
             </label>
+            {/* Point selection - single row */}
+            <div className="mb-3">
+              <button
+                onClick={() => handleModeChange(pointMode.id)}
+                className={`w-full p-3 border rounded-lg text-center transition-colors ${
+                  config.mode === pointMode.id
+                    ? 'border-black bg-gray-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                title={pointMode.description}
+              >
+                <span className="text-sm font-medium">{pointMode.name}</span>
+              </button>
+            </div>
+
+            {/* Area selection modes - grid row */}
             <div className="grid grid-cols-2 gap-2">
               {selectionModes.map((mode) => (
                 <button
@@ -81,9 +101,7 @@ export default function AdvancedSelectionTools({
               <p className="text-sm text-gray-600">
                 Click and drag to select rectangular areas
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Shift+drag to pan
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Shift+drag to pan</p>
             </div>
           )}
 
@@ -94,6 +112,17 @@ export default function AdvancedSelectionTools({
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Double-click or click first point to complete
+              </p>
+            </div>
+          )}
+
+          {config.mode === 'point' && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-600">
+                Click anywhere on the image
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Each click adds the pixel color directly to your palette
               </p>
             </div>
           )}

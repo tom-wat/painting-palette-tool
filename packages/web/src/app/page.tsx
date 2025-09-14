@@ -440,6 +440,48 @@ export default function Home() {
     setExtractedColors(updatedColors);
   };
 
+  // Handle point color addition
+  const handlePointColorAdd = (color: {r: number, g: number, b: number}) => {
+    // Auto-enable Add Mode if not already enabled
+    if (!isAddMode) {
+      setOriginalColors([...extractedColors]);
+      setIsAddMode(true);
+    }
+
+    // Create ExtractedColor object from pixel color
+    const newExtractedColor: ExtractedColor = {
+      color,
+      frequency: 0.01, // Minimal frequency for single pixel
+      importance: 0.8, // High importance as user-selected
+      representativeness: 0.9, // High representativeness
+      isAdded: true
+    };
+
+    // Check if exact same color already exists (only for point selection)
+    const isExactDuplicate = extractedColors.some((existingColor) =>
+      existingColor.color.r === color.r &&
+      existingColor.color.g === color.g &&
+      existingColor.color.b === color.b
+    );
+
+    if (!isExactDuplicate) {
+      const updatedColors = [...extractedColors, newExtractedColor];
+      setExtractedColors(updatedColors);
+
+      setFeedback({
+        message: 'Color added to palette',
+        type: 'success',
+      });
+      setTimeout(() => setFeedback(null), 1500);
+    } else {
+      setFeedback({
+        message: 'Exact same color already exists in palette',
+        type: 'error',
+      });
+      setTimeout(() => setFeedback(null), 2000);
+    }
+  };
+
   const handleAddColorFromSaved = (color: ExtractedColor) => {
     // Auto-enable Add Mode
     if (!isAddMode) {
@@ -474,6 +516,14 @@ export default function Home() {
     }
   };
 
+  // Reset palette function
+  const handleResetPalette = () => {
+    setExtractedColors([]);
+    setOriginalColors([]);
+    setIsAddMode(false);
+    setSelectedImageData(null);
+  };
+
   return (
     <main
       className={`min-h-screen bg-gray-50 text-black ${isGreyscale ? 'grayscale' : ''}`}
@@ -482,7 +532,7 @@ export default function Home() {
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">Painting Palette Tool</h1>
+            <h1 className="text-xl font-bold">Painting Palette</h1>
             <p className="text-sm text-gray-600">
               Extract optimized color palettes from reference images for
               painting
@@ -654,6 +704,7 @@ export default function Home() {
                     <ImageCanvas
                       imageFile={uploadedImage}
                       onSelectionChange={handleSelectionChange}
+                      onPointColorAdd={handlePointColorAdd}
                       selectionMode={selectionConfig.mode}
                       onClearSelection={handleClearSelectionCallback}
                     />
@@ -699,6 +750,7 @@ export default function Home() {
               onFinishAdding={handleFinishAdding}
               onUndoLastAddition={handleUndoLastAddition}
               onDeleteColor={handleDeleteColor}
+              onResetPalette={handleResetPalette}
             />
           </div>
         </div>

@@ -16,6 +16,7 @@ interface SelectionRect {
 interface ImageCanvasProps {
   imageFile: File;
   onSelectionChange: (_imageData: ImageData | null) => void;
+  onPointColorAdd?: (_color: { r: number, g: number, b: number }) => void;
   selectionMode: SelectionMode;
   onClearSelection?: (_clearFn: () => void) => void;
   className?: string;
@@ -24,6 +25,7 @@ interface ImageCanvasProps {
 export default function ImageCanvas({
   imageFile,
   onSelectionChange,
+  onPointColorAdd,
   selectionMode,
   onClearSelection,
   className = '',
@@ -510,10 +512,27 @@ export default function ImageCanvas({
     extractSelectionDataFromRect
   ]);
 
+  // Extract color at specific pixel
+  const extractPixelColor = useCallback((imageX: number, imageY: number): {r: number, g: number, b: number} | null => {
+    if (!sourceImageData || !image) return null;
+
+    // Clamp coordinates to image bounds
+    const x = Math.max(0, Math.min(Math.floor(imageX), image.width - 1));
+    const y = Math.max(0, Math.min(Math.floor(imageY), image.height - 1));
+
+    const index = (y * sourceImageData.width + x) * 4;
+
+    return {
+      r: sourceImageData.data[index],
+      g: sourceImageData.data[index + 1],
+      b: sourceImageData.data[index + 2]
+    };
+  }, [sourceImageData, image]);
+
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const pos = getMousePos(e);
-    
+
     if (e.shiftKey) {
       // Pan mode
       setIsPanning(true);
@@ -538,7 +557,7 @@ export default function ImageCanvas({
           setCurrentMask(null);
           setIsDrawing(false);
         }
-        
+
         // Check if clicking near the first point to close polygon
         if (polygonSelection.getVertices().length > 2) {
           const firstPoint = polygonSelection.getVertices()[0];
@@ -547,7 +566,7 @@ export default function ImageCanvas({
           const distance = Math.sqrt(
             Math.pow(pos.x - scaledFirstX, 2) + Math.pow(pos.y - scaledFirstY, 2)
           );
-          
+
           if (distance < 15) { // Close polygon if clicked near first point
             polygonSelection.complete();
             setIsDrawing(false);
@@ -558,14 +577,23 @@ export default function ImageCanvas({
             break;
           }
         }
-        
+
         // Add new point to polygon
         polygonSelection.addVertex(imagePos);
         setIsDrawing(true);
         drawCanvas();
         break;
+
+      case 'point': {
+        // Extract color at clicked pixel and add to palette
+        const color = extractPixelColor(imagePos.x, imagePos.y);
+        if (color && onPointColorAdd) {
+          onPointColorAdd(color);
+        }
+        break;
+      }
     }
-  }, [getMousePos, selectionMode, sourceImageData, polygonSelection, scale, offset, screenToImageCoords, extractSelectionData, drawCanvas]);
+  }, [getMousePos, selectionMode, sourceImageData, polygonSelection, scale, offset, screenToImageCoords, extractSelectionData, drawCanvas, extractPixelColor, onPointColorAdd]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const pos = getMousePos(e);
@@ -841,8 +869,8 @@ export default function ImageCanvas({
           <canvas
             ref={canvasRef}
             className={`absolute inset-0 ${
-              isPanning 
-                ? 'cursor-move' 
+              isPanning
+                ? 'cursor-move'
                 : 'cursor-crosshair'
             } touch-none`}
             onMouseDown={handleMouseDown}
@@ -869,6 +897,8 @@ export default function ImageCanvas({
             <p>
               Polygon path: {polygonSelection.getVertices().length} points • {polygonSelection.getIsComplete() ? 'Selection completed - extracting colors' : 'Click near first point or double-click to complete'}
             </p>
+          ) : selectionMode === 'point' ? (
+            <p>Click anywhere on the image to add colors to your palette</p>
           ) : (
             <p>Click and drag to select an area for color extraction</p>
           )}
