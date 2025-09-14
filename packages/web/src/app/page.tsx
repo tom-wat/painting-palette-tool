@@ -88,8 +88,7 @@ export default function Home() {
     setExtractedColors([]);
     // setBrightnessAnalysis(null);
 
-    // Auto-extract colors with default settings from full image
-    await extractColors(imgData, settings);
+    // Don't auto-extract colors on upload - let user choose when to extract
   };
 
   const handleSelectionChange = async (selectionData: ImageData | null) => {

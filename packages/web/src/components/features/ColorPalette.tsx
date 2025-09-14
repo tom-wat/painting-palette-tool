@@ -165,7 +165,7 @@ export default function ColorPalette({
   const [paletteName, setPaletteName] = useState('');
   const [paletteTags, setPaletteTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState(false);
+  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState(true);
 
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
