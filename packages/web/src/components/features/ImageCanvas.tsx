@@ -350,17 +350,23 @@ export default function ImageCanvas({
   const handleZoom = useCallback((delta: number, centerX: number, centerY: number) => {
     const zoomFactor = delta > 0 ? 1.2 : 0.8;
     const newScale = Math.max(minScale, Math.min(maxScale, scale * zoomFactor));
-    
+
     if (newScale !== scale) {
-      // Zoom towards the cursor position
-      const scaleRatio = newScale / scale;
-      setOffset((prev: Point) => ({
-        x: centerX - (centerX - prev.x) * scaleRatio,
-        y: centerY - (centerY - prev.y) * scaleRatio,
-      }));
+      // Get the image coordinate at the mouse position
+      const imagePoint = screenToImageCoords(centerX, centerY);
+
+      // Calculate where this image coordinate will be displayed with the new scale
+      const newImageX = imagePoint.x * newScale;
+      const newImageY = imagePoint.y * newScale;
+
+      // Adjust offset to keep the mouse position fixed
+      setOffset({
+        x: centerX - newImageX,
+        y: centerY - newImageY,
+      });
       setScale(newScale);
     }
-  }, [scale, minScale, maxScale]);
+  }, [scale, minScale, maxScale, offset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset view to fit image in container
   const resetView = useCallback(() => {
@@ -385,18 +391,18 @@ export default function ImageCanvas({
     });
   }, [image]);
 
-  // Redraw when selection changes
-  useEffect(() => {
-    drawCanvas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [selection, dragSelection, image, scale, offset, currentMask, polygonSelection, selectionMode]);
-
   // Convert screen coordinates to image coordinates
   const screenToImageCoords = useCallback((screenX: number, screenY: number): Point => {
     const imageX = (screenX - offset.x) / scale;
     const imageY = (screenY - offset.y) / scale;
     return { x: imageX, y: imageY };
   }, [scale, offset]);
+
+  // Redraw when selection changes
+  useEffect(() => {
+    drawCanvas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps  
+  }, [selection, dragSelection, image, scale, offset, currentMask, polygonSelection, selectionMode]);
 
   // Get mouse position relative to canvas
   const getMousePos = useCallback((e: React.MouseEvent): Point => {
