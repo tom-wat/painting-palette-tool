@@ -10,7 +10,7 @@ import AdvancedSelectionTools, {
   type SelectionMode,
 } from '@/components/features/AdvancedSelectionTools';
 import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
-import { Card, CardContent, Select, Slider, Toggle } from '@/components/ui';
+import { Card, CardContent, Select, Slider, Toggle, useToast } from '@/components/ui';
 import { PaletteExtractor } from '@palette-tool/color-engine';
 // import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
 import { areColorsSimilar } from '@/lib/color-space-conversions';
@@ -53,12 +53,11 @@ export default function Home() {
   const [lastAddedColorIds, setLastAddedColorIds] = useState<Set<string>>(
     new Set()
   );
-  const [feedback, setFeedback] = useState<{
-    message: string;
-    type: 'success' | 'error';
-  } | null>(null);
   const [isGreyscale, setIsGreyscale] = useState(false);
   const [activeTab, setActiveTab] = useState<'image' | 'palette'>('image');
+
+  // Toast notification hook
+  const { showToast, ToastContainer } = useToast();
 
   // Processing pipeline hook
   const pipeline = useProcessingPipeline();
@@ -450,11 +449,7 @@ export default function Home() {
       // Update last added color IDs (only keep the new one)
       setLastAddedColorIds(new Set([colorId]));
     } else {
-      setFeedback({
-        message: 'Exact same color already exists in palette',
-        type: 'error',
-      });
-      setTimeout(() => setFeedback(null), 2000);
+      showToast('Exact same color already exists in palette', 'error');
     }
   };
 
@@ -477,11 +472,7 @@ export default function Home() {
       // Update last added color IDs (only keep the new one)
       setLastAddedColorIds(new Set([colorId]));
     } else {
-      setFeedback({
-        message: 'Color already exists in palette',
-        type: 'error',
-      });
-      setTimeout(() => setFeedback(null), 2000);
+      showToast('Color already exists in palette', 'error');
     }
   };
 
@@ -684,6 +675,7 @@ export default function Home() {
                     <ImageUpload
                       onImageUpload={handleImageUpload}
                       hasUploadedImage={!!uploadedImage}
+                      showToast={showToast}
                     />
                   </>
                 ) : (
@@ -692,6 +684,7 @@ export default function Home() {
                     <ImageUpload
                       onImageUpload={handleImageUpload}
                       hasUploadedImage={!!uploadedImage}
+                      showToast={showToast}
                     />
                   </div>
                 )}
@@ -721,20 +714,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Toast notification - fixed position */}
-      {feedback && (
-        <div className="fixed top-4 right-4 z-50 max-w-sm">
-          <div
-            className={`shadow-lg rounded-lg px-4 py-3 text-sm ${
-              feedback.type === 'success'
-                ? 'bg-blue-50 border border-blue-200 text-blue-800'
-                : 'bg-orange-50 border border-orange-200 text-orange-800'
-            }`}
-          >
-            {feedback.message}
-          </div>
-        </div>
-      )}
+      {/* Toast Container */}
+      <ToastContainer />
     </main>
   );
 }

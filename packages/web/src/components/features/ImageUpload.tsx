@@ -1,25 +1,25 @@
 import React, { useCallback, useState } from 'react';
-import { Card } from '../ui';
+import { Card, type ToastType } from '../ui';
 
 interface ImageUploadProps {
   onImageUpload: (_file: File, _imageData: ImageData) => void;
   className?: string;
   hasUploadedImage?: boolean;
+  showToast?: (_message: string, _type: ToastType) => void;
 }
 
 export default function ImageUpload({
   onImageUpload,
   className = '',
   hasUploadedImage = false,
+  showToast,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const processFile = useCallback(
     async (file: File) => {
       setIsLoading(true);
-      setError(null);
 
       try {
         // Validate file type
@@ -69,16 +69,21 @@ export default function ImageUpload({
 
         onImageUpload(file, imageData);
       } catch (err) {
-        setError(
+        const errorMessage =
           err instanceof Error
             ? err.message
-            : 'An error occurred while processing the image'
-        );
+            : 'An error occurred while processing the image';
+
+        // Log error to console for debugging
+        console.error('Image upload error:', err);
+
+        // Show toast notification to user
+        showToast?.(errorMessage, 'error');
       } finally {
         setIsLoading(false);
       }
     },
-    [onImageUpload]
+    [onImageUpload, showToast]
   );
 
   const handleDrop = useCallback(
@@ -171,12 +176,6 @@ export default function ImageUpload({
                 Supports JPG, PNG, WebP • Max 10MB
               </p>
             </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-md">
-            <p className="text-gray-800 text-sm font-medium">{error}</p>
           </div>
         )}
       </div>
