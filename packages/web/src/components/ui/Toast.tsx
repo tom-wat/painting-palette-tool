@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export type ToastType = 'error' | 'success' | 'info';
 
@@ -16,6 +16,12 @@ export default function Toast({
   onClose,
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const onCloseRef = useRef(onClose);
+
+  // Keep onClose ref up to date
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     // Fade in
@@ -27,12 +33,12 @@ export default function Toast({
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => {
-        onClose?.();
+        onCloseRef.current?.();
       }, 300); // Wait for fade out animation
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [duration, onClose]);
+  }, [duration]); // Remove onClose from dependencies
 
   const borderColor = {
     error: 'border-gray-900',
@@ -102,7 +108,7 @@ export default function Toast({
         <button
           onClick={() => {
             setIsVisible(false);
-            setTimeout(() => onClose?.(), 300);
+            setTimeout(() => onCloseRef.current?.(), 300);
           }}
           className="flex-shrink-0 text-gray-500 hover:text-black transition-colors"
           aria-label="Close"
@@ -127,26 +133,39 @@ export function useToast() {
   >([]);
 
   const showToast = (message: string, type: ToastType = 'info') => {
-    const id = Date.now();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => {
+      // Check if the same message with the same type is already displayed
+      const isDuplicate = prev.some(
+        (toast) => toast.message === message && toast.type === type
+      );
+
+      // Don't add duplicate toast
+      if (isDuplicate) {
+        return prev;
+      }
+
+      const id = Date.now();
+      return [...prev, { id, message, type }];
+    });
   };
 
   const removeToast = (id: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const ToastContainer = () => (
-    <>
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => removeToast(toast.id)}
-        />
-      ))}
-    </>
-  );
-
-  return { showToast, ToastContainer };
+  return {
+    showToast,
+    ToastContainer: (
+      <>
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </>
+    )
+  };
 }

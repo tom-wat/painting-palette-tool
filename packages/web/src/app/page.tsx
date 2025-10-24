@@ -715,7 +715,7 @@ export default function Home() {
       </div>
 
       {/* Toast Container */}
-      <ToastContainer />
+      {ToastContainer}
     </main>
   );
 }
