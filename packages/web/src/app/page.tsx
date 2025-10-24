@@ -50,7 +50,9 @@ export default function Home() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [canCancel, setCanCancel] = useState(false);
-  const [lastAddedColorIds, setLastAddedColorIds] = useState<Set<string>>(new Set());
+  const [lastAddedColorIds, setLastAddedColorIds] = useState<Set<string>>(
+    new Set()
+  );
   const [feedback, setFeedback] = useState<{
     message: string;
     type: 'success' | 'error';
@@ -94,10 +96,7 @@ export default function Home() {
   const handleSelectionChange = async (selectionData: ImageData | null) => {
     if (selectionData) {
       // Always add colors from new selection to existing palette
-      const newColors = await extractColorsForAddMode(
-        selectionData,
-        settings
-      );
+      const newColors = await extractColorsForAddMode(selectionData, settings);
       if (newColors.length > 0) {
         const { mergedColors, newColorIds } = mergeAndDeduplicateColors(
           extractedColors,
@@ -347,7 +346,7 @@ export default function Home() {
     existing: ExtractedColor[],
     newColors: ExtractedColor[],
     maxColors: number = 16
-  ): { mergedColors: ExtractedColor[], newColorIds: string[] } => {
+  ): { mergedColors: ExtractedColor[]; newColorIds: string[] } => {
     const merged = [...existing];
     const newColorIds: string[] = [];
 
@@ -361,7 +360,7 @@ export default function Home() {
         merged.push({
           ...newColor,
           isAdded: true, // Mark as added color
-          id: colorId
+          id: colorId,
         });
         newColorIds.push(colorId);
       }
@@ -369,7 +368,7 @@ export default function Home() {
 
     return {
       mergedColors: merged.slice(0, maxColors), // Limit total colors
-      newColorIds
+      newColorIds,
     };
   };
 
@@ -407,7 +406,6 @@ export default function Home() {
     { value: 'hue', label: 'Hue', description: 'Rainbow order' },
   ];
 
-
   const handleDeleteColor = (colorIndex: number) => {
     const updatedColors = extractedColors.filter(
       (_, index) => index !== colorIndex
@@ -416,17 +414,22 @@ export default function Home() {
   };
 
   // Generate unique ID for colors
-  const generateColorId = (color: {r: number, g: number, b: number}): string => {
+  const generateColorId = (color: {
+    r: number;
+    g: number;
+    b: number;
+  }): string => {
     return `${color.r}-${color.g}-${color.b}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   };
 
   // Handle point color addition
-  const handlePointColorAdd = (color: {r: number, g: number, b: number}) => {
+  const handlePointColorAdd = (color: { r: number; g: number; b: number }) => {
     // Check if exact same color already exists (only for point selection)
-    const isExactDuplicate = extractedColors.some((existingColor) =>
-      existingColor.color.r === color.r &&
-      existingColor.color.g === color.g &&
-      existingColor.color.b === color.b
+    const isExactDuplicate = extractedColors.some(
+      (existingColor) =>
+        existingColor.color.r === color.r &&
+        existingColor.color.g === color.g &&
+        existingColor.color.b === color.b
     );
 
     if (!isExactDuplicate) {
@@ -438,7 +441,7 @@ export default function Home() {
         importance: 0.8, // High importance as user-selected
         representativeness: 0.9, // High representativeness
         isAdded: true,
-        id: colorId
+        id: colorId,
       };
 
       const updatedColors = [...extractedColors, newExtractedColor];
@@ -466,7 +469,7 @@ export default function Home() {
       const newColor = {
         ...color,
         isAdded: true, // Mark as added color
-        id: colorId
+        id: colorId,
       };
       const updatedColors = [...extractedColors, newColor];
       setExtractedColors(updatedColors);
@@ -678,15 +681,15 @@ export default function Home() {
                     {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
 
                     {/* Image Upload (bottom) */}
-                    <ImageUpload 
-                      onImageUpload={handleImageUpload} 
+                    <ImageUpload
+                      onImageUpload={handleImageUpload}
                       hasUploadedImage={!!uploadedImage}
                     />
                   </>
                 ) : (
                   /* Image Upload - Full width when no image */
                   <div className="w-full">
-                    <ImageUpload 
+                    <ImageUpload
                       onImageUpload={handleImageUpload}
                       hasUploadedImage={!!uploadedImage}
                     />
@@ -705,8 +708,8 @@ export default function Home() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
-          <div className="p-4">
+        <div className="w-80 bg-white border-l border-gray-200">
+          <div className="p-4 h-full">
             <ColorPalette
               colors={extractedColors}
               imageFilename={uploadedImage?.name}

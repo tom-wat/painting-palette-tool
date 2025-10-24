@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
 import {
-  exportAsPNG,
-  exportAsJSON,
-  exportAsASE,
-  exportAsCSS,
-  exportAsAdobe,
-  exportAsProcreate,
-  downloadFile,
-  downloadTextFile
-} from '@/lib/export-formats';
-import {
+  calculateHScL,
+  formatColorValue,
   rgbToHsl,
   rgbToLab,
   rgbToLch,
   rgbToOklch,
-  calculateHScL,
-  formatColorValue
 } from '@/lib/color-space-conversions';
+import {
+  downloadFile,
+  downloadTextFile,
+  exportAsAdobe,
+  exportAsASE,
+  exportAsCSS,
+  exportAsJSON,
+  exportAsPNG,
+  exportAsProcreate,
+} from '@/lib/export-formats';
+import React, { useState } from 'react';
+import { Button, Card, CardContent, CardHeader, CardTitle, Modal } from '../ui';
 
 interface RGBColor {
   r: number;
@@ -57,25 +57,38 @@ interface ColorPaletteProps {
 }
 
 // Helper function to get bar color based on color space and type
-const getBarColor = (colorSpace: 'hsl' | 'hscl', type: 'H' | 'S' | 'L' | 'Sc', value: number, color: RGBColor) => {
+const getBarColor = (
+  colorSpace: 'hsl' | 'hscl',
+  type: 'H' | 'S' | 'L' | 'Sc',
+  value: number,
+  color: RGBColor
+) => {
   const hsl = rgbToHsl(color);
   const hscl = calculateHScL(color);
 
-  switch(colorSpace) {
+  switch (colorSpace) {
     case 'hsl':
-      switch(type) {
-        case 'H': return `hsl(${value}, 50%, 50%)`;
-        case 'S': return `hsl(${hsl.h}, ${value}%, 60%)`;
-        case 'L': return `hsl(${hsl.h}, 50%, 60%)`;
-        default: return '#9ca3af'; // gray-400
+      switch (type) {
+        case 'H':
+          return `hsl(${value}, 50%, 50%)`;
+        case 'S':
+          return `hsl(${hsl.h}, ${value}%, 60%)`;
+        case 'L':
+          return `hsl(${hsl.h}, 50%, 60%)`;
+        default:
+          return '#9ca3af'; // gray-400
       }
 
     case 'hscl':
-      switch(type) {
-        case 'H': return `hsl(${value}, 50%, 50%)`;
-        case 'Sc': return `hsl(${hscl.h}, ${value}%, 60%)`;
-        case 'L': return `hsl(${hscl.h}, 50%, 60%)`;
-        default: return '#9ca3af'; // gray-400
+      switch (type) {
+        case 'H':
+          return `hsl(${value}, 50%, 50%)`;
+        case 'Sc':
+          return `hsl(${hscl.h}, ${value}%, 60%)`;
+        case 'L':
+          return `hsl(${hscl.h}, 50%, 60%)`;
+        default:
+          return '#9ca3af'; // gray-400
       }
 
     default:
@@ -84,7 +97,13 @@ const getBarColor = (colorSpace: 'hsl' | 'hscl', type: 'H' | 'S' | 'L' | 'Sc', v
 };
 
 // Component for rendering horizontal bar graphs
-const ColorValueBars = ({ color, showLabels = false }: { color: ExtractedColor; showLabels?: boolean }) => {
+const ColorValueBars = ({
+  color,
+  showLabels = false,
+}: {
+  color: ExtractedColor;
+  showLabels?: boolean;
+}) => {
   const hsl = rgbToHsl(color.color);
   const hscl = calculateHScL(color.color);
 
@@ -94,7 +113,7 @@ const ColorValueBars = ({ color, showLabels = false }: { color: ExtractedColor; 
     max,
     suffix = '',
     colorSpace,
-    type
+    type,
   }: {
     label: string;
     value: number;
@@ -107,7 +126,10 @@ const ColorValueBars = ({ color, showLabels = false }: { color: ExtractedColor; 
       {showLabels && (
         <div className="flex justify-between">
           <span className="text-gray-500 tracking-wide">{label}</span>
-          <span className="text-gray-700 font-mono">{value}{suffix}</span>
+          <span className="text-gray-700 font-mono">
+            {value}
+            {suffix}
+          </span>
         </div>
       )}
       <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
@@ -115,7 +137,7 @@ const ColorValueBars = ({ color, showLabels = false }: { color: ExtractedColor; 
           className="h-full rounded-full transition-all duration-200"
           style={{
             width: `${Math.min((value / max) * 100, 100)}%`,
-            backgroundColor: getBarColor(colorSpace, type, value, color.color)
+            backgroundColor: getBarColor(colorSpace, type, value, color.color),
           }}
         />
       </div>
@@ -129,19 +151,63 @@ const ColorValueBars = ({ color, showLabels = false }: { color: ExtractedColor; 
         <div className="text-[12px] text-gray-500 font-medium mb-1">HSL</div>
       )}
       <div className="space-y-1">
-        <BarGraph label="H" value={hsl.h} max={360} suffix="°" colorSpace="hsl" type="H" />
-        <BarGraph label="S" value={hsl.s} max={100} suffix="%" colorSpace="hsl" type="S" />
-        <BarGraph label="L" value={hsl.l} max={100} suffix="%" colorSpace="hsl" type="L" />
+        <BarGraph
+          label="H"
+          value={hsl.h}
+          max={360}
+          suffix="°"
+          colorSpace="hsl"
+          type="H"
+        />
+        <BarGraph
+          label="S"
+          value={hsl.s}
+          max={100}
+          suffix="%"
+          colorSpace="hsl"
+          type="S"
+        />
+        <BarGraph
+          label="L"
+          value={hsl.l}
+          max={100}
+          suffix="%"
+          colorSpace="hsl"
+          type="L"
+        />
       </div>
 
       {/* HScL Values */}
       {showLabels && (
-        <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">HScL</div>
+        <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">
+          HScL
+        </div>
       )}
       <div className={`space-y-1 ${!showLabels ? 'mt-3' : ''}`}>
-        <BarGraph label="H" value={hscl.h} max={360} suffix="°" colorSpace="hscl" type="H" />
-        <BarGraph label="Sc" value={hscl.sc} max={100} suffix="%" colorSpace="hscl" type="Sc" />
-        <BarGraph label="L" value={hscl.l} max={100} suffix="%" colorSpace="hscl" type="L" />
+        <BarGraph
+          label="H"
+          value={hscl.h}
+          max={360}
+          suffix="°"
+          colorSpace="hscl"
+          type="H"
+        />
+        <BarGraph
+          label="Sc"
+          value={hscl.sc}
+          max={100}
+          suffix="%"
+          colorSpace="hscl"
+          type="Sc"
+        />
+        <BarGraph
+          label="L"
+          value={hscl.l}
+          max={100}
+          suffix="%"
+          colorSpace="hscl"
+          type="L"
+        />
       </div>
     </div>
   );
@@ -181,7 +247,7 @@ export default function ColorPalette({
   };
 
   const removeTag = (tagToRemove: string) => {
-    setPaletteTags(paletteTags.filter(tag => tag !== tagToRemove));
+    setPaletteTags(paletteTags.filter((tag) => tag !== tagToRemove));
   };
 
   const handleTagInputKeyPress = (e: React.KeyboardEvent) => {
@@ -194,11 +260,6 @@ export default function ColorPalette({
     }
   };
 
-
-
-
-
-
   // Save palette to localStorage
   const savePalette = (name: string) => {
     if (!name.trim() || colors.length === 0) return;
@@ -210,9 +271,11 @@ export default function ColorPalette({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags: paletteTags.length > 0 ? paletteTags : undefined,
-      imageInfo: imageFilename ? {
-        filename: imageFilename,
-      } : undefined,
+      imageInfo: imageFilename
+        ? {
+            filename: imageFilename,
+          }
+        : undefined,
     };
 
     try {
@@ -220,10 +283,10 @@ export default function ColorPalette({
       const savedPalettes = saved ? JSON.parse(saved) : [];
       const updatedPalettes = [...savedPalettes, newPalette];
       localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
-      
+
       // Dispatch custom event to notify SavedPalettesPanel
       window.dispatchEvent(new CustomEvent('palettes-updated'));
-      
+
       setCopyFeedback(`Palette "${name}" saved successfully!`);
       setTimeout(() => setCopyFeedback(null), 3000);
       setShowSaveModal(false);
@@ -248,7 +311,6 @@ export default function ColorPalette({
     }
   };
 
-
   // Export functions
   const handleExport = async (format: string) => {
     setIsExporting(true);
@@ -262,25 +324,29 @@ export default function ColorPalette({
           downloadFile(pngBlob, `${baseFilename}.png`);
           break;
         }
-        
+
         case 'json': {
           const jsonContent = exportAsJSON(colors, { includeMetadata: true });
-          downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
+          downloadTextFile(
+            jsonContent,
+            `${baseFilename}.json`,
+            'application/json'
+          );
           break;
         }
-        
+
         case 'ase': {
           const aseBlob = exportAsASE(colors);
           downloadFile(aseBlob, `${baseFilename}.ase`);
           break;
         }
-        
+
         case 'css': {
           const cssContent = exportAsCSS(colors);
           downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
           break;
         }
-        
+
         case 'adobe': {
           try {
             const acoBlob = exportAsAdobe(colors);
@@ -290,7 +356,7 @@ export default function ColorPalette({
           }
           break;
         }
-        
+
         case 'procreate': {
           try {
             const swatchesBlob = exportAsProcreate(colors);
@@ -300,13 +366,12 @@ export default function ColorPalette({
           }
           break;
         }
-        
+
         default:
           throw new Error(`Unsupported format: ${format}`);
       }
-      
+
       setShowExportModal(false);
-      
     } catch (error) {
       console.error('Export failed:', error);
       setCopyFeedback('Export failed');
@@ -321,16 +386,19 @@ export default function ColorPalette({
 
   if (colors.length === 0) {
     return (
-      <Card className={className}>
+      <Card className={`${className} h-full flex flex-col`}>
         <CardHeader>
           <CardTitle>Extracted Color Palette</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 flex flex-col">
           <div className="text-center py-8 text-gray-500">
             {hasUploadedImage ? (
               <>
                 <div className="mb-2">No colors extracted yet</div>
-                <div className="text-sm">Select an area on the image or use Point mode to extract colors</div>
+                <div className="text-sm">
+                  Select an area on the image or use Point mode to extract
+                  colors
+                </div>
               </>
             ) : (
               'Upload an image to extract colors'
@@ -343,7 +411,7 @@ export default function ColorPalette({
 
   return (
     <>
-      <Card className={className}>
+      <Card className={`${className} h-full flex flex-col`}>
         <CardHeader>
           <CardTitle>Extracted Color Palette</CardTitle>
           <div className="mt-3 space-y-2">
@@ -378,37 +446,45 @@ export default function ColorPalette({
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
           {/* Color grid with data below squares */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {colors.map((extractedColor, index) => {
-              const hex = rgbToHex(extractedColor.color);
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {colors.map((extractedColor, index) => {
+                const hex = rgbToHex(extractedColor.color);
 
-              return (
-                <div
-                  key={index}
-                  className="cursor-pointer text-center relative"
-                  onClick={() => setSelectedColor(extractedColor)}
-                >
+                return (
                   <div
-                    className="aspect-square rounded border border-gray-200 shadow-sm mb-1 hover:scale-105 transition-transform"
-                    style={{ backgroundColor: hex }}
-                  />
-                  {extractedColor.id && lastAddedColorIds.has(extractedColor.id) && (
-                    <div className="absolute top-0 right-0 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
-                      <span className="-translate-y-px">+</span>
-                    </div>
-                  )}
-                  <ColorValueBars color={extractedColor} showLabels={showColorSpaceLabels} />
-                </div>
-              );
-            })}
+                    key={index}
+                    className="cursor-pointer text-center relative"
+                    onClick={() => setSelectedColor(extractedColor)}
+                  >
+                    <div
+                      className="aspect-square rounded border border-gray-200 shadow-sm mb-1 hover:scale-105 transition-transform"
+                      style={{ backgroundColor: hex }}
+                    />
+                    {extractedColor.id &&
+                      lastAddedColorIds.has(extractedColor.id) && (
+                        <div className="absolute top-0 right-0 w-4 h-4 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center transform translate-x-1 -translate-y-1">
+                          <span className="-translate-y-px">+</span>
+                        </div>
+                      )}
+                    <ColorValueBars
+                      color={extractedColor}
+                      showLabels={showColorSpaceLabels}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Copy feedback section */}
           {copyFeedback && (
             <div className="border-t border-gray-200 pt-4">
-              <div className="text-sm text-gray-700 font-medium">{copyFeedback}</div>
+              <div className="text-sm text-gray-700 font-medium">
+                {copyFeedback}
+              </div>
             </div>
           )}
         </CardContent>
@@ -489,7 +565,10 @@ export default function ColorPalette({
                 <div className="flex">
                   <input
                     type="text"
-                    value={formatColorValue('hsl', rgbToHsl(selectedColor.color))}
+                    value={formatColorValue(
+                      'hsl',
+                      rgbToHsl(selectedColor.color)
+                    )}
                     readOnly
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
                   />
@@ -516,7 +595,10 @@ export default function ColorPalette({
                 <div className="flex">
                   <input
                     type="text"
-                    value={formatColorValue('lab', rgbToLab(selectedColor.color))}
+                    value={formatColorValue(
+                      'lab',
+                      rgbToLab(selectedColor.color)
+                    )}
                     readOnly
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
                   />
@@ -543,7 +625,10 @@ export default function ColorPalette({
                 <div className="flex">
                   <input
                     type="text"
-                    value={formatColorValue('lch', rgbToLch(selectedColor.color))}
+                    value={formatColorValue(
+                      'lch',
+                      rgbToLch(selectedColor.color)
+                    )}
                     readOnly
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
                   />
@@ -570,7 +655,10 @@ export default function ColorPalette({
                 <div className="flex">
                   <input
                     type="text"
-                    value={formatColorValue('oklch', rgbToOklch(selectedColor.color))}
+                    value={formatColorValue(
+                      'oklch',
+                      rgbToOklch(selectedColor.color)
+                    )}
                     readOnly
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
                   />
@@ -580,7 +668,10 @@ export default function ColorPalette({
                     className="rounded-l-none border-l-0"
                     onClick={() =>
                       copyToClipboard(
-                        formatColorValue('oklch', rgbToOklch(selectedColor.color)),
+                        formatColorValue(
+                          'oklch',
+                          rgbToOklch(selectedColor.color)
+                        ),
                         'OkLCH'
                       )
                     }
@@ -598,10 +689,11 @@ export default function ColorPalette({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const colorIndex = colors.findIndex(c => 
-                      c.color.r === selectedColor.color.r &&
-                      c.color.g === selectedColor.color.g &&
-                      c.color.b === selectedColor.color.b
+                    const colorIndex = colors.findIndex(
+                      (c) =>
+                        c.color.r === selectedColor.color.r &&
+                        c.color.g === selectedColor.color.g &&
+                        c.color.b === selectedColor.color.b
                     );
                     if (colorIndex !== -1 && onDeleteColor) {
                       onDeleteColor(colorIndex);
@@ -630,7 +722,7 @@ export default function ColorPalette({
             <p className="text-sm text-gray-600">
               Choose a format to export your palette:
             </p>
-            
+
             <div className="grid grid-cols-1 gap-3">
               {/* PNG Export */}
               <button
@@ -639,7 +731,9 @@ export default function ColorPalette({
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">PNG Image</div>
-                <div className="text-sm text-gray-600">Visual palette grid for sharing</div>
+                <div className="text-sm text-gray-600">
+                  Visual palette grid for sharing
+                </div>
               </button>
 
               {/* JSON Export */}
@@ -649,7 +743,9 @@ export default function ColorPalette({
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">JSON Data</div>
-                <div className="text-sm text-gray-600">Complete color data with metadata</div>
+                <div className="text-sm text-gray-600">
+                  Complete color data with metadata
+                </div>
               </button>
 
               {/* CSS Export */}
@@ -659,7 +755,9 @@ export default function ColorPalette({
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">CSS Variables</div>
-                <div className="text-sm text-gray-600">CSS custom properties</div>
+                <div className="text-sm text-gray-600">
+                  CSS custom properties
+                </div>
               </button>
 
               {/* ASE Export */}
@@ -669,15 +767,18 @@ export default function ColorPalette({
                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Adobe ASE</div>
-                <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
+                <div className="text-sm text-gray-600">
+                  Adobe Swatch Exchange format
+                </div>
               </button>
-
             </div>
 
             {isExporting && (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
-                <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
+                <span className="ml-2 text-sm text-gray-600">
+                  Preparing export...
+                </span>
               </div>
             )}
           </div>
@@ -701,9 +802,12 @@ export default function ColorPalette({
             <p className="text-sm text-gray-600">
               Give your palette a memorable name:
             </p>
-            
+
             <div>
-              <label htmlFor="palette-name" className="block text-sm font-medium text-black mb-2">
+              <label
+                htmlFor="palette-name"
+                className="block text-sm font-medium text-black mb-2"
+              >
                 Palette Name
               </label>
               <input
@@ -723,7 +827,10 @@ export default function ColorPalette({
             </div>
 
             <div>
-              <label htmlFor="palette-tags" className="block text-sm font-medium text-black mb-2">
+              <label
+                htmlFor="palette-tags"
+                className="block text-sm font-medium text-black mb-2"
+              >
                 Tags (optional)
               </label>
               <input
@@ -738,7 +845,7 @@ export default function ColorPalette({
               <p className="text-xs text-gray-500 mt-1">
                 Press Enter or comma to add tags
               </p>
-              
+
               {paletteTags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {paletteTags.map((tag, index) => (
@@ -790,7 +897,6 @@ export default function ColorPalette({
           </div>
         </Modal>
       )}
-
     </>
   );
 }
