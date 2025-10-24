@@ -16,7 +16,7 @@ import {
   exportAsPNG,
   exportAsProcreate,
 } from '@/lib/export-formats';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Modal } from '../ui';
 
 interface RGBColor {
@@ -232,6 +232,34 @@ export default function ColorPalette({
   const [paletteTags, setPaletteTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [showColorSpaceLabels, setShowColorSpaceLabels] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to newly added colors
+  useEffect(() => {
+    if (lastAddedColorIds.size > 0 && scrollContainerRef.current) {
+      // Find the first added color element
+      const firstAddedId = Array.from(lastAddedColorIds)[0];
+      const targetElement = scrollContainerRef.current.querySelector(
+        `[data-color-id="${firstAddedId}"]`
+      ) as HTMLElement;
+
+      if (targetElement) {
+        const container = scrollContainerRef.current;
+        // Calculate scroll position: align element to bottom + padding-bottom (24px for pb-6)
+        const paddingBottom = 24; // pb-6 = 1.5rem = 24px
+        const scrollTarget =
+          targetElement.offsetTop +
+          targetElement.offsetHeight -
+          container.clientHeight +
+          paddingBottom;
+
+        container.scrollTo({
+          top: scrollTarget,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [lastAddedColorIds]);
 
   const rgbToHex = (color: RGBColor): string => {
     const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
@@ -448,14 +476,15 @@ export default function ColorPalette({
         </CardHeader>
         <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
           {/* Color grid with data below squares */}
-          <div className="p-6 overflow-y-auto flex-1">
-            <div className="grid grid-cols-2 gap-3 mb-6">
+          <div ref={scrollContainerRef} className="p-6 overflow-y-auto flex-1">
+            <div className="grid grid-cols-2 gap-3">
               {colors.map((extractedColor, index) => {
                 const hex = rgbToHex(extractedColor.color);
 
                 return (
                   <div
                     key={index}
+                    data-color-id={extractedColor.id}
                     className="cursor-pointer text-center relative"
                     onClick={() => setSelectedColor(extractedColor)}
                   >
