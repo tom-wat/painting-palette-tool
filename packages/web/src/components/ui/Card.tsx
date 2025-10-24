@@ -47,5 +47,7 @@ interface CardContentProps {
 }
 
 export function CardContent({ children, className = '' }: CardContentProps) {
-  return <div className={`p-6 ${className}`}>{children}</div>;
+  // If className is provided, use it completely; otherwise use default p-6
+  const contentClasses = className ? className : 'p-6';
+  return <div className={contentClasses}>{children}</div>;
 }

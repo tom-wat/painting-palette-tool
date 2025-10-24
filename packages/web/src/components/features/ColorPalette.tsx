@@ -474,7 +474,7 @@ export default function ColorPalette({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+        <CardContent className="flex-1 flex flex-col overflow-hidden">
           {/* Color grid with data below squares */}
           <div ref={scrollContainerRef} className="p-6 overflow-y-auto flex-1">
             <div className="grid grid-cols-2 gap-3">
