@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Card, type ToastType } from '../ui';
+import { type ToastType } from '../ui';
 
 interface ImageUploadProps {
   onImageUpload: (_file: File, _imageData: ImageData) => void;
@@ -124,11 +124,11 @@ export default function ImageUpload({
   }
 
   return (
-    <Card className={className}>
+    <div className={className}>
       <div
         className={`
           relative border-2 border-dashed rounded-lg p-16 text-center transition-colors min-h-[70vh]
-          ${isDragging ? 'border-black bg-gray-50' : 'border-gray-300'}
+          ${isDragging ? 'border-black bg-gray-50' : 'border-gray-300 bg-white'}
           ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
           flex items-center justify-center
         `}
@@ -179,6 +179,6 @@ export default function ImageUpload({
           </div>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
