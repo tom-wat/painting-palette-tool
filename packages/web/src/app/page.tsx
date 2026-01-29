@@ -13,7 +13,7 @@ import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
 import { Card, CardContent, Select, Slider, Toggle, useToast } from '@/components/ui';
 import { PaletteExtractor } from '@palette-tool/color-engine';
 // import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
-import { areColorsSimilar } from '@/lib/color-space-conversions';
+import { areColorsSimilar, rgbToGrayscale } from '@/lib/color-space-conversions';
 import { useProcessingPipeline } from '@/lib/processing-pipeline';
 
 interface RGBColor {
@@ -95,7 +95,11 @@ export default function Home() {
   const handleSelectionChange = async (selectionData: ImageData | null) => {
     if (selectionData) {
       // Always add colors from new selection to existing palette
-      const newColors = await extractColorsForAddMode(selectionData, settings);
+      const newColors = await extractColorsForAddMode(
+        selectionData,
+        settings,
+        isGreyscale
+      );
       if (newColors.length > 0) {
         const { mergedColors, newColorIds } = mergeAndDeduplicateColors(
           extractedColors,
@@ -112,7 +116,8 @@ export default function Home() {
   // Extract colors for Add Mode (simplified, no caching)
   const extractColorsForAddMode = async (
     imgData: ImageData,
-    extractionSettings: ExtractionSettings
+    extractionSettings: ExtractionSettings,
+    applyGrayscale: boolean = false
   ): Promise<ExtractedColor[]> => {
     try {
       // Use color-engine for extraction
@@ -123,6 +128,14 @@ export default function Home() {
       });
 
       let colors = result.colors;
+
+      // Apply grayscale conversion if enabled
+      if (applyGrayscale) {
+        colors = colors.map((colorData) => ({
+          ...colorData,
+          color: rgbToGrayscale(colorData.color),
+        }));
+      }
 
       // Apply sorting
       if (extractionSettings.sortBy === 'brightness') {
@@ -484,9 +497,7 @@ export default function Home() {
   };
 
   return (
-    <main
-      className={`min-h-screen bg-gray-50 text-black ${isGreyscale ? 'grayscale' : ''}`}
-    >
+    <main className="min-h-screen bg-gray-50 text-black">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -666,6 +677,7 @@ export default function Home() {
                       onPointColorAdd={handlePointColorAdd}
                       selectionMode={selectionConfig.mode}
                       onClearSelection={handleClearSelectionCallback}
+                      isGreyscale={isGreyscale}
                     />
 
                     {/* Brightness Analysis - Hidden */}

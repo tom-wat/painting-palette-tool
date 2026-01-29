@@ -68,6 +68,21 @@ export function rgbToHsl(color: RGBColor): HSLColor {
 }
 
 /**
+ * Convert RGB color to grayscale using perceptual luminance
+ * Uses Rec. 709 standard coefficients for accurate perceptual brightness
+ * @param color - RGB color object
+ * @returns Grayscale RGB color (R=G=B)
+ */
+export function rgbToGrayscale(color: RGBColor): RGBColor {
+  const gray = Math.round(
+    0.2126 * color.r +
+    0.7152 * color.g +
+    0.0722 * color.b
+  );
+  return { r: gray, g: gray, b: gray };
+}
+
+/**
  * Convert RGB to XYZ color space (D65 illuminant, sRGB primaries)
  */
 function rgbToXyz(color: RGBColor): { x: number; y: number; z: number } {

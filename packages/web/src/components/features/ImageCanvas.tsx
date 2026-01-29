@@ -7,6 +7,7 @@ import {
   type Point
 } from '@/lib/selection-tools';
 import { type SelectionMode } from './AdvancedSelectionTools';
+import { rgbToGrayscale } from '@/lib/color-space-conversions';
 
 interface SelectionRect {
   start: Point;
@@ -20,6 +21,7 @@ interface ImageCanvasProps {
   selectionMode: SelectionMode;
   onClearSelection?: (_clearFn: () => void) => void;
   className?: string;
+  isGreyscale?: boolean;
 }
 
 export default function ImageCanvas({
@@ -29,6 +31,7 @@ export default function ImageCanvas({
   selectionMode,
   onClearSelection,
   className = '',
+  isGreyscale = false,
 }: ImageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,11 +151,21 @@ export default function ImageCanvas({
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
+    // Apply grayscale filter if enabled
+    if (isGreyscale) {
+      ctx.filter = 'grayscale(100%)';
+    } else {
+      ctx.filter = 'none';
+    }
+
     // Draw image
     const displayWidth = image.width * scale;
     const displayHeight = image.height * scale;
     ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
+
+    // Reset filter for UI elements
+    ctx.filter = 'none';
     
     // Draw selection rectangle
     const currentSelection = selection || dragSelection;
@@ -174,12 +187,18 @@ export default function ImageCanvas({
       // Clear selected area and redraw image for confirmed selection only
       if (selection) {
         ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
-        
+
         // Redraw image in selected area only
         ctx.save();
         ctx.beginPath();
         ctx.rect(rect.x, rect.y, rect.width, rect.height);
         ctx.clip();
+
+        // Apply grayscale filter if enabled
+        if (isGreyscale) {
+          ctx.filter = 'grayscale(100%)';
+        }
+
         ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
         ctx.restore();
       }
@@ -344,7 +363,7 @@ export default function ImageCanvas({
         );
       }
     }
-  }, [image, scale, offset, selection, dragSelection, selectionMode, polygonSelection, currentMask, isDrawing]);
+  }, [image, scale, offset, selection, dragSelection, selectionMode, polygonSelection, currentMask, isDrawing, isGreyscale]);
 
   // Zoom functionality
   const handleZoom = useCallback((delta: number, centerX: number, centerY: number) => {
@@ -401,8 +420,7 @@ export default function ImageCanvas({
   // Redraw when selection changes
   useEffect(() => {
     drawCanvas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps  
-  }, [selection, dragSelection, image, scale, offset, currentMask, polygonSelection, selectionMode]);
+  }, [drawCanvas]);
 
   // Get mouse position relative to canvas
   const getMousePos = useCallback((e: React.MouseEvent): Point => {
@@ -537,12 +555,19 @@ export default function ImageCanvas({
 
     const index = (y * sourceImageData.width + x) * 4;
 
-    return {
+    let color = {
       r: sourceImageData.data[index],
       g: sourceImageData.data[index + 1],
       b: sourceImageData.data[index + 2]
     };
-  }, [sourceImageData, image]);
+
+    // Apply grayscale conversion if enabled
+    if (isGreyscale) {
+      color = rgbToGrayscale(color);
+    }
+
+    return color;
+  }, [sourceImageData, image, isGreyscale]);
 
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
