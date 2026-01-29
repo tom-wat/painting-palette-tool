@@ -31,3 +31,6 @@ out/
 # Build cache
 *.tsbuildinfo
 .turbo/
+
+# Claude Code
+.claude/settings.local.json
