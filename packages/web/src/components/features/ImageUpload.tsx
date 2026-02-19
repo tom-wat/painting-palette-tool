@@ -127,10 +127,10 @@ export default function ImageUpload({
     <div className={className}>
       <div
         className={`
-          relative border-2 border-dashed rounded-lg p-16 text-center transition-colors min-h-[70vh]
-          ${isDragging ? 'border-black bg-gray-50' : 'border-gray-300 bg-white'}
+          border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 min-h-[80vh]
+          flex flex-col justify-center bg-white
+          ${isDragging ? 'border-gray-400 bg-gray-50' : 'border-gray-300 hover:border-gray-400'}
           ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
-          flex items-center justify-center
         `}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -155,25 +155,22 @@ export default function ImageUpload({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="mx-auto h-16 w-16 text-gray-400">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="text-6xl text-gray-300">
+              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={1}
+                  strokeWidth={1.5}
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
             </div>
-            <div>
-              <p className="text-lg font-medium text-black">
-                {isDragging ? 'Drop image here' : 'Upload reference image'}
+            <div className="space-y-2">
+              <p className="text-lg font-medium text-gray-900">
+                Drop image here or click to select
               </p>
-              <p className="text-gray-600 mt-1">
-                Drag and drop an image here, or click to select
-              </p>
-              <p className="text-gray-500 text-sm mt-2">
-                Supports JPG, PNG, WebP • Max 10MB
+              <p className="text-sm text-gray-500">
+                Supports: JPEG, PNG, GIF, WebP (Max: 10MB, 8000×8000px)
               </p>
             </div>
           </div>
