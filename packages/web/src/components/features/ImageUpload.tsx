@@ -129,7 +129,7 @@ export default function ImageUpload({
         className={`
           border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 h-full
           flex flex-col justify-center bg-white
-          ${isDragging ? 'border-gray-400 bg-gray-50' : 'border-gray-300 hover:border-gray-400'}
+          ${isDragging ? 'border-blue-500' : 'border-gray-300 hover:border-gray-400'}
           ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
         `}
         onDrop={handleDrop}

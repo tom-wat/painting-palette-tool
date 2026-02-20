@@ -496,13 +496,29 @@ export default function Home() {
     setLastAddedColorIds(new Set());
   };
 
+  // Clear image and return to initial state
+  const handleClearImage = () => {
+    setUploadedImage(null);
+    setImageData(null);
+    setSelectedImageData(null);
+    setExtractedColors([]);
+    setLastAddedColorIds(new Set());
+    setActiveTab('image');
+  };
+
   return (
     <main className="h-screen flex flex-col bg-gray-50 text-black">
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-6 py-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">Painting Palette</h1>
+            <h1
+              className={`text-lg font-bold transition-colors select-none ${uploadedImage ? 'cursor-pointer hover:text-gray-500' : ''}`}
+              onClick={uploadedImage ? handleClearImage : undefined}
+              title={uploadedImage ? 'Click to clear image and return to top' : undefined}
+            >
+              Painting Palette
+            </h1>
           </div>
           <div className="flex items-center space-x-2">
             <button
