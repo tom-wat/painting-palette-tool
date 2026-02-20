@@ -660,52 +660,51 @@ export default function Home() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-4 space-y-6">
-            {activeTab === 'image' ? (
-              <>
-                {uploadedImage ? (
-                  <>
-                    {/* Image Canvas */}
-                    <ImageCanvas
-                      imageFile={uploadedImage}
-                      onSelectionChange={handleSelectionChange}
-                      onPointColorAdd={handlePointColorAdd}
-                      selectionMode={selectionConfig.mode}
-                      onClearSelection={handleClearSelectionCallback}
-                      isGreyscale={isGreyscale}
-                    />
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {activeTab === 'image' ? (
+            <>
+              {uploadedImage ? (
+                <div className="flex-1 p-4 flex flex-col overflow-hidden">
+                  {/* Image Canvas */}
+                  <ImageCanvas
+                    imageFile={uploadedImage}
+                    onSelectionChange={handleSelectionChange}
+                    onPointColorAdd={handlePointColorAdd}
+                    selectionMode={selectionConfig.mode}
+                    onClearSelection={handleClearSelectionCallback}
+                    isGreyscale={isGreyscale}
+                    className="flex-1 flex flex-col"
+                  />
 
-                    {/* Brightness Analysis - Hidden */}
-                    {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
+                  {/* Brightness Analysis - Hidden */}
+                  {/* <BrightnessAnalysis analysis={brightnessAnalysis} /> */}
 
-                    {/* Image Upload (bottom) */}
-                    <ImageUpload
-                      onImageUpload={handleImageUpload}
-                      hasUploadedImage={!!uploadedImage}
-                      showToast={showToast}
-                    />
-                  </>
-                ) : (
-                  /* Image Upload - Full width when no image */
-                  <div className="w-full">
-                    <ImageUpload
-                      onImageUpload={handleImageUpload}
-                      hasUploadedImage={!!uploadedImage}
-                      showToast={showToast}
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {/* Saved Palettes Panel - Always accessible */}
-                <SavedPalettesPanel
-                  onAddColorToExtracted={handleAddColorFromSaved}
-                />
-              </>
-            )}
-          </div>
+                  {/* Image Upload (bottom) */}
+                  <ImageUpload
+                    onImageUpload={handleImageUpload}
+                    hasUploadedImage={!!uploadedImage}
+                    showToast={showToast}
+                  />
+                </div>
+              ) : (
+                /* Image Upload - Full height when no image */
+                <div className="flex-1 p-4">
+                  <ImageUpload
+                    onImageUpload={handleImageUpload}
+                    hasUploadedImage={!!uploadedImage}
+                    showToast={showToast}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="p-4 space-y-6 overflow-auto">
+              {/* Saved Palettes Panel - Always accessible */}
+              <SavedPalettesPanel
+                onAddColorToExtracted={handleAddColorFromSaved}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar */}

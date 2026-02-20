@@ -901,8 +901,8 @@ export default function ImageCanvas({
 
   return (
     <Card className={className}>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="p-6 flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Image Canvas</h3>
           <div className="flex items-center space-x-2">
@@ -956,10 +956,10 @@ export default function ImageCanvas({
           </div>
         </div>
         
-        <div 
+        <div
           ref={containerRef}
-          className="relative bg-gray-100 rounded-lg overflow-hidden"
-          style={{ height: 'min(70vh, 900px)', minHeight: '400px' }}
+          className="relative bg-gray-100 rounded-lg overflow-hidden flex-1"
+          style={{ minHeight: '400px' }}
         >
           <canvas
             ref={canvasRef}
