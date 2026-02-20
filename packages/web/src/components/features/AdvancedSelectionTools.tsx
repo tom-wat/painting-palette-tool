@@ -68,7 +68,7 @@ export default function AdvancedSelectionTools({
                 className={`w-full p-3 border rounded-lg text-center transition-colors ${
                   config.mode === pointMode.id
                     ? 'border-black bg-gray-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-gray-100 hover:border-gray-300'
                 }`}
                 title={pointMode.description}
               >
@@ -85,7 +85,7 @@ export default function AdvancedSelectionTools({
                   className={`p-3 border rounded-lg text-center transition-colors ${
                     config.mode === mode.id
                       ? 'border-black bg-gray-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-100 hover:border-gray-300'
                   }`}
                   title={mode.description}
                 >

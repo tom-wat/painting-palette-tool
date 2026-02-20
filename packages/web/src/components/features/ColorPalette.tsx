@@ -489,7 +489,7 @@ export default function ColorPalette({
                     onClick={() => setSelectedColor(extractedColor)}
                   >
                     <div
-                      className="aspect-square rounded border border-gray-200 shadow-sm mb-1 hover:scale-105 transition-transform"
+                      className="aspect-square rounded border border-gray-100 shadow-sm mb-1 hover:scale-105 transition-transform"
                       style={{ backgroundColor: hex }}
                     />
                     {extractedColor.id &&
@@ -510,7 +510,7 @@ export default function ColorPalette({
 
           {/* Copy feedback section */}
           {copyFeedback && (
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-gray-100 pt-4">
               <div className="text-sm text-gray-700 font-medium">
                 {copyFeedback}
               </div>
@@ -530,7 +530,7 @@ export default function ColorPalette({
           <div className="space-y-4">
             {/* Color preview */}
             <div
-              className="w-full h-32 rounded-lg border border-gray-200"
+              className="w-full h-32 rounded-lg border border-gray-100"
               style={{ backgroundColor: rgbToHex(selectedColor.color) }}
             />
 
@@ -713,7 +713,7 @@ export default function ColorPalette({
 
             {/* Delete color action */}
             {onDeleteColor && (
-              <div className="border-t border-gray-200 pt-4">
+              <div className="border-t border-gray-100 pt-4">
                 <Button
                   variant="outline"
                   size="sm"
@@ -757,7 +757,7 @@ export default function ColorPalette({
               <button
                 onClick={() => handleExport('png')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">PNG Image</div>
                 <div className="text-sm text-gray-600">
@@ -769,7 +769,7 @@ export default function ColorPalette({
               <button
                 onClick={() => handleExport('json')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">JSON Data</div>
                 <div className="text-sm text-gray-600">
@@ -781,7 +781,7 @@ export default function ColorPalette({
               <button
                 onClick={() => handleExport('css')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">CSS Variables</div>
                 <div className="text-sm text-gray-600">
@@ -793,7 +793,7 @@ export default function ColorPalette({
               <button
                 onClick={() => handleExport('ase')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Adobe ASE</div>
                 <div className="text-sm text-gray-600">

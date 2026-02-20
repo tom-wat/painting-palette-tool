@@ -85,7 +85,7 @@ export default function TestPage() {
             onChange={handleFileChange}
             className="mb-4 block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-900 file:text-white hover:file:bg-gray-700"
           />
-          <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+          <div className="p-3 bg-gray-50 border border-gray-100 rounded-md">
             <p className="text-gray-800 font-medium">{message}</p>
           </div>
         </div>

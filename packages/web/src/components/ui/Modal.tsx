@@ -88,7 +88,7 @@ export default function Modal({
           className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:align-middle sm:max-w-lg sm:w-full ${className}`}
         >
           {title && (
-            <div className="bg-white px-6 py-4 border-b border-gray-200">
+            <div className="bg-white px-6 py-4 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <h3
                   className="text-lg font-semibold text-black"
@@ -135,7 +135,7 @@ interface ModalFooterProps {
 export function ModalFooter({ children, className = '' }: ModalFooterProps) {
   return (
     <div
-      className={`bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ${className}`}
+      className={`bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 ${className}`}
     >
       {children}
     </div>

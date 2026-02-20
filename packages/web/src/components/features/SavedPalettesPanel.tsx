@@ -1063,7 +1063,7 @@ export default function SavedPalettesPanel({
                     paletteRefs.current[palette.id] = el;
                   }
                 }}
-                className="border border-gray-200 rounded-lg p-3 hover:border-gray-300 transition-colors cursor-pointer"
+                className="border border-gray-100 rounded-lg p-3 hover:border-gray-300 transition-colors cursor-pointer"
                 style={{ transform: 'translateZ(0)' }}
                 onClick={() => openPaletteDetailModal(palette)}
               >
@@ -1158,7 +1158,7 @@ export default function SavedPalettesPanel({
                             }}
                           >
                             <div
-                              className="aspect-square rounded border border-gray-200 shadow-sm mb-1"
+                              className="aspect-square rounded border border-gray-100 shadow-sm mb-1"
                               style={{ backgroundColor: hex }}
                             />
                             <ColorValueBars color={color} paletteId={palette.id} />
@@ -1266,7 +1266,7 @@ export default function SavedPalettesPanel({
                   return (
                     <div
                       key={idx}
-                      className="aspect-square rounded border border-gray-200 shadow-sm"
+                      className="aspect-square rounded border border-gray-100 shadow-sm"
                       style={{ backgroundColor: rgbToHex(color.color) }}
                       title={formatColorValue('hsl', hsl)}
                     />
@@ -1276,7 +1276,7 @@ export default function SavedPalettesPanel({
             </div>
 
             {/* Export Section */}
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-gray-100 pt-4">
               <label className="block text-sm font-medium text-black mb-3">
                 Export Palette
               </label>
@@ -1360,7 +1360,7 @@ export default function SavedPalettesPanel({
           <div className="space-y-4">
             {/* Color preview */}
             <div
-              className="w-full h-32 rounded-lg border border-gray-200"
+              className="w-full h-32 rounded-lg border border-gray-100"
               style={{ backgroundColor: rgbToHex(selectedColor.color) }}
             />
 
@@ -1527,7 +1527,7 @@ export default function SavedPalettesPanel({
             </div>
 
             {/* Add to extracted palette and delete actions */}
-            <div className="border-t border-gray-200 pt-4 space-y-3">
+            <div className="border-t border-gray-100 pt-4 space-y-3">
               {onAddColorToExtracted && (
                 <button
                   onClick={() => {
@@ -1581,7 +1581,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('png', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">PNG Image</div>
                 <div className="text-sm text-gray-600">Visual palette grid for sharing</div>
@@ -1590,7 +1590,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('json', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">JSON Data</div>
                 <div className="text-sm text-gray-600">Complete color data with metadata</div>
@@ -1599,7 +1599,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('css', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">CSS Variables</div>
                 <div className="text-sm text-gray-600">CSS custom properties</div>
@@ -1608,7 +1608,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('ase', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Adobe ASE</div>
                 <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
@@ -1617,7 +1617,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('adobe', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Adobe Color</div>
                 <div className="text-sm text-gray-600">ACO palette file for Adobe products</div>
@@ -1626,7 +1626,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('procreate', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Procreate</div>
                 <div className="text-sm text-gray-600">Swatches file for Procreate</div>
@@ -1661,7 +1661,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleBulkExport('json')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">JSON Collection</div>
                 <div className="text-sm text-gray-600">Single file with all palettes and metadata</div>
@@ -1670,7 +1670,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleBulkExport('css')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">CSS File</div>
                 <div className="text-sm text-gray-600">Single CSS file with all palette variables</div>
@@ -1679,7 +1679,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleBulkExport('ase')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Adobe ASE File</div>
                 <div className="text-sm text-gray-600">Single ASE file with all palette colors</div>
@@ -1688,7 +1688,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleBulkExport('adobe')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Adobe Color File</div>
                 <div className="text-sm text-gray-600">Single ACO file with all palette colors</div>
@@ -1697,7 +1697,7 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleBulkExport('procreate')}
                 disabled={isExporting}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="font-semibold text-black">Procreate File</div>
                 <div className="text-sm text-gray-600">Single swatches file with all palette colors</div>

@@ -141,7 +141,7 @@ export default function CubeVisualization({ colors, config = {} }: CubeVisualiza
             <div className="bg-gray-50 p-4 rounded-lg">
               <canvas
                 ref={canvasRef}
-                className="max-w-full h-auto border border-gray-200 rounded-md shadow-sm bg-white"
+                className="max-w-full h-auto border border-gray-100 rounded-md shadow-sm bg-white"
                 style={{ display: 'block', margin: '0 auto' }}
               />
             </div>

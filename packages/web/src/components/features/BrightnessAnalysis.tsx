@@ -143,7 +143,7 @@ export default function BrightnessAnalysis({
                 <div className="font-semibold">{Math.round(statistics.range * 100)}%</div>
               </div>
             </div>
-            <div className="pt-2 border-t border-gray-200">
+            <div className="pt-2 border-t border-gray-100">
               <div className="text-sm">
                 <span className="text-gray-600">Dominant Tone: </span>
                 <span className="font-semibold capitalize">{statistics.dominantTone}</span>

@@ -499,7 +499,7 @@ export default function Home() {
   return (
     <main className="h-screen flex flex-col bg-gray-50 text-black">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3">
+      <header className="bg-white border-b border-gray-100 px-6 py-3">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold">Painting Palette</h1>
@@ -531,7 +531,7 @@ export default function Home() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
-        <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+        <div className="w-80 bg-white border-r border-gray-100 overflow-y-auto">
           <div className="p-4 space-y-4">
             {/* Advanced Selection Tools */}
             {uploadedImage ? (
@@ -708,7 +708,7 @@ export default function Home() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-80 bg-white border-l border-gray-200">
+        <div className="w-80 bg-white border-l border-gray-100">
           <div className="p-4 h-full">
             <ColorPalette
               colors={extractedColors}
