@@ -886,7 +886,7 @@ export default function Home() {
       </main>
 
       {/* ── Mobile layout (<1024px) ── */}
-      <main className="lg:hidden flex h-screen flex-col bg-gray-50 text-gray-800">
+      <main className="lg:hidden flex flex-col bg-gray-50 text-gray-800" style={{ height: '100dvh' }}>
         {/* Compact Header */}
         <header className="bg-white border-b border-gray-100 px-4 py-2 flex items-center justify-between">
           <h1
@@ -904,11 +904,11 @@ export default function Home() {
         </header>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
 
           {/* Canvas Tab */}
           {mobileTab === 'canvas' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               {/* Quick mode selector (only when image loaded) */}
               {uploadedImage && (
                 <div className="bg-white border-b border-gray-100 px-3 py-2 flex items-center gap-2">
@@ -950,7 +950,7 @@ export default function Home() {
               )}
 
               {uploadedImage ? (
-                <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                   {imageCanvasEl}
                   <ImageUpload
                     onImageUpload={handleImageUpload}
@@ -959,7 +959,7 @@ export default function Home() {
                   />
                 </div>
               ) : (
-                <div className="flex-1 p-4">
+                <div className="flex-1 min-h-0 p-4 overflow-hidden">
                   <ImageUpload
                     onImageUpload={handleImageUpload}
                     hasUploadedImage={!!uploadedImage}

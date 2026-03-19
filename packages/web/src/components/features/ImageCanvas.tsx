@@ -1107,6 +1107,7 @@ export default function ImageCanvas({
       setIsDrawing(false);
       setIsAnnotating(false);
       setIsTouchPanning(false);
+      setTouchStartPos(null); // Prevent touchEnd from triggering pick/polygon after pinch
     }
   }, [getTouchPos, getTouchDistance, getTouchCenter, scale, selectionMode, annotationMode, screenToImageCoords]);
 
@@ -1361,8 +1362,8 @@ export default function ImageCanvas({
 
         <div
           ref={containerRef}
-          className="relative bg-gray-100 rounded-lg overflow-hidden flex-1"
-          style={{ minHeight: '400px' }}
+          className="relative bg-gray-100 rounded-lg overflow-hidden flex-1 min-h-0"
+          style={{ minHeight: 'min(400px, 40vh)' }}
         >
           <canvas
             ref={canvasRef}
