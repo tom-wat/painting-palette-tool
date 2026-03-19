@@ -8,6 +8,13 @@ import {
   formatColorValue
 } from './color-space-conversions';
 
+export interface ColorAnnotation {
+  id: string;
+  anchorPoint: { x: number; y: number };
+  labelPoint: { x: number; y: number };
+  color: RGBColor;
+}
+
 export interface RGBColor {
   r: number;
   g: number;
@@ -749,4 +756,166 @@ export function downloadFile(blob: Blob, filename: string): void {
 export function downloadTextFile(content: string, filename: string, mimeType: string = 'text/plain'): void {
   const blob = new Blob([content], { type: mimeType });
   downloadFile(blob, filename);
+}
+
+function rgbToHslLocal(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function drawAnnotationsOnCtx(
+  ctx: CanvasRenderingContext2D,
+  annotations: ColorAnnotation[],
+  canvasWidth: number,
+  lineOpacity: number,
+  fontSize: number,
+  theme: 'light' | 'dark' = 'dark',
+  lineColor: string = '#ffffff'
+) {
+  const isDark = theme === 'dark';
+  const boxBg = isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)';
+  const textPrimary = isDark ? '#ffffff' : '#000000';
+  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+
+  for (const annotation of annotations) {
+    const { anchorPoint: ap, labelPoint: lp, color } = annotation;
+    const { r, g, b } = color;
+    const hsl = rgbToHslLocal(r, g, b);
+    const hscl = calculateHScL(color);
+    const line1 = `${hsl.h} ${hsl.s} ${hsl.l}`;
+    const line2 = `${hscl.h} ${hscl.sc} ${hscl.l}`;
+
+    // Line
+    ctx.save();
+    ctx.globalAlpha = lineOpacity;
+    ctx.beginPath();
+    ctx.moveTo(ap.x, ap.y);
+    ctx.lineTo(lp.x, lp.y);
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = Math.max(1, fontSize / 10);
+    ctx.stroke();
+    ctx.restore();
+
+    // Label box
+    const swatchSize = fontSize;
+    const pad = Math.round(fontSize * 0.4);
+    const lineH = fontSize + 3;
+    const textIndent = swatchSize + pad;
+    const fontStack = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    ctx.font = `${fontSize}px ${fontStack}`;
+    const w1 = ctx.measureText(line1).width;
+    const w2 = ctx.measureText(line2).width;
+    const boxW = Math.max(w1, w2) + textIndent + pad * 2;
+    const boxH = lineH + fontSize + pad * 2;
+
+    // Center at label point
+    const bx = Math.max(0, Math.min(lp.x - boxW / 2, canvasWidth - boxW));
+    const by = lp.y - boxH / 2;
+
+    const radius = Math.round(fontSize * 0.25);
+    ctx.fillStyle = boxBg;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, boxW, boxH, radius);
+    ctx.fill();
+
+    // Color swatch — vertically centered in box
+    const swatchY = by + (boxH - swatchSize) / 2;
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(bx + pad, swatchY, swatchSize, swatchSize);
+
+    // Swatch border for near-white or near-black colors
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    if (brightness > 220 || brightness < 30) {
+      ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx + pad, swatchY, swatchSize, swatchSize);
+    }
+
+    ctx.font = `${fontSize}px ${fontStack}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = textSecondary;
+    ctx.fillText(line1, bx + pad + textIndent, by + pad);
+    ctx.fillStyle = textPrimary;
+    ctx.fillText(line2, bx + pad + textIndent, by + pad + lineH);
+  }
+}
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.src = url;
+  });
+}
+
+/**
+ * Export image with annotations as PNG (image + annotations at original resolution)
+ */
+export async function exportImageWithAnnotations(
+  imageFile: File,
+  annotations: ColorAnnotation[],
+  options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string } = {}
+): Promise<Blob> {
+  const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff' } = options;
+  const img = await loadImage(imageFile);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Cannot create canvas context');
+
+  ctx.drawImage(img, 0, 0);
+  drawAnnotationsOnCtx(ctx, annotations, canvas.width, lineOpacity, fontSize, theme, lineColor);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Failed to create PNG blob'));
+    }, 'image/png');
+  });
+}
+
+/**
+ * Export annotations only as PNG (transparent background, original resolution)
+ */
+export async function exportAnnotationsOnly(
+  imageFile: File,
+  annotations: ColorAnnotation[],
+  options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string } = {}
+): Promise<Blob> {
+  const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff' } = options;
+  const img = await loadImage(imageFile);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Cannot create canvas context');
+
+  // Transparent background — do not fill
+  drawAnnotationsOnCtx(ctx, annotations, canvas.width, lineOpacity, fontSize, theme, lineColor);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Failed to create PNG blob'));
+    }, 'image/png');
+  });
 }

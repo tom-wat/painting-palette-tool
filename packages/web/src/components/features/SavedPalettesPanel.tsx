@@ -93,6 +93,14 @@ export default function SavedPalettesPanel({
     return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
   };
 
+  // Helper function to get swatch border class based on color brightness
+  const getSwatchBorderClass = (color: RGBColor): string => {
+    const brightness = (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
+    if (brightness > 220) return 'border border-gray-300';
+    if (brightness < 30) return 'border border-gray-400';
+    return 'border border-gray-100';
+  };
+
   // Helper function to get bar color based on color space and type
   const getBarColor = (colorSpace: 'hsl' | 'hscl', type: 'H' | 'S' | 'L' | 'Sc', value: number, color: RGBColor) => {
     const hsl = rgbToHsl(color);
@@ -1158,7 +1166,7 @@ export default function SavedPalettesPanel({
                             }}
                           >
                             <div
-                              className="aspect-square rounded border border-gray-100 shadow-sm mb-1"
+                              className={`aspect-square rounded shadow-sm mb-1 ${getSwatchBorderClass(color.color)}`}
                               style={{ backgroundColor: hex }}
                             />
                             <ColorValueBars color={color} paletteId={palette.id} />
@@ -1266,7 +1274,7 @@ export default function SavedPalettesPanel({
                   return (
                     <div
                       key={idx}
-                      className="aspect-square rounded border border-gray-100 shadow-sm"
+                      className={`aspect-square rounded shadow-sm ${getSwatchBorderClass(color.color)}`}
                       style={{ backgroundColor: rgbToHex(color.color) }}
                       title={formatColorValue('hsl', hsl)}
                     />
@@ -1360,7 +1368,7 @@ export default function SavedPalettesPanel({
           <div className="space-y-4">
             {/* Color preview */}
             <div
-              className="w-full h-32 rounded-lg border border-gray-100"
+              className={`w-full h-32 rounded-lg ${getSwatchBorderClass(selectedColor.color)}`}
               style={{ backgroundColor: rgbToHex(selectedColor.color) }}
             />
 

@@ -56,6 +56,14 @@ interface ColorPaletteProps {
   onResetPalette?: () => void;
 }
 
+// Helper function to get swatch border class based on color brightness
+const getSwatchBorderClass = (color: RGBColor): string => {
+  const brightness = (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
+  if (brightness > 220) return 'border border-gray-300';
+  if (brightness < 30) return 'border border-gray-400';
+  return 'border border-gray-100';
+};
+
 // Helper function to get bar color based on color space and type
 const getBarColor = (
   colorSpace: 'hsl' | 'hscl',
@@ -489,7 +497,7 @@ export default function ColorPalette({
                     onClick={() => setSelectedColor(extractedColor)}
                   >
                     <div
-                      className="aspect-square rounded border border-gray-100 shadow-sm mb-1 hover:scale-105 transition-transform"
+                      className={`aspect-square rounded shadow-sm mb-1 hover:scale-105 transition-transform ${getSwatchBorderClass(extractedColor.color)}`}
                       style={{ backgroundColor: hex }}
                     />
                     {extractedColor.id &&
@@ -530,7 +538,7 @@ export default function ColorPalette({
           <div className="space-y-4">
             {/* Color preview */}
             <div
-              className="w-full h-32 rounded-lg border border-gray-100"
+              className={`w-full h-32 rounded-lg ${getSwatchBorderClass(selectedColor.color)}`}
               style={{ backgroundColor: rgbToHex(selectedColor.color) }}
             />
 

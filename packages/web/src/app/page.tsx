@@ -3,11 +3,13 @@
 import ColorPalette from '@/components/features/ColorPalette';
 import ImageCanvas from '@/components/features/ImageCanvas';
 import ImageUpload from '@/components/features/ImageUpload';
-import { useCallback, useRef, useState } from 'react';
+import AnnotationControls from '@/components/features/AnnotationControls';
+import { useCallback, useEffect, useRef, useState } from 'react';
 // import BrightnessAnalysis from '@/components/features/BrightnessAnalysis';
 import AdvancedSelectionTools, {
   type AdvancedSelectionConfig,
   type SelectionMode,
+  type AnnotationMode,
 } from '@/components/features/AdvancedSelectionTools';
 import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
 import { Card, CardContent, Select, Slider, Toggle, useToast } from '@/components/ui';
@@ -15,6 +17,12 @@ import { PaletteExtractor } from '@palette-tool/color-engine';
 // import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
 import { areColorsSimilar, rgbToGrayscale } from '@/lib/color-space-conversions';
 import { useProcessingPipeline } from '@/lib/processing-pipeline';
+import {
+  type ColorAnnotation,
+  exportImageWithAnnotations,
+  exportAnnotationsOnly,
+  downloadFile,
+} from '@/lib/export-formats';
 
 interface RGBColor {
   r: number;
@@ -56,6 +64,14 @@ export default function Home() {
   const [isGreyscale, setIsGreyscale] = useState(false);
   const [activeTab, setActiveTab] = useState<'image' | 'palette'>('image');
 
+  // Annotation state
+  const [annotations, setAnnotations] = useState<ColorAnnotation[]>([]);
+  const [annotationMode, setAnnotationMode] = useState<AnnotationMode>('pick');
+  const [annotationLineOpacity, setAnnotationLineOpacity] = useState(0.7);
+  const [annotationFontSize, setAnnotationFontSize] = useState<number>(16);
+  const [annotationTheme, setAnnotationTheme] = useState<'light' | 'dark'>('dark');
+  const [annotationLineColor, setAnnotationLineColor] = useState<string>('#ffffff');
+
   // Toast notification hook
   const { showToast, ToastContainer } = useToast();
 
@@ -68,6 +84,47 @@ export default function Home() {
       mode: 'point' as SelectionMode,
     });
   const clearSelectionFnRef = useRef<(() => void) | null>(null);
+  const isInitialSave = useRef(true);
+
+  // Load UI settings from localStorage after mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('painting-palette-ui-settings');
+      if (stored) {
+        const s = JSON.parse(stored);
+        if (s.annotationLineOpacity !== undefined) setAnnotationLineOpacity(s.annotationLineOpacity);
+        if (s.annotationFontSize !== undefined) setAnnotationFontSize(s.annotationFontSize);
+        if (s.annotationMode) setAnnotationMode(s.annotationMode);
+        if (s.annotationTheme) setAnnotationTheme(s.annotationTheme);
+        if (s.annotationLineColor) setAnnotationLineColor(s.annotationLineColor);
+        if (s.selectionMode) setSelectionConfig((prev) => ({ ...prev, mode: s.selectionMode }));
+      }
+    } catch {
+      // ignore parse errors
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save UI settings to localStorage on change (skip first run to avoid overwriting loaded values)
+  useEffect(() => {
+    if (isInitialSave.current) {
+      isInitialSave.current = false;
+      return;
+    }
+    try {
+      const settings = {
+        annotationLineOpacity,
+        annotationFontSize,
+        annotationMode,
+        annotationTheme,
+        annotationLineColor,
+        selectionMode: selectionConfig.mode,
+      };
+      localStorage.setItem('painting-palette-ui-settings', JSON.stringify(settings));
+    } catch {
+      // ignore storage errors
+    }
+  }, [annotationLineOpacity, annotationFontSize, annotationMode, annotationTheme, annotationLineColor, selectionConfig.mode]);
 
   // Use useCallback to prevent re-rendering issues
   const handleClearSelectionCallback = useCallback((clearFn: () => void) => {
@@ -503,8 +560,46 @@ export default function Home() {
     setSelectedImageData(null);
     setExtractedColors([]);
     setLastAddedColorIds(new Set());
+    setAnnotations([]);
     setActiveTab('image');
   };
+
+  // Export PNG = image + annotations at original resolution
+  const handleExportImage = async () => {
+    if (!uploadedImage || annotations.length === 0) return;
+    try {
+      const blob = await exportImageWithAnnotations(uploadedImage, annotations, {
+        lineOpacity: annotationLineOpacity,
+        fontSize: annotationFontSize,
+        theme: annotationTheme,
+        lineColor: annotationLineColor,
+      });
+      const date = new Date().toISOString().split('T')[0];
+      downloadFile(blob, `image-annotated-${date}.png`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      showToast('Export failed', 'error');
+    }
+  };
+
+  // Export PNG (overlay) = annotations only on transparent background at original resolution
+  const handleExportOverlay = async () => {
+    if (!uploadedImage || annotations.length === 0) return;
+    try {
+      const blob = await exportAnnotationsOnly(uploadedImage, annotations, {
+        lineOpacity: annotationLineOpacity,
+        fontSize: annotationFontSize,
+        theme: annotationTheme,
+        lineColor: annotationLineColor,
+      });
+      const date = new Date().toISOString().split('T')[0];
+      downloadFile(blob, `overlay-${date}.png`);
+    } catch (error) {
+      console.error('Overlay export failed:', error);
+      showToast('Export failed', 'error');
+    }
+  };
+
 
   return (
     <main className="h-screen flex flex-col bg-gray-50 text-black">
@@ -558,6 +653,8 @@ export default function Home() {
                   setSelectionConfig((prev) => ({ ...prev, mode }))
                 }
                 onClearSelection={() => clearSelectionFnRef.current?.()}
+                annotationMode={annotationMode}
+                onAnnotationModeChange={setAnnotationMode}
               />
             ) : (
               <Card>
@@ -690,6 +787,13 @@ export default function Home() {
                     onClearSelection={handleClearSelectionCallback}
                     isGreyscale={isGreyscale}
                     className="flex-1 flex flex-col"
+                    annotations={annotations}
+                    onAnnotationsChange={setAnnotations}
+                    annotationMode={annotationMode}
+                    annotationLineOpacity={annotationLineOpacity}
+                    annotationFontSize={annotationFontSize}
+                    annotationTheme={annotationTheme}
+                    annotationLineColor={annotationLineColor}
                   />
 
                   {/* Brightness Analysis - Hidden */}
@@ -726,13 +830,30 @@ export default function Home() {
         {/* Right Sidebar */}
         <div className="w-80 bg-white border-l border-gray-100">
           <div className="p-4 h-full">
-            <ColorPalette
-              colors={extractedColors}
-              imageFilename={uploadedImage?.name}
-              lastAddedColorIds={lastAddedColorIds}
-              onDeleteColor={handleDeleteColor}
-              onResetPalette={handleResetPalette}
-            />
+            {selectionConfig.mode === 'point' && annotationMode === 'annotate' ? (
+              <AnnotationControls
+                lineOpacity={annotationLineOpacity}
+                onLineOpacityChange={setAnnotationLineOpacity}
+                fontSize={annotationFontSize}
+                onFontSizeChange={setAnnotationFontSize}
+                onClearAnnotations={() => setAnnotations([])}
+                onExportImage={handleExportImage}
+                onExportOverlay={handleExportOverlay}
+                hasAnnotations={annotations.length > 0}
+                annotationTheme={annotationTheme}
+                onAnnotationThemeChange={setAnnotationTheme}
+                lineColor={annotationLineColor}
+                onLineColorChange={setAnnotationLineColor}
+              />
+            ) : (
+              <ColorPalette
+                colors={extractedColors}
+                imageFilename={uploadedImage?.name}
+                lastAddedColorIds={lastAddedColorIds}
+                onDeleteColor={handleDeleteColor}
+                onResetPalette={handleResetPalette}
+              />
+            )}
           </div>
         </div>
       </div>

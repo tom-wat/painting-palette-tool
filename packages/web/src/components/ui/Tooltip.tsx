@@ -91,8 +91,8 @@ export default function Tooltip({ x, y, color, visible }: TooltipProps) {
           style={{ backgroundColor: `rgb(${r}, ${g}, ${b})` }}
         />
         <div>
-          <div className="font-mono">{h} {s} {l}</div>
-          <div className="text-gray-300 font-mono">
+          <div className="text-gray-300 font-mono">{h} {s} {l}</div>
+          <div className="font-mono">
             {hscl.h} {hscl.sc} {hscl.l}
           </div>
         </div>

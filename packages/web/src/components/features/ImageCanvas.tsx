@@ -7,7 +7,8 @@ import {
   type Point
 } from '@/lib/selection-tools';
 import { type SelectionMode } from './AdvancedSelectionTools';
-import { rgbToGrayscale } from '@/lib/color-space-conversions';
+import { rgbToGrayscale, calculateHScL } from '@/lib/color-space-conversions';
+import { type ColorAnnotation } from '@/lib/export-formats';
 
 interface SelectionRect {
   start: Point;
@@ -22,6 +23,111 @@ interface ImageCanvasProps {
   onClearSelection?: (_clearFn: () => void) => void;
   className?: string;
   isGreyscale?: boolean;
+  annotations?: ColorAnnotation[];
+  onAnnotationsChange?: (_annotations: ColorAnnotation[]) => void;
+  annotationMode?: 'pick' | 'annotate';
+  annotationLineOpacity?: number;
+  annotationFontSize?: number;
+  annotationTheme?: 'light' | 'dark';
+  annotationLineColor?: string;
+}
+
+// Helper: convert RGB to HSL (matches Tooltip format)
+function rgbToHslLocal(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function renderAnnotation(
+  ctx: CanvasRenderingContext2D,
+  annotation: ColorAnnotation,
+  ax: number, ay: number,
+  lx: number, ly: number,
+  lineOpacity: number,
+  fontSize: number,
+  canvasWidth: number,
+  theme: 'light' | 'dark' = 'dark',
+  lineColor: string = '#ffffff'
+) {
+  const isDark = theme === 'dark';
+  const boxBg = isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)';
+  const textPrimary = isDark ? '#ffffff' : '#000000';
+  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+
+  const { r, g, b } = annotation.color;
+  const hsl = rgbToHslLocal(r, g, b);
+  const hscl = calculateHScL(annotation.color);
+  const line1 = `${hsl.h} ${hsl.s} ${hsl.l}`;
+  const line2 = `${hscl.h} ${hscl.sc} ${hscl.l}`;
+
+  // Line
+  ctx.save();
+  ctx.globalAlpha = lineOpacity;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(lx, ly);
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = Math.max(1, fontSize / 10);
+  ctx.stroke();
+  ctx.restore();
+
+  // Measure label box
+  const swatchSize = fontSize;
+  const pad = Math.round(fontSize * 0.4);
+  const lineH = fontSize + 3;
+  const textIndent = swatchSize + pad;
+  const fontStack = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+  ctx.font = `${fontSize}px ${fontStack}`;
+  const w1 = ctx.measureText(line1).width;
+  const w2 = ctx.measureText(line2).width;
+  const boxW = Math.max(w1, w2) + textIndent + pad * 2;
+  const boxH = lineH + fontSize + pad * 2;
+
+  // Center label box at (lx, ly)
+  const bx = Math.max(0, Math.min(lx - boxW / 2, canvasWidth - boxW));
+  const by = ly - boxH / 2;
+
+  // Box background
+  const radius = Math.round(fontSize * 0.25);
+  ctx.fillStyle = boxBg;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, boxW, boxH, radius);
+  ctx.fill();
+
+  // Color swatch — vertically centered in box
+  const swatchY = by + (boxH - swatchSize) / 2;
+  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+  ctx.fillRect(bx + pad, swatchY, swatchSize, swatchSize);
+
+  // Swatch border for near-white or near-black colors
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  if (brightness > 220 || brightness < 30) {
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx + pad, swatchY, swatchSize, swatchSize);
+  }
+
+  // Text
+  ctx.font = `${fontSize}px ${fontStack}`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = textSecondary;
+  ctx.fillText(line1, bx + pad + textIndent, by + pad);
+  ctx.fillStyle = textPrimary;
+  ctx.fillText(line2, bx + pad + textIndent, by + pad + lineH);
 }
 
 export default function ImageCanvas({
@@ -32,10 +138,17 @@ export default function ImageCanvas({
   onClearSelection,
   className = '',
   isGreyscale = false,
+  annotations = [],
+  onAnnotationsChange,
+  annotationMode = 'pick',
+  annotationLineOpacity = 0.7,
+  annotationFontSize = 16,
+  annotationTheme = 'dark',
+  annotationLineColor = '#ffffff',
 }: ImageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [selection, setSelection] = useState<SelectionRect | null>(null);
   const [dragSelection, setDragSelection] = useState<SelectionRect | null>(null);
@@ -63,13 +176,18 @@ export default function ImageCanvas({
   const tooltipDebounceRef = useRef<number | null>(null);
   const tooltipThrottleRef = useRef<number>(0);
 
+  // Annotation state
+  const [isAnnotating, setIsAnnotating] = useState(false);
+  const [annotationAnchorImg, setAnnotationAnchorImg] = useState<Point | null>(null);
+  const [annotationPreviewImg, setAnnotationPreviewImg] = useState<Point | null>(null);
+
   // Load and display image
   useEffect(() => {
     const img = new Image();
     img.onload = () => {
       setImage(img);
       fitImageToContainer();
-      
+
       // Extract source ImageData for advanced selection tools
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
@@ -79,11 +197,11 @@ export default function ImageCanvas({
         tempCtx.drawImage(img, 0, 0);
         const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
         setSourceImageData(imageData);
-        
+
       }
     };
     img.src = URL.createObjectURL(imageFile);
-    
+
     return () => {
       URL.revokeObjectURL(img.src);
     };
@@ -93,24 +211,24 @@ export default function ImageCanvas({
   // Fit image to container with proper scaling
   const fitImageToContainer = useCallback(() => {
     if (!image || !canvasRef.current || !containerRef.current) return;
-    
+
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    
+
     // Calculate scale to fit container with padding
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
     const padding = 32; // 16px padding on all sides = 32px total
-    
+
     const availableWidth = containerWidth - padding;
     const availableHeight = containerHeight - padding;
-    
+
     const scaleX = availableWidth / image.width;
     const scaleY = availableHeight / image.height;
     const newScale = Math.min(scaleX, scaleY, 1); // Don't scale up initially
-    
+
     setScale(newScale);
-    
+
     // Center image
     const displayWidth = image.width * newScale;
     const displayHeight = image.height * newScale;
@@ -118,7 +236,7 @@ export default function ImageCanvas({
       x: (containerWidth - displayWidth) / 2,
       y: (containerHeight - displayHeight) / 2,
     });
-    
+
     canvas.width = containerWidth;
     canvas.height = containerHeight;
   }, [image]);
@@ -144,11 +262,11 @@ export default function ImageCanvas({
   // Draw canvas with image and selection
   const drawCanvas = useCallback(() => {
     if (!canvasRef.current || !image) return;
-    
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -166,7 +284,7 @@ export default function ImageCanvas({
 
     // Reset filter for UI elements
     ctx.filter = 'none';
-    
+
     // Draw selection rectangle
     const currentSelection = selection || dragSelection;
     if (currentSelection) {
@@ -177,13 +295,13 @@ export default function ImageCanvas({
         width: Math.abs(end.x - start.x),
         height: Math.abs(end.y - start.y),
       };
-      
+
       // Draw selection overlay only for confirmed selection (not during drag)
       if (selection) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      
+
       // Clear selected area and redraw image for confirmed selection only
       if (selection) {
         ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
@@ -202,18 +320,18 @@ export default function ImageCanvas({
         ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
         ctx.restore();
       }
-      
+
       // Draw clean selection border with drop shadow effect
       ctx.lineWidth = 2;
-      
+
       // Draw shadow border (offset)
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
       ctx.strokeRect(rect.x + 1, rect.y + 1, rect.width, rect.height);
-      
+
       // Draw main border
       ctx.strokeStyle = '#ffffff'; // White border
       ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-      
+
       // Draw modern corner handles
       const handleSize = 6;
       const positions = [
@@ -222,95 +340,95 @@ export default function ImageCanvas({
         [rect.x, rect.y + rect.height], // Bottom-left
         [rect.x + rect.width, rect.y + rect.height] // Bottom-right
       ];
-      
+
       positions.forEach(([x, y]) => {
         // Handle shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fillRect(x - handleSize / 2 + 1, y - handleSize / 2 + 1, handleSize, handleSize);
-        
+
         // Handle main
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
-        
+
       });
     }
 
     // Draw polygon path
     if (selectionMode === 'polygon' && polygonSelection.getVertices().length > 0) {
       const path = polygonSelection.getVertices();
-      
+
       // Draw clean polygon border
       ctx.lineWidth = 2;
-      
+
       // Draw polygon path with shadow
       ctx.beginPath();
       const firstPoint = path[0];
       const scaledFirstX = firstPoint.x * scale + offset.x;
       const scaledFirstY = firstPoint.y * scale + offset.y;
       ctx.moveTo(scaledFirstX + 1, scaledFirstY + 1);
-      
+
       for (let i = 1; i < path.length; i++) {
         const point = path[i];
         const scaledX = point.x * scale + offset.x;
         const scaledY = point.y * scale + offset.y;
         ctx.lineTo(scaledX + 1, scaledY + 1);
       }
-      
+
       // Draw preview line to first point if drawing
       if (isDrawing && !polygonSelection.getIsComplete() && path.length > 2) {
         ctx.lineTo(scaledFirstX + 1, scaledFirstY + 1);
       }
-      
+
       // Close path for completed polygon
       if (polygonSelection.getIsComplete()) {
         ctx.closePath();
       }
-      
+
       // Draw shadow
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
       ctx.stroke();
-      
+
       // Draw main path
       ctx.beginPath();
       ctx.moveTo(scaledFirstX, scaledFirstY);
-      
+
       for (let i = 1; i < path.length; i++) {
         const point = path[i];
         const scaledX = point.x * scale + offset.x;
         const scaledY = point.y * scale + offset.y;
         ctx.lineTo(scaledX, scaledY);
       }
-      
+
       if (isDrawing && !polygonSelection.getIsComplete() && path.length > 2) {
         ctx.lineTo(scaledFirstX, scaledFirstY);
       }
-      
+
       if (polygonSelection.getIsComplete()) {
         ctx.closePath();
       }
-      
+
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
-      
+
       // Draw modern vertex points
       for (const point of path) {
         const scaledX = point.x * scale + offset.x;
         const scaledY = point.y * scale + offset.y;
-        
+
         // Vertex shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
         ctx.arc(scaledX + 1, scaledY + 1, 4, 0, 2 * Math.PI);
         ctx.fill();
-        
+
         // Vertex main
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(scaledX, scaledY, 4, 0, 2 * Math.PI);
         ctx.fill();
-        
+
       }
-      
+
       // Highlight first point for closing hint
       if (path.length > 2 && !polygonSelection.getIsComplete()) {
         ctx.strokeStyle = '#ffffff';
@@ -318,7 +436,7 @@ export default function ImageCanvas({
         ctx.beginPath();
         ctx.arc(scaledFirstX, scaledFirstY, 8, 0, 2 * Math.PI);
         ctx.stroke();
-        
+
       }
     }
 
@@ -326,11 +444,11 @@ export default function ImageCanvas({
     if (currentMask && selectionMode === 'polygon') {
       // Create inverted mask overlay
       const overlayImageData = ctx.createImageData(currentMask.width, currentMask.height);
-      
+
       for (let i = 0; i < currentMask.data.length; i++) {
         const alpha = currentMask.data[i];
         const pixelIndex = i * 4;
-        
+
         // Invert the mask: darken areas that are NOT selected
         if (alpha === 0) {
           overlayImageData.data[pixelIndex] = 0;     // R
@@ -344,7 +462,7 @@ export default function ImageCanvas({
           overlayImageData.data[pixelIndex + 3] = 0; // Transparent for selected areas
         }
       }
-      
+
       // Create temporary canvas for overlay
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = currentMask.width;
@@ -352,7 +470,7 @@ export default function ImageCanvas({
       const tempCtx = tempCanvas.getContext('2d');
       if (tempCtx) {
         tempCtx.putImageData(overlayImageData, 0, 0);
-        
+
         // Draw the overlay to darken unselected areas
         ctx.drawImage(
           tempCanvas,
@@ -363,7 +481,41 @@ export default function ImageCanvas({
         );
       }
     }
-  }, [image, scale, offset, selection, dragSelection, selectionMode, polygonSelection, currentMask, isDrawing, isGreyscale]);
+
+    // Draw confirmed annotations (fontSize scales with zoom to maintain image-space ratio)
+    for (const annotation of annotations) {
+      const ax = annotation.anchorPoint.x * scale + offset.x;
+      const ay = annotation.anchorPoint.y * scale + offset.y;
+      const lx = annotation.labelPoint.x * scale + offset.x;
+      const ly = annotation.labelPoint.y * scale + offset.y;
+      renderAnnotation(ctx, annotation, ax, ay, lx, ly, annotationLineOpacity, annotationFontSize * scale, canvas.width, annotationTheme, annotationLineColor);
+    }
+
+    // Draw annotation preview (while dragging)
+    if (isAnnotating && annotationAnchorImg && annotationPreviewImg) {
+      const ax = annotationAnchorImg.x * scale + offset.x;
+      const ay = annotationAnchorImg.y * scale + offset.y;
+      const lx = annotationPreviewImg.x * scale + offset.x;
+      const ly = annotationPreviewImg.y * scale + offset.y;
+
+      ctx.save();
+      ctx.globalAlpha = annotationLineOpacity;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(lx, ly);
+      ctx.strokeStyle = annotationLineColor;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }, [
+    image, scale, offset, selection, dragSelection, selectionMode, polygonSelection,
+    currentMask, isDrawing, isGreyscale,
+    annotations, annotationLineOpacity, annotationFontSize, annotationTheme, annotationLineColor,
+    isAnnotating, annotationAnchorImg, annotationPreviewImg,
+  ]);
 
   // Zoom functionality
   const handleZoom = useCallback((delta: number, centerX: number, centerY: number) => {
@@ -397,10 +549,10 @@ export default function ImageCanvas({
   // Zoom to actual size (100%)
   const zoomToActualSize = useCallback(() => {
     if (!image || !canvasRef.current) return;
-    
+
     const canvas = canvasRef.current;
     setScale(1);
-    
+
     // Center the image
     const displayWidth = image.width;
     const displayHeight = image.height;
@@ -425,7 +577,7 @@ export default function ImageCanvas({
   // Get mouse position relative to canvas
   const getMousePos = useCallback((e: React.MouseEvent): Point => {
     if (!canvasRef.current) return { x: 0, y: 0 };
-    
+
     const rect = canvasRef.current.getBoundingClientRect();
     return {
       x: e.clientX - rect.left,
@@ -436,7 +588,7 @@ export default function ImageCanvas({
   // Get touch position relative to canvas
   const getTouchPos = useCallback((e: React.TouchEvent, touchIndex: number = 0): Point => {
     if (!canvasRef.current || !e.touches[touchIndex]) return { x: 0, y: 0 };
-    
+
     const rect = canvasRef.current.getBoundingClientRect();
     const touch = e.touches[touchIndex];
     return {
@@ -448,26 +600,26 @@ export default function ImageCanvas({
   // Calculate distance between two touches
   const getTouchDistance = useCallback((e: React.TouchEvent): number => {
     if (e.touches.length < 2) return 0;
-    
+
     const touch1 = e.touches[0];
     const touch2 = e.touches[1];
-    
+
     const deltaX = touch2.clientX - touch1.clientX;
     const deltaY = touch2.clientY - touch1.clientY;
-    
+
     return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
   }, []);
 
   // Get center point between two touches
   const getTouchCenter = useCallback((e: React.TouchEvent): Point => {
     if (e.touches.length < 2) return getTouchPos(e, 0);
-    
+
     const touch1 = e.touches[0];
     const touch2 = e.touches[1];
     const rect = canvasRef.current?.getBoundingClientRect();
-    
+
     if (!rect) return { x: 0, y: 0 };
-    
+
     return {
       x: (touch1.clientX + touch2.clientX) / 2 - rect.left,
       y: (touch1.clientY + touch2.clientY) / 2 - rect.top,
@@ -481,29 +633,29 @@ export default function ImageCanvas({
     const { start, end } = rectSelection;
     const imageStart = screenToImageCoords(Math.min(start.x, end.x), Math.min(start.y, end.y));
     const imageEnd = screenToImageCoords(Math.max(start.x, end.x), Math.max(start.y, end.y));
-    
+
     // Clamp to image bounds
     const x = Math.max(0, Math.floor(imageStart.x));
     const y = Math.max(0, Math.floor(imageStart.y));
     const width = Math.min(image.width - x, Math.ceil(imageEnd.x - imageStart.x));
     const height = Math.min(image.height - y, Math.ceil(imageEnd.y - imageStart.y));
-    
+
     if (width <= 0 || height <= 0) {
       onSelectionChange(null);
       return;
     }
-    
+
     // Create temporary canvas for extraction
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
-    
+
     tempCanvas.width = width;
     tempCanvas.height = height;
-    
+
     // Draw selected portion of image
     tempCtx.drawImage(image, x, y, width, height, 0, 0, width, height);
-    
+
     // Extract ImageData
     const imageData = tempCtx.getImageData(0, 0, width, height);
     onSelectionChange(imageData);
@@ -536,11 +688,11 @@ export default function ImageCanvas({
     // No selection
     onSelectionChange(null);
   }, [
-    selection, 
-    sourceImageData, 
-    selectionMode, 
-    polygonSelection, 
-    currentMask, 
+    selection,
+    sourceImageData,
+    selectionMode,
+    polygonSelection,
+    currentMask,
     onSelectionChange,
     extractSelectionDataFromRect
   ]);
@@ -625,15 +777,26 @@ export default function ImageCanvas({
         break;
 
       case 'point': {
-        // Extract color at clicked pixel and add to palette
-        const color = extractPixelColor(imagePos.x, imagePos.y);
-        if (color && onPointColorAdd) {
-          onPointColorAdd(color);
+        if (annotationMode === 'annotate') {
+          // Start annotation drag
+          setAnnotationAnchorImg(imagePos);
+          setAnnotationPreviewImg(imagePos);
+          setIsAnnotating(true);
+        } else {
+          // Pick mode: extract color and add to palette
+          const color = extractPixelColor(imagePos.x, imagePos.y);
+          if (color && onPointColorAdd) {
+            onPointColorAdd(color);
+          }
         }
         break;
       }
     }
-  }, [getMousePos, selectionMode, sourceImageData, polygonSelection, scale, offset, screenToImageCoords, extractSelectionData, drawCanvas, extractPixelColor, onPointColorAdd]);
+  }, [
+    getMousePos, selectionMode, sourceImageData, polygonSelection, scale, offset,
+    screenToImageCoords, extractSelectionData, drawCanvas, extractPixelColor,
+    onPointColorAdd, annotationMode,
+  ]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const pos = getMousePos(e);
@@ -652,8 +815,15 @@ export default function ImageCanvas({
       return;
     }
 
+    // Handle annotation drag preview
+    if (isAnnotating && annotationAnchorImg) {
+      const imagePos = screenToImageCoords(pos.x, pos.y);
+      setAnnotationPreviewImg(imagePos);
+      return;
+    }
+
     // Handle tooltip for point mode with throttle and minimal debounce
-    if (selectionMode === 'point' && !isDrawing && !isPanning) {
+    if (selectionMode === 'point' && !isDrawing && !isPanning && !isAnnotating) {
       // Throttle: Limit updates to every 16ms (~60fps) for performance
       const now = Date.now();
       if (now - tooltipThrottleRef.current < 16) {
@@ -715,12 +885,43 @@ export default function ImageCanvas({
         // Just redraw to show current mouse position if needed
         break;
     }
-  }, [isDrawing, dragSelection, isPanning, lastPanPoint, getMousePos, selectionMode, screenToImageCoords, extractPixelColor, image]);
+  }, [
+    isDrawing, dragSelection, isPanning, lastPanPoint, getMousePos, selectionMode,
+    screenToImageCoords, extractPixelColor, image,
+    isAnnotating, annotationAnchorImg,
+  ]);
 
   const handleMouseUp = useCallback(() => {
+    // Complete annotation if dragging
+    if (isAnnotating && annotationAnchorImg && annotationPreviewImg) {
+      const ax = annotationAnchorImg.x * scale + offset.x;
+      const ay = annotationAnchorImg.y * scale + offset.y;
+      const lx = annotationPreviewImg.x * scale + offset.x;
+      const ly = annotationPreviewImg.y * scale + offset.y;
+      const dist = Math.sqrt(Math.pow(lx - ax, 2) + Math.pow(ly - ay, 2));
+
+      if (dist > 10) {
+        const color = extractPixelColor(annotationAnchorImg.x, annotationAnchorImg.y);
+        if (color && onAnnotationsChange) {
+          const newAnnotation: ColorAnnotation = {
+            id: `annotation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            anchorPoint: { ...annotationAnchorImg },
+            labelPoint: { ...annotationPreviewImg },
+            color,
+          };
+          onAnnotationsChange([...annotations, newAnnotation]);
+        }
+      }
+
+      setIsAnnotating(false);
+      setAnnotationAnchorImg(null);
+      setAnnotationPreviewImg(null);
+      return;
+    }
+
     if (isDrawing) {
       setIsDrawing(false);
-      
+
       switch (selectionMode) {
         case 'rectangle':
           // Confirm dragSelection as selection and extract data
@@ -731,19 +932,23 @@ export default function ImageCanvas({
             extractSelectionDataFromRect(dragSelection);
           }
           break;
-          
+
         case 'polygon':
           // For polygon, mouse up doesn't complete selection
           // Selection is completed by clicking near first point or double-click
           break;
       }
     }
-    
+
     if (isPanning) {
       setIsPanning(false);
       setLastPanPoint(null);
     }
-  }, [isDrawing, isPanning, selectionMode, dragSelection, extractSelectionDataFromRect]);
+  }, [
+    isDrawing, isPanning, selectionMode, dragSelection, extractSelectionDataFromRect,
+    isAnnotating, annotationAnchorImg, annotationPreviewImg,
+    scale, offset, extractPixelColor, onAnnotationsChange, annotations,
+  ]);
 
 
   // Clear selection
@@ -785,14 +990,22 @@ export default function ImageCanvas({
     }
   }, [selectionMode, polygonSelection, onSelectionChange, drawCanvas]);
 
-
+  // Cancel in-progress annotation when annotationMode changes
+  useEffect(() => {
+    if (isAnnotating) {
+      setIsAnnotating(false);
+      setAnnotationAnchorImg(null);
+      setAnnotationPreviewImg(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annotationMode]);
 
 
   // Handle double click to complete polygon
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if (selectionMode === 'polygon') {
       e.preventDefault();
-      
+
       // If polygon is already complete, start a new one (same as single click)
       if (polygonSelection.getIsComplete()) {
         polygonSelection.clear();
@@ -801,7 +1014,7 @@ export default function ImageCanvas({
         drawCanvas();
         return;
       }
-      
+
       // Complete current polygon if it has enough vertices
       if (polygonSelection.getVertices().length > 2) {
         polygonSelection.complete();
@@ -839,7 +1052,7 @@ export default function ImageCanvas({
   // Touch event handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
-    
+
     if (e.touches.length === 1) {
       // Single touch - start selection or panning
       const pos = getTouchPos(e, 0);
@@ -856,7 +1069,7 @@ export default function ImageCanvas({
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
-    
+
     if (e.touches.length === 1 && isDrawing && selection) {
       // Single touch move - update selection
       const pos = getTouchPos(e, 0);
@@ -866,7 +1079,7 @@ export default function ImageCanvas({
       const currentDistance = getTouchDistance(e);
       const scaleChange = currentDistance / touchStartDistance;
       const newScale = Math.max(minScale, Math.min(maxScale, touchStartScale * scaleChange));
-      
+
       if (newScale !== scale) {
         const center = getTouchCenter(e);
         const scaleRatio = newScale / scale;
@@ -884,7 +1097,7 @@ export default function ImageCanvas({
       setIsDrawing(false);
       extractSelectionData();
     }
-    
+
     setTouchStartDistance(null);
     setTouchStartScale(1);
   }, [isDrawing, extractSelectionData]);
@@ -892,10 +1105,10 @@ export default function ImageCanvas({
   // Handle wheel events for zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    
+
     const pos = getMousePos(e as any);
     const delta = -e.deltaY; // Invert to make scroll up = zoom in
-    
+
     handleZoom(delta, pos.x, pos.y);
   }, [getMousePos, handleZoom]);
 
@@ -955,7 +1168,7 @@ export default function ImageCanvas({
             </button>
           </div>
         </div>
-        
+
         <div
           ref={containerRef}
           className="relative bg-gray-100 rounded-lg overflow-hidden flex-1"
@@ -966,12 +1179,19 @@ export default function ImageCanvas({
             className={`absolute inset-0 ${
               isPanning
                 ? 'cursor-move'
-                : 'cursor-crosshair'
+                : isAnnotating
+                  ? 'cursor-crosshair'
+                  : 'cursor-crosshair'
             } touch-none`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={() => {
+              if (isAnnotating) {
+                setIsAnnotating(false);
+                setAnnotationAnchorImg(null);
+                setAnnotationPreviewImg(null);
+              }
               handleMouseUp();
               // Clear debounce timeout and hide tooltip immediately
               if (tooltipDebounceRef.current) {
@@ -990,7 +1210,7 @@ export default function ImageCanvas({
             }}
           />
         </div>
-        
+
         <div className="text-sm text-gray-600 space-y-1">
           {selectionMode === 'rectangle' && selection ? (
             <p>
@@ -1000,6 +1220,8 @@ export default function ImageCanvas({
             <p>
               Polygon path: {polygonSelection.getVertices().length} points • {polygonSelection.getIsComplete() ? 'Selection completed - extracting colors' : 'Click near first point or double-click to complete'}
             </p>
+          ) : selectionMode === 'point' && annotationMode === 'annotate' ? (
+            <p>Click and drag on the image to add color annotations</p>
           ) : selectionMode === 'point' ? (
             <p>Click anywhere on the image to add colors to your palette</p>
           ) : (
@@ -1022,7 +1244,7 @@ export default function ImageCanvas({
         x={tooltipPosition.x}
         y={tooltipPosition.y}
         color={tooltipColor}
-        visible={tooltipVisible && selectionMode === 'point'}
+        visible={tooltipVisible && selectionMode === 'point' && !isAnnotating}
       />
     </Card>
   );

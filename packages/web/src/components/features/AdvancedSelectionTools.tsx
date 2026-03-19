@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui';
 
 export type SelectionMode = 'rectangle' | 'polygon' | 'point';
+export type AnnotationMode = 'pick' | 'annotate';
 
 export interface AdvancedSelectionConfig {
   mode: SelectionMode;
@@ -13,6 +14,8 @@ interface AdvancedSelectionToolsProps {
   onModeChange: (_mode: SelectionMode) => void;
   onClearSelection?: () => void;
   className?: string;
+  annotationMode?: AnnotationMode;
+  onAnnotationModeChange?: (_mode: AnnotationMode) => void;
 }
 
 export default function AdvancedSelectionTools({
@@ -21,6 +24,8 @@ export default function AdvancedSelectionTools({
   onModeChange,
   onClearSelection: _onClearSelection,
   className = '',
+  annotationMode = 'pick',
+  onAnnotationModeChange,
 }: AdvancedSelectionToolsProps) {
   const handleModeChange = useCallback(
     (mode: SelectionMode) => {
@@ -117,13 +122,52 @@ export default function AdvancedSelectionTools({
           )}
 
           {config.mode === 'point' && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">
-                Click anywhere on the image
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Each click adds the pixel color directly to your palette
-              </p>
+            <div className="space-y-3">
+              {/* Pick / Annotate sub-toggle */}
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => onAnnotationModeChange?.('pick')}
+                  className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                    annotationMode === 'pick'
+                      ? 'bg-black text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Pick
+                </button>
+                <button
+                  onClick={() => onAnnotationModeChange?.('annotate')}
+                  className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                    annotationMode === 'annotate'
+                      ? 'bg-black text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Annotate
+                </button>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-lg">
+                {annotationMode === 'pick' ? (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      Click anywhere on the image
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Each click adds the pixel color directly to your palette
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      Click and drag to annotate
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Color info will be drawn at the drag destination
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
