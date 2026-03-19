@@ -167,10 +167,11 @@ export default function ImageUpload({
             </div>
             <div className="space-y-2">
               <p className="text-lg font-medium text-gray-900">
-                Drop image here or click to select
+                <span className="hidden lg:inline">Drop image here or click to select</span>
+                <span className="lg:hidden">Tap to select image</span>
               </p>
               <p className="text-sm text-gray-500">
-                Supports: JPEG, PNG, GIF, WebP (Max: 10MB, 8000×8000px)
+                Supports: JPEG, PNG, GIF, WebP<span className="lg:hidden"><br /></span><span className="hidden lg:inline"> </span>(Max: 10MB, 8000×8000px)
               </p>
             </div>
           </div>

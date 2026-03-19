@@ -586,7 +586,7 @@ export default function ImageCanvas({
   }, []);
 
   // Get touch position relative to canvas
-  const getTouchPos = useCallback((e: React.TouchEvent, touchIndex: number = 0): Point => {
+  const getTouchPos = useCallback((e: TouchEvent, touchIndex: number = 0): Point => {
     if (!canvasRef.current || !e.touches[touchIndex]) return { x: 0, y: 0 };
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -598,7 +598,7 @@ export default function ImageCanvas({
   }, []);
 
   // Calculate distance between two touches
-  const getTouchDistance = useCallback((e: React.TouchEvent): number => {
+  const getTouchDistance = useCallback((e: TouchEvent): number => {
     if (e.touches.length < 2) return 0;
 
     const touch1 = e.touches[0];
@@ -611,7 +611,7 @@ export default function ImageCanvas({
   }, []);
 
   // Get center point between two touches
-  const getTouchCenter = useCallback((e: React.TouchEvent): Point => {
+  const getTouchCenter = useCallback((e: TouchEvent): Point => {
     if (e.touches.length < 2) return getTouchPos(e, 0);
 
     const touch1 = e.touches[0];
@@ -724,6 +724,13 @@ export default function ImageCanvas({
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const pos = getMousePos(e);
+
+    // Hide tooltip immediately on any click
+    if (tooltipDebounceRef.current) {
+      clearTimeout(tooltipDebounceRef.current);
+      tooltipDebounceRef.current = null;
+    }
+    setTooltipVisible(false);
 
     if (e.shiftKey) {
       // Pan mode
@@ -1050,12 +1057,32 @@ export default function ImageCanvas({
   }, [clearSelection]);
 
   // Touch event handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: TouchEvent) => {
     e.preventDefault();
 
     if (e.touches.length === 1) {
-      // Single touch - start selection or panning
       const pos = getTouchPos(e, 0);
+
+      // Annotation mode on point selection: start annotation drag
+      if (selectionMode === 'point' && annotationMode === 'annotate') {
+        const imagePos = screenToImageCoords(pos.x, pos.y);
+        setAnnotationAnchorImg(imagePos);
+        setAnnotationPreviewImg(imagePos);
+        setIsAnnotating(true);
+        return;
+      }
+
+      // Point mode pick: add color on touch
+      if (selectionMode === 'point') {
+        const imagePos = screenToImageCoords(pos.x, pos.y);
+        const color = extractPixelColor(imagePos.x, imagePos.y);
+        if (color && onPointColorAdd) {
+          onPointColorAdd(color);
+        }
+        return;
+      }
+
+      // Selection mode: start drawing
       setIsDrawing(true);
       setSelection({ start: pos, end: pos });
     } else if (e.touches.length === 2) {
@@ -1064,16 +1091,27 @@ export default function ImageCanvas({
       setTouchStartDistance(distance);
       setTouchStartScale(scale);
       setIsDrawing(false); // Cancel selection
+      setIsAnnotating(false);
     }
-  }, [getTouchPos, getTouchDistance, scale]);
+  }, [getTouchPos, getTouchDistance, scale, selectionMode, annotationMode, screenToImageCoords, extractPixelColor, onPointColorAdd]);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleTouchMove = useCallback((e: TouchEvent) => {
     e.preventDefault();
 
-    if (e.touches.length === 1 && isDrawing && selection) {
-      // Single touch move - update selection
+    if (e.touches.length === 1) {
       const pos = getTouchPos(e, 0);
-      setSelection(prev => prev ? { ...prev, end: pos } : null);
+
+      // Update annotation preview during drag
+      if (isAnnotating && annotationAnchorImg) {
+        const imagePos = screenToImageCoords(pos.x, pos.y);
+        setAnnotationPreviewImg(imagePos);
+        return;
+      }
+
+      // Update selection
+      if (isDrawing && selection) {
+        setSelection(prev => prev ? { ...prev, end: pos } : null);
+      }
     } else if (e.touches.length === 2 && touchStartDistance) {
       // Two finger pinch - zoom
       const currentDistance = getTouchDistance(e);
@@ -1090,9 +1128,34 @@ export default function ImageCanvas({
         setScale(newScale);
       }
     }
-  }, [isDrawing, selection, touchStartDistance, touchStartScale, scale, minScale, maxScale, getTouchPos, getTouchDistance, getTouchCenter]);
+  }, [isDrawing, isAnnotating, annotationAnchorImg, selection, touchStartDistance, touchStartScale, scale, minScale, maxScale, getTouchPos, getTouchDistance, getTouchCenter, screenToImageCoords]);
 
   const handleTouchEnd = useCallback(() => {
+    // Complete annotation
+    if (isAnnotating && annotationAnchorImg && annotationPreviewImg) {
+      const ax = annotationAnchorImg.x * scale + offset.x;
+      const ay = annotationAnchorImg.y * scale + offset.y;
+      const lx = annotationPreviewImg.x * scale + offset.x;
+      const ly = annotationPreviewImg.y * scale + offset.y;
+      const dist = Math.sqrt((lx - ax) ** 2 + (ly - ay) ** 2);
+      if (dist > 5) {
+        const color = extractPixelColor(annotationAnchorImg.x, annotationAnchorImg.y);
+        if (color && onAnnotationsChange) {
+          const newAnnotation: ColorAnnotation = {
+            id: `annotation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            anchorPoint: { ...annotationAnchorImg },
+            labelPoint: { ...annotationPreviewImg },
+            color,
+          };
+          onAnnotationsChange([...annotations, newAnnotation]);
+        }
+      }
+      setIsAnnotating(false);
+      setAnnotationAnchorImg(null);
+      setAnnotationPreviewImg(null);
+      return;
+    }
+
     if (isDrawing) {
       setIsDrawing(false);
       extractSelectionData();
@@ -1100,10 +1163,10 @@ export default function ImageCanvas({
 
     setTouchStartDistance(null);
     setTouchStartScale(1);
-  }, [isDrawing, extractSelectionData]);
+  }, [isAnnotating, annotationAnchorImg, annotationPreviewImg, scale, offset, extractPixelColor, onAnnotationsChange, annotations, isDrawing, extractSelectionData]);
 
-  // Handle wheel events for zoom
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  // Handle wheel events for zoom (registered as non-passive via useEffect)
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
 
     const pos = getMousePos(e as any);
@@ -1112,13 +1175,29 @@ export default function ImageCanvas({
     handleZoom(delta, pos.x, pos.y);
   }, [getMousePos, handleZoom]);
 
+  // Register touch and wheel event listeners as non-passive so preventDefault works
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd);
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd, handleWheel]);
+
   return (
     <Card className={className}>
-      <CardContent className="p-6 flex-1 flex flex-col">
-        <div className="flex-1 flex flex-col space-y-4">
+      <CardContent className="p-3 lg:p-6 flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col space-y-3 lg:space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Image Canvas</h3>
-          <div className="flex items-center space-x-2">
+          <h3 className="hidden lg:block text-lg font-semibold">Image Canvas</h3>
+          <div className="flex items-center space-x-2 ml-auto">
             <div className="text-xs text-gray-500">
               {Math.round(scale * 100)}%
             </div>
@@ -1201,17 +1280,13 @@ export default function ImageCanvas({
               setTooltipVisible(false);
             }}
             onDoubleClick={handleDoubleClick}
-            onWheel={handleWheel}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
             onContextMenu={(e) => {
               e.preventDefault(); // Prevent context menu
             }}
           />
         </div>
 
-        <div className="text-sm text-gray-600 space-y-1">
+        <div className="hidden lg:block text-sm text-gray-600 space-y-1">
           {selectionMode === 'rectangle' && selection ? (
             <p>
               Selection: {Math.abs(selection.end.x - selection.start.x).toFixed(0)} × {Math.abs(selection.end.y - selection.start.y).toFixed(0)} px

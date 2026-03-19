@@ -948,42 +948,41 @@ export default function SavedPalettesPanel({
     <>
       <Card className={className}>
         <CardHeader>
-          <div className="flex items-center justify-between mb-3">
+          {/* Desktop: single row */}
+          <div className="hidden lg:flex items-center justify-between mb-3">
             <CardTitle>Saved Palettes ({(searchQuery || activeTagFilter) ? filteredPalettes.length : savedPalettes.length})</CardTitle>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowImportModal(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)}>
                 Import JSON
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleToggleAllLabels}
-                disabled={savedPalettes.length === 0}
-              >
+              <Button variant="outline" size="sm" onClick={handleToggleAllLabels} disabled={savedPalettes.length === 0}>
                 {showAllLabels ? 'Hide All Data' : 'Show All Data'}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportAllPalettesAsPNG()}
-                disabled={savedPalettes.length === 0 || isExporting}
-                className="flex items-center space-x-1"
-              >
+              <Button variant="outline" size="sm" onClick={() => exportAllPalettesAsPNG()} disabled={savedPalettes.length === 0 || isExporting} className="flex items-center space-x-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 <span>PNG All</span>
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowBulkExportModal(true)}
-                disabled={savedPalettes.length === 0}
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowBulkExportModal(true)} disabled={savedPalettes.length === 0}>
+                Export All
+              </Button>
+            </div>
+          </div>
+          {/* Mobile: two rows */}
+          <div className="lg:hidden mb-3 space-y-2">
+            <CardTitle>Saved Palettes ({(searchQuery || activeTagFilter) ? filteredPalettes.length : savedPalettes.length})</CardTitle>
+            <div className="flex flex-wrap gap-1">
+              <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)}>
+                Import JSON
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToggleAllLabels} disabled={savedPalettes.length === 0}>
+                {showAllLabels ? 'Hide All Data' : 'Show All Data'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => exportAllPalettesAsPNG()} disabled={savedPalettes.length === 0 || isExporting}>
+                PNG All
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowBulkExportModal(true)} disabled={savedPalettes.length === 0}>
                 Export All
               </Button>
             </div>

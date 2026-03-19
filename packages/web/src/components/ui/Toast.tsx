@@ -49,9 +49,9 @@ export default function Toast({
   return (
     <div
       className={`
-        fixed top-4 right-4 z-50 max-w-md px-4 py-3 rounded-lg shadow-lg
+        fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-max px-4 py-3 rounded-lg shadow-lg
         bg-white border-2 ${borderColor} text-gray-800
-        transition-all duration-300 transform
+        transition-all duration-300
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
       `}
       role="alert"
