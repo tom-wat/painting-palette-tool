@@ -78,11 +78,13 @@ export default function Tooltip({ x, y, color, visible }: TooltipProps) {
 
   return (
     <div
-      className="fixed pointer-events-none z-50 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg border border-gray-700"
+      className="fixed pointer-events-none z-50 text-white text-xs px-2 py-1 rounded shadow-lg"
       style={{
         left: leftPosition,
         top: topPosition,
         transform: `${rightTransform ? 'translateX(-100%)' : ''} ${bottomTransform ? 'translateY(0%)' : 'translateY(-100%)'}`.trim(),
+        backgroundColor: '#1a1a1a',
+        border: '1px solid #333333',
       }}
     >
       <div className="flex items-center space-x-2">

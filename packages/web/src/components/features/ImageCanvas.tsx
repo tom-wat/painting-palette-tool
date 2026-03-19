@@ -77,7 +77,7 @@ function renderAnnotation(
   lineColor: string = '#ffffff'
 ) {
   const isDark = theme === 'dark';
-  const boxBg = isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)';
+  const boxBg = isDark ? '#1a1a1a' : '#f8f8f8';
   const textPrimary = isDark ? '#ffffff' : '#1f2937';
   const textSecondary = isDark ? '#9ca3af' : '#6b7280';
 
