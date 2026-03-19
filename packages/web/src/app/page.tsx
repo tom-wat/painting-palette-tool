@@ -602,7 +602,7 @@ export default function Home() {
 
 
   return (
-    <main className="h-screen flex flex-col bg-gray-50 text-black">
+    <main className="h-screen flex flex-col bg-gray-50 text-gray-800">
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-6 py-3">
         <div className="flex items-center justify-between">
@@ -744,7 +744,7 @@ export default function Home() {
                         {processingProgress > 0 && (
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-black h-2 rounded-full transition-all duration-300"
+                              className="bg-gray-800 h-2 rounded-full transition-all duration-300"
                               style={{ width: `${processingProgress}%` }}
                             />
                           </div>

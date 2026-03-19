@@ -63,7 +63,7 @@ export default function AdvancedSelectionTools({
         <div className="space-y-4">
           {/* Selection Mode */}
           <div>
-            <label className="block text-sm font-medium text-black mb-2">
+            <label className="block text-sm font-medium text-gray-800 mb-2">
               Selection Mode
             </label>
             {/* Point selection - single row */}
@@ -72,7 +72,7 @@ export default function AdvancedSelectionTools({
                 onClick={() => handleModeChange(pointMode.id)}
                 className={`w-full p-3 border rounded-lg text-center transition-colors ${
                   config.mode === pointMode.id
-                    ? 'border-black bg-gray-50'
+                    ? 'border-gray-800 bg-gray-50'
                     : 'border-gray-100 hover:border-gray-300'
                 }`}
                 title={pointMode.description}
@@ -89,7 +89,7 @@ export default function AdvancedSelectionTools({
                   onClick={() => handleModeChange(mode.id)}
                   className={`p-3 border rounded-lg text-center transition-colors ${
                     config.mode === mode.id
-                      ? 'border-black bg-gray-50'
+                      ? 'border-gray-800 bg-gray-50'
                       : 'border-gray-100 hover:border-gray-300'
                   }`}
                   title={mode.description}
@@ -129,7 +129,7 @@ export default function AdvancedSelectionTools({
                   onClick={() => onAnnotationModeChange?.('pick')}
                   className={`flex-1 py-2 text-xs font-medium transition-colors ${
                     annotationMode === 'pick'
-                      ? 'bg-black text-white'
+                      ? 'bg-gray-800 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
@@ -139,7 +139,7 @@ export default function AdvancedSelectionTools({
                   onClick={() => onAnnotationModeChange?.('annotate')}
                   className={`flex-1 py-2 text-xs font-medium transition-colors ${
                     annotationMode === 'annotate'
-                      ? 'bg-black text-white'
+                      ? 'bg-gray-800 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >

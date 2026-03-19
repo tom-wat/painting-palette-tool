@@ -47,7 +47,7 @@ export default function Select({
   return (
     <div className={`relative w-full ${className}`} ref={selectRef}>
       {label && (
-        <label className="block text-sm font-medium text-black mb-2">
+        <label className="block text-sm font-medium text-gray-800 mb-2">
           {label}
         </label>
       )}
@@ -55,13 +55,13 @@ export default function Select({
       <div
         className={`
           relative w-full px-3 py-2 bg-white border border-gray-300 rounded-md cursor-pointer
-          focus:outline-none focus:ring-1 focus:ring-black focus:border-black
-          ${isOpen ? 'ring-1 ring-black border-black' : ''}
+          focus:outline-none focus:ring-1 focus:ring-gray-800 focus:border-gray-800
+          ${isOpen ? 'ring-1 ring-gray-800 border-gray-800' : ''}
         `}
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center justify-between">
-          <span className={selectedOption ? 'text-black' : 'text-gray-500'}>
+          <span className={selectedOption ? 'text-gray-800' : 'text-gray-500'}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <svg
@@ -86,8 +86,8 @@ export default function Select({
                 className={`
                   px-3 py-2 cursor-pointer transition-colors
                   ${option.value === value 
-                    ? 'bg-black text-white' 
-                    : 'text-black hover:bg-gray-50'
+                    ? 'bg-gray-800 text-white' 
+                    : 'text-gray-800 hover:bg-gray-50'
                   }
                 `}
                 onClick={() => handleOptionClick(option.value)}

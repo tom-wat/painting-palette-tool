@@ -150,7 +150,7 @@ export default function ImageUpload({
 
         {isLoading ? (
           <div className="space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto"></div>
             <p className="text-gray-600">Processing image...</p>
           </div>
         ) : (

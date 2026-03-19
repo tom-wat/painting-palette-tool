@@ -50,7 +50,7 @@ export default function Toast({
     <div
       className={`
         fixed top-4 right-4 z-50 max-w-md px-4 py-3 rounded-lg shadow-lg
-        bg-white border-2 ${borderColor} text-black
+        bg-white border-2 ${borderColor} text-gray-800
         transition-all duration-300 transform
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
       `}
@@ -110,7 +110,7 @@ export default function Toast({
             setIsVisible(false);
             setTimeout(() => onCloseRef.current?.(), 300);
           }}
-          className="flex-shrink-0 text-gray-500 hover:text-black transition-colors"
+          className="flex-shrink-0 text-gray-500 hover:text-gray-800 transition-colors"
           aria-label="Close"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

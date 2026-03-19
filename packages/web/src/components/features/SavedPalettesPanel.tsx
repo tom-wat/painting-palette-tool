@@ -1011,7 +1011,7 @@ export default function SavedPalettesPanel({
                     onClick={() => setActiveTagFilter('')}
                     className={`px-3 py-1 text-xs rounded-md border transition-colors ${
                       !activeTagFilter 
-                        ? 'bg-black text-white border-black' 
+                        ? 'bg-gray-800 text-white border-gray-800' 
                         : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                     }`}
                   >
@@ -1025,7 +1025,7 @@ export default function SavedPalettesPanel({
                         onClick={() => setActiveTagFilter(tag)}
                         className={`px-3 py-1 text-xs rounded-md border transition-colors ${
                           activeTagFilter === tag 
-                            ? 'bg-black text-white border-black' 
+                            ? 'bg-gray-800 text-white border-gray-800' 
                             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                         }`}
                       >
@@ -1078,7 +1078,7 @@ export default function SavedPalettesPanel({
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-black text-sm truncate">
+                      <h4 className="font-medium text-gray-800 text-sm truncate">
                         {palette.name}
                       </h4>
                       <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
@@ -1202,7 +1202,7 @@ export default function SavedPalettesPanel({
           <div className="space-y-6">
             {/* Palette Name */}
             <div>
-              <label htmlFor="edit-palette-name" className="block text-sm font-medium text-black mb-2">
+              <label htmlFor="edit-palette-name" className="block text-sm font-medium text-gray-800 mb-2">
                 Palette Name
               </label>
               <input
@@ -1211,13 +1211,13 @@ export default function SavedPalettesPanel({
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
                 placeholder="Enter palette name..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
               />
             </div>
 
             {/* Tags */}
             <div>
-              <label htmlFor="edit-palette-tags" className="block text-sm font-medium text-black mb-2">
+              <label htmlFor="edit-palette-tags" className="block text-sm font-medium text-gray-800 mb-2">
                 Tags
               </label>
               <input
@@ -1229,7 +1229,7 @@ export default function SavedPalettesPanel({
                 onCompositionStart={() => setIsComposing(true)}
                 onCompositionEnd={() => setIsComposing(false)}
                 placeholder="Enter tags separated by comma or press Enter..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Press Enter or comma to add tags
@@ -1265,7 +1265,7 @@ export default function SavedPalettesPanel({
                 }
               }}
             >
-              <label className="block text-sm font-medium text-black mb-2">
+              <label className="block text-sm font-medium text-gray-800 mb-2">
                 Colors ({editingPalette.colors.length})
               </label>
               <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 p-4 bg-gray-50 rounded-lg">
@@ -1285,7 +1285,7 @@ export default function SavedPalettesPanel({
 
             {/* Export Section */}
             <div className="border-t border-gray-100 pt-4">
-              <label className="block text-sm font-medium text-black mb-3">
+              <label className="block text-sm font-medium text-gray-800 mb-3">
                 Export Palette
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -1375,7 +1375,7 @@ export default function SavedPalettesPanel({
             {/* Color values */}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   HEX
                 </label>
                 <div className="flex">
@@ -1383,7 +1383,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={rgbToHex(selectedColor.color).toUpperCase()}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -1399,7 +1399,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   RGB
                 </label>
                 <div className="flex">
@@ -1407,7 +1407,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={`rgb(${selectedColor.color.r}, ${selectedColor.color.g}, ${selectedColor.color.b})`}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -1426,7 +1426,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   HSL
                 </label>
                 <div className="flex">
@@ -1434,7 +1434,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('hsl', rgbToHsl(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -1453,7 +1453,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   LAB
                 </label>
                 <div className="flex">
@@ -1461,7 +1461,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('lab', rgbToLab(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -1480,7 +1480,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   LCH
                 </label>
                 <div className="flex">
@@ -1488,7 +1488,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('lch', rgbToLch(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -1507,7 +1507,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   OkLCH
                 </label>
                 <div className="flex">
@@ -1515,7 +1515,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('oklch', rgbToOklch(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -1591,7 +1591,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">PNG Image</div>
+                <div className="font-semibold text-gray-800">PNG Image</div>
                 <div className="text-sm text-gray-600">Visual palette grid for sharing</div>
               </button>
 
@@ -1600,7 +1600,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">JSON Data</div>
+                <div className="font-semibold text-gray-800">JSON Data</div>
                 <div className="text-sm text-gray-600">Complete color data with metadata</div>
               </button>
 
@@ -1609,7 +1609,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">CSS Variables</div>
+                <div className="font-semibold text-gray-800">CSS Variables</div>
                 <div className="text-sm text-gray-600">CSS custom properties</div>
               </button>
 
@@ -1618,7 +1618,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Adobe ASE</div>
+                <div className="font-semibold text-gray-800">Adobe ASE</div>
                 <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
               </button>
 
@@ -1627,7 +1627,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Adobe Color</div>
+                <div className="font-semibold text-gray-800">Adobe Color</div>
                 <div className="text-sm text-gray-600">ACO palette file for Adobe products</div>
               </button>
 
@@ -1636,7 +1636,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Procreate</div>
+                <div className="font-semibold text-gray-800">Procreate</div>
                 <div className="text-sm text-gray-600">Swatches file for Procreate</div>
               </button>
 
@@ -1644,7 +1644,7 @@ export default function SavedPalettesPanel({
 
             {isExporting && (
               <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
                 <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
               </div>
             )}
@@ -1671,7 +1671,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">JSON Collection</div>
+                <div className="font-semibold text-gray-800">JSON Collection</div>
                 <div className="text-sm text-gray-600">Single file with all palettes and metadata</div>
               </button>
 
@@ -1680,7 +1680,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">CSS File</div>
+                <div className="font-semibold text-gray-800">CSS File</div>
                 <div className="text-sm text-gray-600">Single CSS file with all palette variables</div>
               </button>
 
@@ -1689,7 +1689,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Adobe ASE File</div>
+                <div className="font-semibold text-gray-800">Adobe ASE File</div>
                 <div className="text-sm text-gray-600">Single ASE file with all palette colors</div>
               </button>
 
@@ -1698,7 +1698,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Adobe Color File</div>
+                <div className="font-semibold text-gray-800">Adobe Color File</div>
                 <div className="text-sm text-gray-600">Single ACO file with all palette colors</div>
               </button>
 
@@ -1707,7 +1707,7 @@ export default function SavedPalettesPanel({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Procreate File</div>
+                <div className="font-semibold text-gray-800">Procreate File</div>
                 <div className="text-sm text-gray-600">Single swatches file with all palette colors</div>
               </button>
 
@@ -1715,7 +1715,7 @@ export default function SavedPalettesPanel({
 
             {isExporting && (
               <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
                 <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
               </div>
             )}

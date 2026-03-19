@@ -18,7 +18,7 @@ export default function Toggle({
       <div
         className={`
           relative inline-flex h-5 w-9 items-center rounded-full cursor-pointer transition-colors
-          ${checked ? 'bg-black' : 'bg-gray-300'}
+          ${checked ? 'bg-gray-800' : 'bg-gray-300'}
         `}
         onClick={() => onChange(!checked)}
       >
@@ -31,7 +31,7 @@ export default function Toggle({
       </div>
       {label && (
         <label
-          className="ml-3 text-sm font-medium text-black cursor-pointer"
+          className="ml-3 text-sm font-medium text-gray-800 cursor-pointer"
           onClick={() => onChange(!checked)}
         >
           {label}

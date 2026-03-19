@@ -545,7 +545,7 @@ export default function ColorPalette({
             {/* Color values */}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   HEX
                 </label>
                 <div className="flex">
@@ -553,7 +553,7 @@ export default function ColorPalette({
                     type="text"
                     value={rgbToHex(selectedColor.color).toUpperCase()}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -569,7 +569,7 @@ export default function ColorPalette({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   RGB
                 </label>
                 <div className="flex">
@@ -577,7 +577,7 @@ export default function ColorPalette({
                     type="text"
                     value={`rgb(${selectedColor.color.r}, ${selectedColor.color.g}, ${selectedColor.color.b})`}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -596,7 +596,7 @@ export default function ColorPalette({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   HSL
                 </label>
                 <div className="flex">
@@ -607,7 +607,7 @@ export default function ColorPalette({
                       rgbToHsl(selectedColor.color)
                     )}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -626,7 +626,7 @@ export default function ColorPalette({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   LAB
                 </label>
                 <div className="flex">
@@ -637,7 +637,7 @@ export default function ColorPalette({
                       rgbToLab(selectedColor.color)
                     )}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -656,7 +656,7 @@ export default function ColorPalette({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   LCH
                 </label>
                 <div className="flex">
@@ -667,7 +667,7 @@ export default function ColorPalette({
                       rgbToLch(selectedColor.color)
                     )}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -686,7 +686,7 @@ export default function ColorPalette({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-black mb-1">
+                <label className="block text-sm font-medium text-gray-800 mb-1">
                   OkLCH
                 </label>
                 <div className="flex">
@@ -697,7 +697,7 @@ export default function ColorPalette({
                       rgbToOklch(selectedColor.color)
                     )}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-black"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
                   />
                   <Button
                     variant="outline"
@@ -767,7 +767,7 @@ export default function ColorPalette({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">PNG Image</div>
+                <div className="font-semibold text-gray-800">PNG Image</div>
                 <div className="text-sm text-gray-600">
                   Visual palette grid for sharing
                 </div>
@@ -779,7 +779,7 @@ export default function ColorPalette({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">JSON Data</div>
+                <div className="font-semibold text-gray-800">JSON Data</div>
                 <div className="text-sm text-gray-600">
                   Complete color data with metadata
                 </div>
@@ -791,7 +791,7 @@ export default function ColorPalette({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">CSS Variables</div>
+                <div className="font-semibold text-gray-800">CSS Variables</div>
                 <div className="text-sm text-gray-600">
                   CSS custom properties
                 </div>
@@ -803,7 +803,7 @@ export default function ColorPalette({
                 disabled={isExporting}
                 className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="font-semibold text-black">Adobe ASE</div>
+                <div className="font-semibold text-gray-800">Adobe ASE</div>
                 <div className="text-sm text-gray-600">
                   Adobe Swatch Exchange format
                 </div>
@@ -812,7 +812,7 @@ export default function ColorPalette({
 
             {isExporting && (
               <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
                 <span className="ml-2 text-sm text-gray-600">
                   Preparing export...
                 </span>
@@ -843,7 +843,7 @@ export default function ColorPalette({
             <div>
               <label
                 htmlFor="palette-name"
-                className="block text-sm font-medium text-black mb-2"
+                className="block text-sm font-medium text-gray-800 mb-2"
               >
                 Palette Name
               </label>
@@ -853,7 +853,7 @@ export default function ColorPalette({
                 value={paletteName}
                 onChange={(e) => setPaletteName(e.target.value)}
                 placeholder="Enter palette name..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && paletteName.trim()) {
                     savePalette(paletteName);
@@ -866,7 +866,7 @@ export default function ColorPalette({
             <div>
               <label
                 htmlFor="palette-tags"
-                className="block text-sm font-medium text-black mb-2"
+                className="block text-sm font-medium text-gray-800 mb-2"
               >
                 Tags (optional)
               </label>
@@ -877,7 +877,7 @@ export default function ColorPalette({
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagInputKeyPress}
                 placeholder="Enter tags separated by comma or press Enter..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Press Enter or comma to add tags

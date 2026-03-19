@@ -78,7 +78,7 @@ export default function Tooltip({ x, y, color, visible }: TooltipProps) {
 
   return (
     <div
-      className="fixed pointer-events-none z-50 bg-black text-white text-xs px-2 py-1 rounded shadow-lg border border-gray-700"
+      className="fixed pointer-events-none z-50 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg border border-gray-700"
       style={{
         left: leftPosition,
         top: topPosition,

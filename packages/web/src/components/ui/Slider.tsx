@@ -25,7 +25,7 @@ export default function Slider({
     <div className={`w-full ${className}`}>
       {label && (
         <div className="flex justify-between items-center mb-2">
-          <label className="text-sm font-medium text-black">{label}</label>
+          <label className="text-sm font-medium text-gray-800">{label}</label>
           <span className="text-sm text-gray-600">{value}</span>
         </div>
       )}

@@ -39,7 +39,7 @@ export default function AnnotationControls({
         <div className="space-y-4">
           {/* Theme toggle */}
           <div>
-            <label className="block text-sm font-medium text-black mb-2">
+            <label className="block text-sm font-medium text-gray-800 mb-2">
               Label Theme
             </label>
             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
@@ -47,7 +47,7 @@ export default function AnnotationControls({
                 onClick={() => onAnnotationThemeChange('light')}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
                   annotationTheme === 'light'
-                    ? 'bg-black text-white'
+                    ? 'bg-gray-800 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -57,7 +57,7 @@ export default function AnnotationControls({
                 onClick={() => onAnnotationThemeChange('dark')}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
                   annotationTheme === 'dark'
-                    ? 'bg-black text-white'
+                    ? 'bg-gray-800 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -68,7 +68,7 @@ export default function AnnotationControls({
 
           {/* Line Color */}
           <div>
-            <label className="block text-sm font-medium text-black mb-2">
+            <label className="block text-sm font-medium text-gray-800 mb-2">
               Line Color
             </label>
             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
@@ -76,7 +76,7 @@ export default function AnnotationControls({
                 onClick={() => onLineColorChange('#ffffff')}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
                   lineColor === '#ffffff'
-                    ? 'bg-black text-white'
+                    ? 'bg-gray-800 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >
@@ -86,7 +86,7 @@ export default function AnnotationControls({
                 onClick={() => onLineColorChange('#000000')}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
                   lineColor === '#000000'
-                    ? 'bg-black text-white'
+                    ? 'bg-gray-800 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                 }`}
               >

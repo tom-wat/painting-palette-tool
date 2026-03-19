@@ -91,7 +91,7 @@ export default function Modal({
             <div className="bg-white px-6 py-4 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <h3
-                  className="text-lg font-semibold text-black"
+                  className="text-lg font-semibold text-gray-800"
                   id="modal-title"
                 >
                   {title}
