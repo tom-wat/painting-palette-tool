@@ -111,8 +111,10 @@ function renderAnnotation(
   ctx.font = `${fontSize}px ${fontStack}`;
   const w1 = ctx.measureText(line1).width;
   const w2 = ctx.measureText(line2).width;
-  const boxW = Math.max(w1, w2) + textIndent + pad * 2;
-  const boxH = lineH + fontSize + pad * 2;
+  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  const extraPad = isTauri ? Math.round(fontSize * 0.25) : 0;
+  const boxW = Math.max(w1, w2) + textIndent + pad * 2 + extraPad;
+  const boxH = lineH + fontSize + pad * 2 + extraPad;
 
   // Center label box at (lx, ly)
   const bx = Math.max(0, Math.min(lx - boxW / 2, canvasWidth - boxW));

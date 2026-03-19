@@ -735,7 +735,21 @@ export function exportAsSCSS(
 /**
  * Download file utility
  */
+async function tauriSaveFile(blob: Blob, filename: string): Promise<void> {
+  const { save } = await import('@tauri-apps/plugin-dialog');
+  const { writeFile } = await import('@tauri-apps/plugin-fs');
+  const path = await save({ defaultPath: filename });
+  if (path) {
+    const buffer = await blob.arrayBuffer();
+    await writeFile(path, new Uint8Array(buffer));
+  }
+}
+
 export function downloadFile(blob: Blob, filename: string): void {
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    tauriSaveFile(blob, filename).catch(err => console.error('Save failed:', err));
+    return;
+  }
   try {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -818,8 +832,10 @@ function drawAnnotationsOnCtx(
     ctx.font = `${fontSize}px ${fontStack}`;
     const w1 = ctx.measureText(line1).width;
     const w2 = ctx.measureText(line2).width;
-    const boxW = Math.max(w1, w2) + textIndent + pad * 2;
-    const boxH = lineH + fontSize + pad * 2;
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    const extraPad = isTauri ? Math.round(fontSize * 0.25) : 0;
+    const boxW = Math.max(w1, w2) + textIndent + pad * 2 + extraPad;
+    const boxH = lineH + fontSize + pad * 2 + extraPad;
 
     // Center at label point
     const bx = Math.max(0, Math.min(lp.x - boxW / 2, canvasWidth - boxW));
