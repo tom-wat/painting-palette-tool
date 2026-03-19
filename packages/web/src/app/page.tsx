@@ -67,6 +67,8 @@ export default function Home() {
 
   // Annotation state
   const [annotations, setAnnotations] = useState<ColorAnnotation[]>([]);
+  const [annotationHistory, setAnnotationHistory] = useState<ColorAnnotation[][]>([]);
+  const [annotationFuture, setAnnotationFuture] = useState<ColorAnnotation[][]>([]);
   const [annotationMode, setAnnotationMode] = useState<AnnotationMode>('pick');
   const [annotationLineOpacity, setAnnotationLineOpacity] = useState(0.7);
   const [annotationFontSize, setAnnotationFontSize] = useState<number>(16);
@@ -92,6 +94,34 @@ export default function Home() {
       setMobileTab((prev) => (prev === 'annotate' ? 'palette' : prev));
     }
   };
+
+  const handleAnnotationsChange = useCallback((newAnnotations: ColorAnnotation[]) => {
+    setAnnotationHistory(prev => [...prev, annotations]);
+    setAnnotationFuture([]);
+    setAnnotations(newAnnotations);
+  }, [annotations]);
+
+  const handleAnnotationUndo = useCallback(() => {
+    if (annotationHistory.length === 0) return;
+    const prev = annotationHistory[annotationHistory.length - 1];
+    setAnnotationFuture(f => [annotations, ...f]);
+    setAnnotations(prev);
+    setAnnotationHistory(h => h.slice(0, -1));
+  }, [annotationHistory, annotations]);
+
+  const handleAnnotationRedo = useCallback(() => {
+    if (annotationFuture.length === 0) return;
+    const next = annotationFuture[0];
+    setAnnotationHistory(h => [...h, annotations]);
+    setAnnotations(next);
+    setAnnotationFuture(f => f.slice(1));
+  }, [annotationFuture, annotations]);
+
+  const handleClearAnnotations = useCallback(() => {
+    setAnnotationHistory(prev => [...prev, annotations]);
+    setAnnotationFuture([]);
+    setAnnotations([]);
+  }, [annotations]);
 
   // Toast notification hook
   const { showToast, ToastContainer } = useToast();
@@ -637,7 +667,11 @@ export default function Home() {
       isGreyscale={isGreyscale}
       className="flex-1 flex flex-col"
       annotations={annotations}
-      onAnnotationsChange={setAnnotations}
+      onAnnotationsChange={handleAnnotationsChange}
+      onUndo={handleAnnotationUndo}
+      onRedo={handleAnnotationRedo}
+      canUndo={annotationHistory.length > 0}
+      canRedo={annotationFuture.length > 0}
       annotationMode={annotationMode}
       annotationLineOpacity={annotationLineOpacity}
       annotationFontSize={annotationFontSize}
@@ -652,7 +686,7 @@ export default function Home() {
       onLineOpacityChange={setAnnotationLineOpacity}
       fontSize={annotationFontSize}
       onFontSizeChange={setAnnotationFontSize}
-      onClearAnnotations={() => setAnnotations([])}
+      onClearAnnotations={handleClearAnnotations}
       onExportImage={handleExportImage}
       onExportOverlay={handleExportOverlay}
       hasAnnotations={annotations.length > 0}
@@ -687,7 +721,7 @@ export default function Home() {
       onLineOpacityChange={setAnnotationLineOpacity}
       fontSize={annotationFontSize}
       onFontSizeChange={setAnnotationFontSize}
-      onClearAnnotations={() => setAnnotations([])}
+      onClearAnnotations={handleClearAnnotations}
       onExportImage={handleExportImage}
       onExportOverlay={handleExportOverlay}
       hasAnnotations={annotations.length > 0}
