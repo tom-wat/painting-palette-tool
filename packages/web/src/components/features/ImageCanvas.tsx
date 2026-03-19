@@ -10,6 +10,20 @@ import { type SelectionMode } from './AdvancedSelectionTools';
 import { rgbToGrayscale, calculateHScL } from '@/lib/color-space-conversions';
 import { type ColorAnnotation } from '@/lib/export-formats';
 
+// ─── Touch configuration ───────────────────────────────────────────────────
+// Pinch zoom sensitivity. 1.0 = natural linear, >1.0 = more sensitive, <1.0 = less sensitive.
+// Implemented as an exponent: newScale = startScale * rawRatio^PINCH_ZOOM_SENSITIVITY
+const PINCH_ZOOM_SENSITIVITY = 1.2;
+
+// Minimum finger movement (px) before a single-finger touch is treated as a pan
+// rather than a tap/selection-start in rect/polygon mode.
+const TOUCH_PAN_THRESHOLD = 8;
+
+// Minimum rectangle selection size (px, screen coords) to trigger color extraction.
+// Prevents accidental tiny selections from a tap or slight finger movement.
+const MIN_RECT_SELECTION_SIZE = 12;
+// ───────────────────────────────────────────────────────────────────────────
+
 interface SelectionRect {
   start: Point;
   end: Point;
@@ -161,6 +175,9 @@ export default function ImageCanvas({
   const [maxScale] = useState(5);
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
+  const [prevPinchCenter, setPrevPinchCenter] = useState<Point | null>(null);
+  const [touchStartPos, setTouchStartPos] = useState<Point | null>(null);
+  const [isTouchPanning, setIsTouchPanning] = useState(false);
 
   // Polygon selection state
   const [polygonSelection] = useState(() => new PolygonSelection());
@@ -374,12 +391,7 @@ export default function ImageCanvas({
         ctx.lineTo(scaledX + 1, scaledY + 1);
       }
 
-      // Draw preview line to first point if drawing
-      if (isDrawing && !polygonSelection.getIsComplete() && path.length > 2) {
-        ctx.lineTo(scaledFirstX + 1, scaledFirstY + 1);
-      }
-
-      // Close path for completed polygon
+      // Close path for completed polygon only
       if (polygonSelection.getIsComplete()) {
         ctx.closePath();
       }
@@ -397,10 +409,6 @@ export default function ImageCanvas({
         const scaledX = point.x * scale + offset.x;
         const scaledY = point.y * scale + offset.y;
         ctx.lineTo(scaledX, scaledY);
-      }
-
-      if (isDrawing && !polygonSelection.getIsComplete() && path.length > 2) {
-        ctx.lineTo(scaledFirstX, scaledFirstY);
       }
 
       if (polygonSelection.getIsComplete()) {
@@ -1062,8 +1070,10 @@ export default function ImageCanvas({
 
     if (e.touches.length === 1) {
       const pos = getTouchPos(e, 0);
+      setTouchStartPos(pos);
+      setIsTouchPanning(false);
 
-      // Annotation mode on point selection: start annotation drag
+      // Annotation mode: start annotation drag
       if (selectionMode === 'point' && annotationMode === 'annotate') {
         const imagePos = screenToImageCoords(pos.x, pos.y);
         setAnnotationAnchorImg(imagePos);
@@ -1072,28 +1082,33 @@ export default function ImageCanvas({
         return;
       }
 
-      // Point mode pick: add color on touch
+      // Point pick: defer to touchEnd (tap = pick, drag = pan)
       if (selectionMode === 'point') {
-        const imagePos = screenToImageCoords(pos.x, pos.y);
-        const color = extractPixelColor(imagePos.x, imagePos.y);
-        if (color && onPointColorAdd) {
-          onPointColorAdd(color);
-        }
         return;
       }
 
-      // Selection mode: start drawing
-      setIsDrawing(true);
-      setSelection({ start: pos, end: pos });
+      // Rectangle: start drag selection
+      if (selectionMode === 'rectangle') {
+        setSelection(null);
+        setDragSelection({ start: pos, end: pos });
+        setIsDrawing(true);
+        return;
+      }
+
+      // Polygon: add vertex on tap (handled in touchEnd to distinguish from two-finger)
+
     } else if (e.touches.length === 2) {
-      // Two finger pinch - start zoom
+      // Two fingers: start pinch zoom + pan
       const distance = getTouchDistance(e);
+      const center = getTouchCenter(e);
       setTouchStartDistance(distance);
       setTouchStartScale(scale);
-      setIsDrawing(false); // Cancel selection
+      setPrevPinchCenter(center);
+      setIsDrawing(false);
       setIsAnnotating(false);
+      setIsTouchPanning(false);
     }
-  }, [getTouchPos, getTouchDistance, scale, selectionMode, annotationMode, screenToImageCoords, extractPixelColor, onPointColorAdd]);
+  }, [getTouchPos, getTouchDistance, getTouchCenter, scale, selectionMode, annotationMode, screenToImageCoords]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     e.preventDefault();
@@ -1108,27 +1123,59 @@ export default function ImageCanvas({
         return;
       }
 
-      // Update selection
-      if (isDrawing && selection) {
-        setSelection(prev => prev ? { ...prev, end: pos } : null);
+      // Pan threshold only applies to point mode (rect/polygon drag = selection, not pan)
+      if (selectionMode === 'point' && touchStartPos && !isTouchPanning) {
+        const dx = pos.x - touchStartPos.x;
+        const dy = pos.y - touchStartPos.y;
+        if (Math.sqrt(dx * dx + dy * dy) > TOUCH_PAN_THRESHOLD) {
+          setIsTouchPanning(true);
+          setLastPanPoint(pos);
+          return;
+        }
       }
-    } else if (e.touches.length === 2 && touchStartDistance) {
-      // Two finger pinch - zoom
-      const currentDistance = getTouchDistance(e);
-      const scaleChange = currentDistance / touchStartDistance;
-      const newScale = Math.max(minScale, Math.min(maxScale, touchStartScale * scaleChange));
 
-      if (newScale !== scale) {
-        const center = getTouchCenter(e);
-        const scaleRatio = newScale / scale;
-        setOffset((prev: Point) => ({
-          x: center.x - (center.x - prev.x) * scaleRatio,
-          y: center.y - (center.y - prev.y) * scaleRatio,
-        }));
-        setScale(newScale);
+      // Pan mode
+      if (isTouchPanning && lastPanPoint) {
+        const dx = pos.x - lastPanPoint.x;
+        const dy = pos.y - lastPanPoint.y;
+        setOffset((prev: Point) => ({ x: prev.x + dx, y: prev.y + dy }));
+        setLastPanPoint(pos);
+        return;
       }
+
+      // Update rectangle drag selection
+      if (isDrawing && selectionMode === 'rectangle') {
+        setDragSelection(prev => prev ? { ...prev, end: pos } : null);
+      }
+
+    } else if (e.touches.length === 2 && touchStartDistance) {
+      // Pinch zoom with simultaneous two-finger pan
+      const currentDistance = getTouchDistance(e);
+      const center = getTouchCenter(e);
+
+      // Apply sensitivity via exponent: ratio^sensitivity
+      const rawRatio = currentDistance / touchStartDistance;
+      const sensitizedRatio = Math.pow(rawRatio, PINCH_ZOOM_SENSITIVITY);
+      const newScale = Math.max(minScale, Math.min(maxScale, touchStartScale * sensitizedRatio));
+
+      // Pan delta from previous pinch center
+      const panDx = prevPinchCenter ? center.x - prevPinchCenter.x : 0;
+      const panDy = prevPinchCenter ? center.y - prevPinchCenter.y : 0;
+
+      const scaleRatio = newScale / scale;
+      setOffset((prev: Point) => ({
+        x: center.x - (center.x - prev.x) * scaleRatio + panDx,
+        y: center.y - (center.y - prev.y) * scaleRatio + panDy,
+      }));
+      setScale(newScale);
+      setPrevPinchCenter(center);
     }
-  }, [isDrawing, isAnnotating, annotationAnchorImg, selection, touchStartDistance, touchStartScale, scale, minScale, maxScale, getTouchPos, getTouchDistance, getTouchCenter, screenToImageCoords]);
+  }, [
+    isDrawing, isAnnotating, annotationAnchorImg, selection,
+    touchStartDistance, touchStartScale, touchStartPos, isTouchPanning, lastPanPoint,
+    prevPinchCenter, scale, minScale, maxScale,
+    getTouchPos, getTouchDistance, getTouchCenter, screenToImageCoords,
+  ]);
 
   const handleTouchEnd = useCallback(() => {
     // Complete annotation
@@ -1156,14 +1203,76 @@ export default function ImageCanvas({
       return;
     }
 
-    if (isDrawing) {
+    // Point mode tap: pick color (only if didn't pan)
+    if (selectionMode === 'point' && !isTouchPanning && touchStartPos) {
+      const imagePos = screenToImageCoords(touchStartPos.x, touchStartPos.y);
+      const color = extractPixelColor(imagePos.x, imagePos.y);
+      if (color && onPointColorAdd) {
+        onPointColorAdd(color);
+      }
+    }
+
+    // Rectangle: confirm drag selection only if large enough
+    if (selectionMode === 'rectangle' && isDrawing) {
       setIsDrawing(false);
-      extractSelectionData();
+      if (dragSelection) {
+        const w = Math.abs(dragSelection.end.x - dragSelection.start.x);
+        const h = Math.abs(dragSelection.end.y - dragSelection.start.y);
+        if (w >= MIN_RECT_SELECTION_SIZE && h >= MIN_RECT_SELECTION_SIZE) {
+          setSelection(dragSelection);
+          extractSelectionDataFromRect(dragSelection);
+        }
+        setDragSelection(null);
+      }
+    }
+
+    // Polygon: add vertex on tap (single-finger touchend without 2-finger interference)
+    if (selectionMode === 'polygon' && touchStartPos && !isTouchPanning) {
+      const pos = touchStartPos;
+      const imagePos = screenToImageCoords(pos.x, pos.y);
+
+      if (polygonSelection.getIsComplete()) {
+        polygonSelection.clear();
+        setCurrentMask(null);
+        setIsDrawing(false);
+      } else if (polygonSelection.getVertices().length > 2) {
+        const firstPoint = polygonSelection.getVertices()[0]!;
+        const scaledFirstX = firstPoint.x * scale + offset.x;
+        const scaledFirstY = firstPoint.y * scale + offset.y;
+        const dist = Math.sqrt((pos.x - scaledFirstX) ** 2 + (pos.y - scaledFirstY) ** 2);
+        if (dist < 20) {
+          // Close polygon
+          polygonSelection.complete();
+          setIsDrawing(false);
+          const mask = polygonSelection.generateMask(sourceImageData?.width || 0, sourceImageData?.height || 0);
+          setCurrentMask(mask);
+          extractSelectionData();
+          drawCanvas();
+        } else {
+          polygonSelection.addVertex(imagePos);
+          setIsDrawing(true);
+          drawCanvas();
+        }
+      } else {
+        polygonSelection.addVertex(imagePos);
+        setIsDrawing(true);
+        drawCanvas();
+      }
     }
 
     setTouchStartDistance(null);
     setTouchStartScale(1);
-  }, [isAnnotating, annotationAnchorImg, annotationPreviewImg, scale, offset, extractPixelColor, onAnnotationsChange, annotations, isDrawing, extractSelectionData]);
+    setPrevPinchCenter(null);
+    setTouchStartPos(null);
+    setIsTouchPanning(false);
+    setLastPanPoint(null);
+  }, [
+    isAnnotating, annotationAnchorImg, annotationPreviewImg, scale, offset,
+    extractPixelColor, onAnnotationsChange, annotations, isDrawing, extractSelectionData,
+    extractSelectionDataFromRect, selectionMode, isTouchPanning, touchStartPos,
+    screenToImageCoords, onPointColorAdd, dragSelection, polygonSelection,
+    sourceImageData, drawCanvas,
+  ]);
 
   // Handle wheel events for zoom (registered as non-passive via useEffect)
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -1237,14 +1346,16 @@ export default function ImageCanvas({
             >
               100%
             </button>
-            <button
-              onClick={clearSelection}
-              disabled={!(selection || currentMask || polygonSelection.getIsComplete())}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-white"
-              title="Clear selection (ESC)"
-            >
-              Clear
-            </button>
+            {(selectionMode === 'rectangle' || selectionMode === 'polygon') && (
+              <button
+                onClick={clearSelection}
+                disabled={!(selection || currentMask || polygonSelection.getIsComplete())}
+                className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-white"
+                title="Clear selection (ESC)"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 

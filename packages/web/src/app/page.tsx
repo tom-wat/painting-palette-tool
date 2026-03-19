@@ -79,7 +79,18 @@ export default function Home() {
 
   const handleMobileTabChange = (tab: MobileTab) => {
     setMobileTab(tab);
+    // Palette tab always shows ColorPalette → clear badge on tap
     if (tab === 'palette') setPaletteBadge(false);
+  };
+
+  const handleAnnotationModeChange = (mode: AnnotationMode) => {
+    setAnnotationMode(mode);
+    // Auto-switch mobile tab when annotation mode changes
+    if (mode === 'annotate') {
+      setMobileTab((prev) => (prev === 'palette' ? 'annotate' : prev));
+    } else {
+      setMobileTab((prev) => (prev === 'annotate' ? 'palette' : prev));
+    }
   };
 
   // Toast notification hook
@@ -176,7 +187,7 @@ export default function Home() {
         setExtractedColors(mergedColors);
         // Update last added color IDs (only keep the new ones)
         setLastAddedColorIds(new Set(newColorIds));
-        if (mobileTab !== 'palette') setPaletteBadge(true);
+        if (newColorIds.length > 0 && mobileTab !== 'palette') setPaletteBadge(true);
       }
     }
     setSelectedImageData(selectionData);
@@ -660,6 +671,33 @@ export default function Home() {
     />
   );
 
+  const mobilePaletteEl = (
+    <ColorPalette
+      colors={extractedColors}
+      imageFilename={uploadedImage?.name}
+      lastAddedColorIds={lastAddedColorIds}
+      onDeleteColor={handleDeleteColor}
+      onResetPalette={handleResetPalette}
+    />
+  );
+
+  const mobileAnnotateEl = (
+    <AnnotationControls
+      lineOpacity={annotationLineOpacity}
+      onLineOpacityChange={setAnnotationLineOpacity}
+      fontSize={annotationFontSize}
+      onFontSizeChange={setAnnotationFontSize}
+      onClearAnnotations={() => setAnnotations([])}
+      onExportImage={handleExportImage}
+      onExportOverlay={handleExportOverlay}
+      hasAnnotations={annotations.length > 0}
+      annotationTheme={annotationTheme}
+      onAnnotationThemeChange={setAnnotationTheme}
+      lineColor={annotationLineColor}
+      onLineColorChange={setAnnotationLineColor}
+    />
+  );
+
   const leftPanelEl = (
     <div className="p-4 space-y-4">
       {uploadedImage ? (
@@ -671,7 +709,7 @@ export default function Home() {
           }
           onClearSelection={() => clearSelectionFnRef.current?.()}
           annotationMode={annotationMode}
-          onAnnotationModeChange={setAnnotationMode}
+          onAnnotationModeChange={handleAnnotationModeChange}
         />
       ) : (
         <Card>
@@ -896,7 +934,7 @@ export default function Home() {
                       {(['pick', 'annotate'] as const).map((mode) => (
                         <button
                           key={mode}
-                          onClick={() => setAnnotationMode(mode)}
+                          onClick={() => handleAnnotationModeChange(mode)}
                           className={`px-3 py-1 text-xs font-medium transition-colors capitalize ${
                             annotationMode === mode
                               ? 'bg-gray-800 text-white'
@@ -939,10 +977,17 @@ export default function Home() {
             </div>
           )}
 
-          {/* Palette Tab */}
+          {/* Palette Tab — always ColorPalette */}
           {mobileTab === 'palette' && (
             <div className="flex-1 overflow-hidden">
-              <div className="p-4 h-full">{rightPanelEl}</div>
+              <div className="p-4 h-full">{mobilePaletteEl}</div>
+            </div>
+          )}
+
+          {/* Annotate Tab — always AnnotationControls */}
+          {mobileTab === 'annotate' && (
+            <div className="flex-1 overflow-hidden">
+              <div className="p-4 h-full">{mobileAnnotateEl}</div>
             </div>
           )}
 
@@ -958,7 +1003,7 @@ export default function Home() {
         <MobileTabBar
           activeTab={mobileTab}
           onTabChange={handleMobileTabChange}
-          paletteTabLabel={selectionConfig.mode === 'point' && annotationMode === 'annotate' ? 'Annotate' : 'Palette'}
+          isAnnotateMode={selectionConfig.mode === 'point' && annotationMode === 'annotate'}
           showPaletteBadge={paletteBadge}
         />
       </main>
