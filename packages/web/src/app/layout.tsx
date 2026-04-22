@@ -8,7 +8,9 @@ export const metadata: Metadata = {
     'Extract optimized color palettes from reference images for painting',
   icons: {
     icon: '/favicon.svg',
+    apple: '/apple-touch-icon.png',
   },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
