@@ -1,7 +1,6 @@
 {
   "version": 2,
   "buildCommand": "pnpm --filter @palette-tool/color-engine build && pnpm --filter @palette-tool/cube-renderer build && pnpm --filter @palette-tool/web build",
-  "outputDirectory": ".next",
-  "installCommand": "pnpm install --frozen-lockfile",
-  "framework": "nextjs"
+  "outputDirectory": "packages/web/out",
+  "installCommand": "pnpm install --frozen-lockfile"
 }
