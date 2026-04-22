@@ -11,8 +11,7 @@ const pwaConfig = withPWA({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Tauri build: static export. Vercel build: default (SSR/SSG)
-  output: process.env.TAURI === '1' ? 'export' : undefined,
+  output: 'export',
   transpilePackages: ['@palette-tool/color-engine', '@palette-tool/cube-renderer'],
   // CSS最適化設定
   webpack: (config, { dev, isServer }) => {
