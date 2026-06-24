@@ -24,6 +24,7 @@ import {
   exportAnnotationsOnly,
   downloadFile,
 } from '@/lib/export-formats';
+import { type AnnotationColorSpace } from '@/lib/annotation-render';
 
 interface RGBColor {
   r: number;
@@ -74,6 +75,7 @@ export default function Home() {
   const [annotationFontSize, setAnnotationFontSize] = useState<number>(16);
   const [annotationTheme, setAnnotationTheme] = useState<'light' | 'dark'>('dark');
   const [annotationLineColor, setAnnotationLineColor] = useState<string>('#ffffff');
+  const [annotationColorSpace, setAnnotationColorSpace] = useState<AnnotationColorSpace>('hscl');
 
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<MobileTab>('canvas');
@@ -148,6 +150,7 @@ export default function Home() {
         if (s.annotationMode) setAnnotationMode(s.annotationMode);
         if (s.annotationTheme) setAnnotationTheme(s.annotationTheme);
         if (s.annotationLineColor) setAnnotationLineColor(s.annotationLineColor);
+        if (s.annotationColorSpace) setAnnotationColorSpace(s.annotationColorSpace);
         if (s.selectionMode) setSelectionConfig((prev) => ({ ...prev, mode: s.selectionMode }));
       }
     } catch {
@@ -169,13 +172,14 @@ export default function Home() {
         annotationMode,
         annotationTheme,
         annotationLineColor,
+        annotationColorSpace,
         selectionMode: selectionConfig.mode,
       };
       localStorage.setItem('painting-palette-ui-settings', JSON.stringify(settings));
     } catch {
       // ignore storage errors
     }
-  }, [annotationLineOpacity, annotationFontSize, annotationMode, annotationTheme, annotationLineColor, selectionConfig.mode]);
+  }, [annotationLineOpacity, annotationFontSize, annotationMode, annotationTheme, annotationLineColor, annotationColorSpace, selectionConfig.mode]);
 
   // Use useCallback to prevent re-rendering issues
   const handleClearSelectionCallback = useCallback((clearFn: () => void) => {
@@ -628,6 +632,7 @@ export default function Home() {
         fontSize: annotationFontSize,
         theme: annotationTheme,
         lineColor: annotationLineColor,
+        colorSpace: annotationColorSpace,
       });
       const date = new Date().toISOString().split('T')[0];
       downloadFile(blob, `image-annotated-${date}.png`);
@@ -646,6 +651,7 @@ export default function Home() {
         fontSize: annotationFontSize,
         theme: annotationTheme,
         lineColor: annotationLineColor,
+        colorSpace: annotationColorSpace,
       });
       const date = new Date().toISOString().split('T')[0];
       downloadFile(blob, `overlay-${date}.png`);
@@ -677,6 +683,7 @@ export default function Home() {
       annotationFontSize={annotationFontSize}
       annotationTheme={annotationTheme}
       annotationLineColor={annotationLineColor}
+      annotationColorSpace={annotationColorSpace}
     />
   ) : null;
 
@@ -694,6 +701,8 @@ export default function Home() {
       onAnnotationThemeChange={setAnnotationTheme}
       lineColor={annotationLineColor}
       onLineColorChange={setAnnotationLineColor}
+      colorSpace={annotationColorSpace}
+      onColorSpaceChange={setAnnotationColorSpace}
     />
   ) : (
     <ColorPalette
@@ -729,6 +738,8 @@ export default function Home() {
       onAnnotationThemeChange={setAnnotationTheme}
       lineColor={annotationLineColor}
       onLineColorChange={setAnnotationLineColor}
+      colorSpace={annotationColorSpace}
+      onColorSpaceChange={setAnnotationColorSpace}
     />
   );
 

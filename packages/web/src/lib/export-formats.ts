@@ -7,6 +7,7 @@ import {
   calculateHScL,
   formatColorValue
 } from './color-space-conversions';
+import { drawAnnotationLabel, type AnnotationColorSpace } from './annotation-render';
 
 export interface ColorAnnotation {
   id: string;
@@ -772,24 +773,6 @@ export function downloadTextFile(content: string, filename: string, mimeType: st
   downloadFile(blob, filename);
 }
 
-function rgbToHslLocal(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
-    }
-    h /= 6;
-  }
-  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
-
 function drawAnnotationsOnCtx(
   ctx: CanvasRenderingContext2D,
   annotations: ColorAnnotation[],
@@ -797,76 +780,21 @@ function drawAnnotationsOnCtx(
   lineOpacity: number,
   fontSize: number,
   theme: 'light' | 'dark' = 'dark',
-  lineColor: string = '#ffffff'
+  lineColor: string = '#ffffff',
+  colorSpace: AnnotationColorSpace = 'hscl'
 ) {
-  const isDark = theme === 'dark';
-  const boxBg = isDark ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.9)';
-  const textPrimary = isDark ? '#ffffff' : '#1f2937';
-  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-
   for (const annotation of annotations) {
-    const { anchorPoint: ap, labelPoint: lp, color } = annotation;
-    const { r, g, b } = color;
-    const hsl = rgbToHslLocal(r, g, b);
-    const hscl = calculateHScL(color);
-    const line1 = `${hsl.h} ${hsl.s} ${hsl.l}`;
-    const line2 = `${hscl.h} ${hscl.sc} ${hscl.l}`;
-
-    // Line
-    ctx.save();
-    ctx.globalAlpha = lineOpacity;
-    ctx.beginPath();
-    ctx.moveTo(ap.x, ap.y);
-    ctx.lineTo(lp.x, lp.y);
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = Math.max(1, fontSize / 10);
-    ctx.stroke();
-    ctx.restore();
-
-    // Label box
-    const swatchSize = fontSize;
-    const pad = Math.round(fontSize * 0.4);
-    const lineH = fontSize + 3;
-    const textIndent = swatchSize + pad;
-    const fontStack = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
-    ctx.font = `${fontSize}px ${fontStack}`;
-    const w1 = ctx.measureText(line1).width;
-    const w2 = ctx.measureText(line2).width;
-    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-    const extraPad = isTauri ? Math.round(fontSize * 0.25) : 0;
-    const boxW = Math.max(w1, w2) + textIndent + pad * 2 + extraPad;
-    const boxH = lineH + fontSize + pad * 2 + extraPad;
-
-    // Center at label point
-    const bx = Math.max(0, Math.min(lp.x - boxW / 2, canvasWidth - boxW));
-    const by = lp.y - boxH / 2;
-
-    const radius = Math.round(fontSize * 0.25);
-    ctx.fillStyle = boxBg;
-    ctx.beginPath();
-    ctx.roundRect(bx, by, boxW, boxH, radius);
-    ctx.fill();
-
-    // Color swatch — vertically centered in box
-    const swatchY = by + (boxH - swatchSize) / 2;
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    ctx.fillRect(bx + pad, swatchY, swatchSize, swatchSize);
-
-    // Swatch border for near-white or near-black colors
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    if (brightness > 220 || brightness < 30) {
-      ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(bx + pad, swatchY, swatchSize, swatchSize);
-    }
-
-    ctx.font = `${fontSize}px ${fontStack}`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = textSecondary;
-    ctx.fillText(line1, bx + pad + textIndent, by + pad);
-    ctx.fillStyle = textPrimary;
-    ctx.fillText(line2, bx + pad + textIndent, by + pad + lineH);
+    drawAnnotationLabel(ctx, {
+      color: annotation.color,
+      anchor: annotation.anchorPoint,
+      label: annotation.labelPoint,
+      lineOpacity,
+      fontSize,
+      canvasWidth,
+      theme,
+      lineColor,
+      colorSpace,
+    });
   }
 }
 
@@ -886,9 +814,9 @@ function loadImage(file: File): Promise<HTMLImageElement> {
 export async function exportImageWithAnnotations(
   imageFile: File,
   annotations: ColorAnnotation[],
-  options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string } = {}
+  options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string; colorSpace?: AnnotationColorSpace } = {}
 ): Promise<Blob> {
-  const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff' } = options;
+  const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff', colorSpace = 'hscl' } = options;
   const img = await loadImage(imageFile);
 
   const canvas = document.createElement('canvas');
@@ -898,7 +826,7 @@ export async function exportImageWithAnnotations(
   if (!ctx) throw new Error('Cannot create canvas context');
 
   ctx.drawImage(img, 0, 0);
-  drawAnnotationsOnCtx(ctx, annotations, canvas.width, lineOpacity, fontSize, theme, lineColor);
+  drawAnnotationsOnCtx(ctx, annotations, canvas.width, lineOpacity, fontSize, theme, lineColor, colorSpace);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -914,9 +842,9 @@ export async function exportImageWithAnnotations(
 export async function exportAnnotationsOnly(
   imageFile: File,
   annotations: ColorAnnotation[],
-  options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string } = {}
+  options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string; colorSpace?: AnnotationColorSpace } = {}
 ): Promise<Blob> {
-  const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff' } = options;
+  const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff', colorSpace = 'hscl' } = options;
   const img = await loadImage(imageFile);
 
   const canvas = document.createElement('canvas');
@@ -926,7 +854,7 @@ export async function exportAnnotationsOnly(
   if (!ctx) throw new Error('Cannot create canvas context');
 
   // Transparent background — do not fill
-  drawAnnotationsOnCtx(ctx, annotations, canvas.width, lineOpacity, fontSize, theme, lineColor);
+  drawAnnotationsOnCtx(ctx, annotations, canvas.width, lineOpacity, fontSize, theme, lineColor, colorSpace);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {

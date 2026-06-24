@@ -7,8 +7,9 @@ import {
   type Point
 } from '@/lib/selection-tools';
 import { type SelectionMode } from './AdvancedSelectionTools';
-import { rgbToGrayscale, calculateHScL } from '@/lib/color-space-conversions';
+import { rgbToGrayscale } from '@/lib/color-space-conversions';
 import { type ColorAnnotation } from '@/lib/export-formats';
+import { drawAnnotationLabel, type AnnotationColorSpace } from '@/lib/annotation-render';
 
 // ─── Touch configuration ───────────────────────────────────────────────────
 // Pinch zoom sensitivity. 1.0 = natural linear, >1.0 = more sensitive, <1.0 = less sensitive.
@@ -44,110 +45,11 @@ interface ImageCanvasProps {
   annotationFontSize?: number;
   annotationTheme?: 'light' | 'dark';
   annotationLineColor?: string;
+  annotationColorSpace?: AnnotationColorSpace;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-}
-
-// Helper: convert RGB to HSL (matches Tooltip format)
-function rgbToHslLocal(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
-    }
-    h /= 6;
-  }
-  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
-
-function renderAnnotation(
-  ctx: CanvasRenderingContext2D,
-  annotation: ColorAnnotation,
-  ax: number, ay: number,
-  lx: number, ly: number,
-  lineOpacity: number,
-  fontSize: number,
-  canvasWidth: number,
-  theme: 'light' | 'dark' = 'dark',
-  lineColor: string = '#ffffff'
-) {
-  const isDark = theme === 'dark';
-  const boxBg = isDark ? '#1a1a1a' : '#f8f8f8';
-  const textPrimary = isDark ? '#ffffff' : '#1f2937';
-  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
-
-  const { r, g, b } = annotation.color;
-  const hsl = rgbToHslLocal(r, g, b);
-  const hscl = calculateHScL(annotation.color);
-  const line1 = `${hsl.h} ${hsl.s} ${hsl.l}`;
-  const line2 = `${hscl.h} ${hscl.sc} ${hscl.l}`;
-
-  // Line
-  ctx.save();
-  ctx.globalAlpha = lineOpacity;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay);
-  ctx.lineTo(lx, ly);
-  ctx.strokeStyle = lineColor;
-  ctx.lineWidth = Math.max(1, fontSize / 10);
-  ctx.stroke();
-  ctx.restore();
-
-  // Measure label box
-  const swatchSize = fontSize;
-  const pad = Math.round(fontSize * 0.4);
-  const lineH = fontSize + 3;
-  const textIndent = swatchSize + pad;
-  const fontStack = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
-  ctx.font = `${fontSize}px ${fontStack}`;
-  const w1 = ctx.measureText(line1).width;
-  const w2 = ctx.measureText(line2).width;
-  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-  const extraPad = isTauri ? Math.round(fontSize * 0.25) : 0;
-  const boxW = Math.max(w1, w2) + textIndent + pad * 2 + extraPad;
-  const boxH = lineH + fontSize + pad * 2 + extraPad;
-
-  // Center label box at (lx, ly)
-  const bx = Math.max(0, Math.min(lx - boxW / 2, canvasWidth - boxW));
-  const by = ly - boxH / 2;
-
-  // Box background
-  const radius = Math.round(fontSize * 0.25);
-  ctx.fillStyle = boxBg;
-  ctx.beginPath();
-  ctx.roundRect(bx, by, boxW, boxH, radius);
-  ctx.fill();
-
-  // Color swatch — vertically centered in box
-  const swatchY = by + (boxH - swatchSize) / 2;
-  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-  ctx.fillRect(bx + pad, swatchY, swatchSize, swatchSize);
-
-  // Swatch border for near-white or near-black colors
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  if (brightness > 220 || brightness < 30) {
-    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bx + pad, swatchY, swatchSize, swatchSize);
-  }
-
-  // Text
-  ctx.font = `${fontSize}px ${fontStack}`;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = textSecondary;
-  ctx.fillText(line1, bx + pad + textIndent, by + pad);
-  ctx.fillStyle = textPrimary;
-  ctx.fillText(line2, bx + pad + textIndent, by + pad + lineH);
 }
 
 export default function ImageCanvas({
@@ -165,6 +67,7 @@ export default function ImageCanvas({
   annotationFontSize = 16,
   annotationTheme = 'dark',
   annotationLineColor = '#ffffff',
+  annotationColorSpace = 'hscl',
   onUndo,
   onRedo,
   canUndo = false,
@@ -506,7 +409,18 @@ export default function ImageCanvas({
       const ay = annotation.anchorPoint.y * scale + offset.y;
       const lx = annotation.labelPoint.x * scale + offset.x;
       const ly = annotation.labelPoint.y * scale + offset.y;
-      renderAnnotation(ctx, annotation, ax, ay, lx, ly, annotationLineOpacity, annotationFontSize * scale, canvas.width, annotationTheme, annotationLineColor);
+      drawAnnotationLabel(ctx, {
+        color: annotation.color,
+        anchor: { x: ax, y: ay },
+        label: { x: lx, y: ly },
+        lineOpacity: annotationLineOpacity,
+        fontSize: annotationFontSize * scale,
+        canvasWidth: canvas.width,
+        theme: annotationTheme,
+        lineColor: annotationLineColor,
+        colorSpace: annotationColorSpace,
+        opaqueBg: true,
+      });
     }
 
     // Draw annotation preview (while dragging)
@@ -531,7 +445,7 @@ export default function ImageCanvas({
   }, [
     image, scale, offset, selection, dragSelection, selectionMode, polygonSelection,
     currentMask, isDrawing, isGreyscale,
-    annotations, annotationLineOpacity, annotationFontSize, annotationTheme, annotationLineColor,
+    annotations, annotationLineOpacity, annotationFontSize, annotationTheme, annotationLineColor, annotationColorSpace,
     isAnnotating, annotationAnchorImg, annotationPreviewImg,
   ]);
 

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui';
 import { Slider } from '../ui';
+import { type AnnotationColorSpace } from '@/lib/annotation-render';
 
 interface AnnotationControlsProps {
   lineOpacity: number;
@@ -14,6 +15,8 @@ interface AnnotationControlsProps {
   onAnnotationThemeChange: (_theme: 'light' | 'dark') => void;
   lineColor: string;
   onLineColorChange: (_color: string) => void;
+  colorSpace: AnnotationColorSpace;
+  onColorSpaceChange: (_colorSpace: AnnotationColorSpace) => void;
 }
 
 export default function AnnotationControls({
@@ -29,6 +32,8 @@ export default function AnnotationControls({
   onAnnotationThemeChange,
   lineColor,
   onLineColorChange,
+  colorSpace,
+  onColorSpaceChange,
 }: AnnotationControlsProps) {
   return (
     <Card className="h-full flex flex-col">
@@ -37,6 +42,35 @@ export default function AnnotationControls({
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
+          {/* Color space toggle */}
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-2">
+              Color Space
+            </label>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => onColorSpaceChange('hscl')}
+                className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                  colorSpace === 'hscl'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                HScL
+              </button>
+              <button
+                onClick={() => onColorSpaceChange('hsl')}
+                className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                  colorSpace === 'hsl'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                HSL
+              </button>
+            </div>
+          </div>
+
           {/* Theme toggle */}
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-2">
