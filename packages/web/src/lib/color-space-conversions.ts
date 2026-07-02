@@ -2,11 +2,9 @@
  * Advanced color space conversion utilities for LCH and OkLCH
  */
 
-export interface RGBColor {
-  r: number;
-  g: number;
-  b: number;
-}
+import type { RGBColor } from '@palette-tool/color-engine';
+
+export type { RGBColor };
 
 export interface HSLColor {
   h: number;

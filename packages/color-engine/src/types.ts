@@ -25,6 +25,10 @@ export interface ExtractedColor {
   frequency: number;
   importance: number;
   representativeness: number;
+  /** User manually added this color (web UI) */
+  isAdded?: boolean;
+  /** Unique identifier for the color (web UI) */
+  id?: string;
 }
 
 export interface SampledPixel {

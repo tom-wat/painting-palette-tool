@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { RGBColor, ExtractedColor } from '@palette-tool/color-engine';
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
 import { 
   exportAsPNG, 
@@ -23,20 +24,6 @@ import {
   calculateHScL,
   formatColorValue
 } from '@/lib/color-space-conversions';
-
-interface RGBColor {
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface ExtractedColor {
-  color: RGBColor;
-  frequency: number;
-  importance: number;
-  representativeness: number;
-  isAdded?: boolean;
-}
 
 interface SavedPalette {
   id: string;

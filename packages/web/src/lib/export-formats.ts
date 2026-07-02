@@ -1,6 +1,7 @@
 /**
  * Export utilities for color palettes in various formats
  */
+import type { RGBColor, ExtractedColor } from '@palette-tool/color-engine';
 import {
   getAllColorSpaces,
   rgbToHsl,
@@ -9,24 +10,13 @@ import {
 } from './color-space-conversions';
 import { drawAnnotationLabel, type AnnotationColorSpace } from './annotation-render';
 
+export type { RGBColor, ExtractedColor };
+
 export interface ColorAnnotation {
   id: string;
   anchorPoint: { x: number; y: number };
   labelPoint: { x: number; y: number };
   color: RGBColor;
-}
-
-export interface RGBColor {
-  r: number;
-  g: number;
-  b: number;
-}
-
-export interface ExtractedColor {
-  color: RGBColor;
-  frequency: number;
-  importance: number;
-  representativeness: number;
 }
 
 export interface SavedPalette {

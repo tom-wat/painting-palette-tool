@@ -2,6 +2,9 @@
  * 3D cube renderer type definitions
  */
 
+// Intentionally independent from @palette-tool/color-engine's RGBColor
+// (structurally identical {r,g,b}) so this package has no dependency on
+// color-engine. See docs/refactoring-plan.md Phase 1, Task 1-3.
 export interface RGBColor {
   r: number; // 0-255
   g: number; // 0-255

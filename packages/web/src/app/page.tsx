@@ -14,7 +14,7 @@ import AdvancedSelectionTools, {
 import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
 import MobileTabBar, { type MobileTab } from '@/components/features/MobileTabBar';
 import { Card, CardContent, Select, Slider, Toggle, useToast } from '@/components/ui';
-import { PaletteExtractor } from '@palette-tool/color-engine';
+import { PaletteExtractor, type RGBColor, type ExtractedColor } from '@palette-tool/color-engine';
 // import { analyzePalette, PaletteAnalysis } from '@/lib/brightness-analysis';
 import { areColorsSimilar, rgbToGrayscale } from '@/lib/color-space-conversions';
 import { useProcessingPipeline } from '@/lib/processing-pipeline';
@@ -25,21 +25,6 @@ import {
   downloadFile,
 } from '@/lib/export-formats';
 import { type AnnotationColorSpace } from '@/lib/annotation-render';
-
-interface RGBColor {
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface ExtractedColor {
-  color: RGBColor;
-  frequency: number;
-  importance: number;
-  representativeness: number;
-  isAdded?: boolean; // 追加された色かどうかのフラグ
-  id?: string; // 色の一意識別子
-}
 
 interface ExtractionSettings {
   colorCount: number;

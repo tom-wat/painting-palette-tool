@@ -17,22 +17,8 @@ import {
   exportAsProcreate,
 } from '@/lib/export-formats';
 import React, { useEffect, useRef, useState } from 'react';
+import type { RGBColor, ExtractedColor } from '@palette-tool/color-engine';
 import { Button, Card, CardContent, CardHeader, CardTitle, Modal } from '../ui';
-
-interface RGBColor {
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface ExtractedColor {
-  color: RGBColor;
-  frequency: number;
-  importance: number;
-  representativeness: number;
-  isAdded?: boolean;
-  id?: string;
-}
 
 interface SavedPalette {
   id: string;

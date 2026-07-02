@@ -2,18 +2,9 @@
  * Brightness analysis utilities for color palette analysis
  */
 
-export interface RGBColor {
-  r: number;
-  g: number;
-  b: number;
-}
+import type { RGBColor, ExtractedColor } from '@palette-tool/color-engine';
 
-export interface ExtractedColor {
-  color: RGBColor;
-  frequency: number;
-  importance: number;
-  representativeness: number;
-}
+export type { RGBColor, ExtractedColor };
 
 export interface BrightnessAnalysis {
   brightness: number;
