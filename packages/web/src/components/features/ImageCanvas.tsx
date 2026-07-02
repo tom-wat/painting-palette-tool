@@ -9,7 +9,9 @@ import {
 import { type SelectionMode } from './AdvancedSelectionTools';
 import { rgbToGrayscale } from '@palette-tool/color-engine';
 import { type ColorAnnotation } from '@/lib/export-formats';
-import { drawAnnotationLabel, type AnnotationColorSpace } from '@/lib/annotation-render';
+import { type AnnotationColorSpace } from '@/lib/annotation-render';
+import { drawCanvasFrame, type SelectionRect } from '@/lib/canvas-draw';
+import { useCanvasViewport } from '@/hooks/useCanvasViewport';
 
 // ─── Touch configuration ───────────────────────────────────────────────────
 // Pinch zoom sensitivity. 1.0 = natural linear, >1.0 = more sensitive, <1.0 = less sensitive.
@@ -24,11 +26,6 @@ const TOUCH_PAN_THRESHOLD = 8;
 // Prevents accidental tiny selections from a tap or slight finger movement.
 const MIN_RECT_SELECTION_SIZE = 12;
 // ───────────────────────────────────────────────────────────────────────────
-
-interface SelectionRect {
-  start: Point;
-  end: Point;
-}
 
 interface ImageCanvasProps {
   imageFile: File;
@@ -80,12 +77,22 @@ export default function ImageCanvas({
   const [selection, setSelection] = useState<SelectionRect | null>(null);
   const [dragSelection, setDragSelection] = useState<SelectionRect | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
+
+  const {
+    scale,
+    setScale,
+    offset,
+    setOffset,
+    minScale,
+    maxScale,
+    fitImageToContainer,
+    screenToImageCoords,
+    handleZoom,
+    zoomToActualSize,
+  } = useCanvasViewport(image, canvasRef, containerRef);
+
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState<Point | null>(null);
-  const [minScale] = useState(0.1);
-  const [maxScale] = useState(5);
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState(1);
   const [prevPinchCenter, setPrevPinchCenter] = useState<Point | null>(null);
@@ -138,310 +145,16 @@ export default function ImageCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageFile]);
 
-  // Fit image to container with proper scaling
-  const fitImageToContainer = useCallback(() => {
-    if (!image || !canvasRef.current || !containerRef.current) return;
-
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-
-    // Calculate scale to fit container with padding
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const padding = 32; // 16px padding on all sides = 32px total
-
-    const availableWidth = containerWidth - padding;
-    const availableHeight = containerHeight - padding;
-
-    const scaleX = availableWidth / image.width;
-    const scaleY = availableHeight / image.height;
-    const newScale = Math.min(scaleX, scaleY, 1); // Don't scale up initially
-
-    setScale(newScale);
-
-    // Center image
-    const displayWidth = image.width * newScale;
-    const displayHeight = image.height * newScale;
-    setOffset({
-      x: (containerWidth - displayWidth) / 2,
-      y: (containerHeight - displayHeight) / 2,
-    });
-
-    canvas.width = containerWidth;
-    canvas.height = containerHeight;
-  }, [image]);
-
-  // Handle container resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (image) {
-        fitImageToContainer();
-      }
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [image, fitImageToContainer]);
-
   // Draw canvas with image and selection
   const drawCanvas = useCallback(() => {
     if (!canvasRef.current || !image) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Apply grayscale filter if enabled
-    if (isGreyscale) {
-      ctx.filter = 'grayscale(100%)';
-    } else {
-      ctx.filter = 'none';
-    }
-
-    // Draw image
-    const displayWidth = image.width * scale;
-    const displayHeight = image.height * scale;
-    ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
-
-    // Reset filter for UI elements
-    ctx.filter = 'none';
-
-    // Draw selection rectangle
-    const currentSelection = selection || dragSelection;
-    if (currentSelection) {
-      const { start, end } = currentSelection;
-      const rect = {
-        x: Math.min(start.x, end.x),
-        y: Math.min(start.y, end.y),
-        width: Math.abs(end.x - start.x),
-        height: Math.abs(end.y - start.y),
-      };
-
-      // Draw selection overlay only for confirmed selection (not during drag)
-      if (selection) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-
-      // Clear selected area and redraw image for confirmed selection only
-      if (selection) {
-        ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
-
-        // Redraw image in selected area only
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(rect.x, rect.y, rect.width, rect.height);
-        ctx.clip();
-
-        // Apply grayscale filter if enabled
-        if (isGreyscale) {
-          ctx.filter = 'grayscale(100%)';
-        }
-
-        ctx.drawImage(image, offset.x, offset.y, displayWidth, displayHeight);
-        ctx.restore();
-      }
-
-      // Draw clean selection border with drop shadow effect
-      ctx.lineWidth = 2;
-
-      // Draw shadow border (offset)
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.strokeRect(rect.x + 1, rect.y + 1, rect.width, rect.height);
-
-      // Draw main border
-      ctx.strokeStyle = '#ffffff'; // White border
-      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-
-      // Draw modern corner handles
-      const handleSize = 6;
-      const positions = [
-        [rect.x, rect.y], // Top-left
-        [rect.x + rect.width, rect.y], // Top-right
-        [rect.x, rect.y + rect.height], // Bottom-left
-        [rect.x + rect.width, rect.y + rect.height] // Bottom-right
-      ];
-
-      positions.forEach(([x, y]) => {
-        // Handle shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.fillRect(x - handleSize / 2 + 1, y - handleSize / 2 + 1, handleSize, handleSize);
-
-        // Handle main
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
-
-      });
-    }
-
-    // Draw polygon path
-    if (selectionMode === 'polygon' && polygonSelection.getVertices().length > 0) {
-      const path = polygonSelection.getVertices();
-
-      // Draw clean polygon border
-      ctx.lineWidth = 2;
-
-      // Draw polygon path with shadow
-      ctx.beginPath();
-      const firstPoint = path[0];
-      const scaledFirstX = firstPoint.x * scale + offset.x;
-      const scaledFirstY = firstPoint.y * scale + offset.y;
-      ctx.moveTo(scaledFirstX + 1, scaledFirstY + 1);
-
-      for (let i = 1; i < path.length; i++) {
-        const point = path[i];
-        const scaledX = point.x * scale + offset.x;
-        const scaledY = point.y * scale + offset.y;
-        ctx.lineTo(scaledX + 1, scaledY + 1);
-      }
-
-      // Close path for completed polygon only
-      if (polygonSelection.getIsComplete()) {
-        ctx.closePath();
-      }
-
-      // Draw shadow
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-      ctx.stroke();
-
-      // Draw main path
-      ctx.beginPath();
-      ctx.moveTo(scaledFirstX, scaledFirstY);
-
-      for (let i = 1; i < path.length; i++) {
-        const point = path[i];
-        const scaledX = point.x * scale + offset.x;
-        const scaledY = point.y * scale + offset.y;
-        ctx.lineTo(scaledX, scaledY);
-      }
-
-      if (polygonSelection.getIsComplete()) {
-        ctx.closePath();
-      }
-
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
-
-      // Draw modern vertex points
-      for (const point of path) {
-        const scaledX = point.x * scale + offset.x;
-        const scaledY = point.y * scale + offset.y;
-
-        // Vertex shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.beginPath();
-        ctx.arc(scaledX + 1, scaledY + 1, 4, 0, 2 * Math.PI);
-        ctx.fill();
-
-        // Vertex main
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(scaledX, scaledY, 4, 0, 2 * Math.PI);
-        ctx.fill();
-
-      }
-
-      // Highlight first point for closing hint
-      if (path.length > 2 && !polygonSelection.getIsComplete()) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(scaledFirstX, scaledFirstY, 8, 0, 2 * Math.PI);
-        ctx.stroke();
-
-      }
-    }
-
-    // Draw polygon selection mask (darken unselected areas)
-    if (currentMask && selectionMode === 'polygon') {
-      // Create inverted mask overlay
-      const overlayImageData = ctx.createImageData(currentMask.width, currentMask.height);
-
-      for (let i = 0; i < currentMask.data.length; i++) {
-        const alpha = currentMask.data[i];
-        const pixelIndex = i * 4;
-
-        // Invert the mask: darken areas that are NOT selected
-        if (alpha === 0) {
-          overlayImageData.data[pixelIndex] = 0;     // R
-          overlayImageData.data[pixelIndex + 1] = 0; // G
-          overlayImageData.data[pixelIndex + 2] = 0; // B
-          overlayImageData.data[pixelIndex + 3] = 128; // A - Semi-transparent overlay
-        } else {
-          overlayImageData.data[pixelIndex] = 0;
-          overlayImageData.data[pixelIndex + 1] = 0;
-          overlayImageData.data[pixelIndex + 2] = 0;
-          overlayImageData.data[pixelIndex + 3] = 0; // Transparent for selected areas
-        }
-      }
-
-      // Create temporary canvas for overlay
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = currentMask.width;
-      tempCanvas.height = currentMask.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (tempCtx) {
-        tempCtx.putImageData(overlayImageData, 0, 0);
-
-        // Draw the overlay to darken unselected areas
-        ctx.drawImage(
-          tempCanvas,
-          offset.x,
-          offset.y,
-          currentMask.width * scale,
-          currentMask.height * scale
-        );
-      }
-    }
-
-    // Draw confirmed annotations (fontSize scales with zoom to maintain image-space ratio)
-    for (const annotation of annotations) {
-      const ax = annotation.anchorPoint.x * scale + offset.x;
-      const ay = annotation.anchorPoint.y * scale + offset.y;
-      const lx = annotation.labelPoint.x * scale + offset.x;
-      const ly = annotation.labelPoint.y * scale + offset.y;
-      drawAnnotationLabel(ctx, {
-        color: annotation.color,
-        anchor: { x: ax, y: ay },
-        label: { x: lx, y: ly },
-        lineOpacity: annotationLineOpacity,
-        fontSize: annotationFontSize * scale,
-        canvasWidth: canvas.width,
-        theme: annotationTheme,
-        lineColor: annotationLineColor,
-        colorSpace: annotationColorSpace,
-        opaqueBg: true,
-      });
-    }
-
-    // Draw annotation preview (while dragging)
-    if (isAnnotating && annotationAnchorImg && annotationPreviewImg) {
-      const ax = annotationAnchorImg.x * scale + offset.x;
-      const ay = annotationAnchorImg.y * scale + offset.y;
-      const lx = annotationPreviewImg.x * scale + offset.x;
-      const ly = annotationPreviewImg.y * scale + offset.y;
-
-      ctx.save();
-      ctx.globalAlpha = annotationLineOpacity;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(lx, ly);
-      ctx.strokeStyle = annotationLineColor;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
+    drawCanvasFrame(canvasRef.current, {
+      image, scale, offset, selection, dragSelection, selectionMode, polygonSelection,
+      currentMask, isGreyscale,
+      annotations, annotationLineOpacity, annotationFontSize, annotationTheme, annotationLineColor, annotationColorSpace,
+      isAnnotating, annotationAnchorImg, annotationPreviewImg,
+    });
   }, [
     image, scale, offset, selection, dragSelection, selectionMode, polygonSelection,
     currentMask, isDrawing, isGreyscale,
@@ -449,57 +162,12 @@ export default function ImageCanvas({
     isAnnotating, annotationAnchorImg, annotationPreviewImg,
   ]);
 
-  // Zoom functionality
-  const handleZoom = useCallback((delta: number, centerX: number, centerY: number) => {
-    const zoomFactor = delta > 0 ? 1.2 : 0.8;
-    const newScale = Math.max(minScale, Math.min(maxScale, scale * zoomFactor));
-
-    if (newScale !== scale) {
-      // Get the image coordinate at the mouse position
-      const imagePoint = screenToImageCoords(centerX, centerY);
-
-      // Calculate where this image coordinate will be displayed with the new scale
-      const newImageX = imagePoint.x * newScale;
-      const newImageY = imagePoint.y * newScale;
-
-      // Adjust offset to keep the mouse position fixed
-      setOffset({
-        x: centerX - newImageX,
-        y: centerY - newImageY,
-      });
-      setScale(newScale);
-    }
-  }, [scale, minScale, maxScale, offset]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Reset view to fit image in container
   const resetView = useCallback(() => {
     fitImageToContainer();
     setSelection(null);
     onSelectionChange(null);
   }, [fitImageToContainer, onSelectionChange]);
-
-  // Zoom to actual size (100%)
-  const zoomToActualSize = useCallback(() => {
-    if (!image || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    setScale(1);
-
-    // Center the image
-    const displayWidth = image.width;
-    const displayHeight = image.height;
-    setOffset({
-      x: (canvas.width - displayWidth) / 2,
-      y: (canvas.height - displayHeight) / 2,
-    });
-  }, [image]);
-
-  // Convert screen coordinates to image coordinates
-  const screenToImageCoords = useCallback((screenX: number, screenY: number): Point => {
-    const imageX = (screenX - offset.x) / scale;
-    const imageY = (screenY - offset.y) / scale;
-    return { x: imageX, y: imageY };
-  }, [scale, offset]);
 
   // Redraw when selection changes
   useEffect(() => {
@@ -827,7 +495,7 @@ export default function ImageCanvas({
   }, [
     isDrawing, dragSelection, isPanning, lastPanPoint, getMousePos, selectionMode,
     screenToImageCoords, extractPixelColor, image,
-    isAnnotating, annotationAnchorImg,
+    isAnnotating, annotationAnchorImg, setOffset,
   ]);
 
   const handleMouseUp = useCallback(() => {
@@ -1101,6 +769,7 @@ export default function ImageCanvas({
     touchStartDistance, touchStartScale, touchStartPos, isTouchPanning, lastPanPoint,
     prevPinchCenter, scale, minScale, maxScale,
     getTouchPos, getTouchDistance, getTouchCenter, screenToImageCoords,
+    setOffset, setScale,
   ]);
 
   const handleTouchEnd = useCallback(() => {
