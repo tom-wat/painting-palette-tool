@@ -1,10 +1,51 @@
 # リファクタリング計画書
 
 作成日: 2026-07-02
+最終更新: 2026-07-02
 対象: painting-palette-tool(pnpm + Turborepo モノレポ)
 
 この文書は、他の AI モデルまたは開発者が単独で実行できるように書かれた作業指示書である。
 上から順に Phase 単位で実行すること。**各タスク完了ごとに必ず検証コマンドを実行し、通過してから次に進む。**
+
+---
+
+## 進捗状況(2026-07-02 時点)
+
+| Phase | 状態 | 備考 |
+|---|---|---|
+| Phase 0(安全網構築) | ✅ 完了 | color-engine 27件・cube-renderer 9件・web 61件、計 97件のユニットテストを追加。全て `master` にコミット・push 済み |
+| Phase 1(型の一元化) | ✅ 完了 | |
+| Phase 2(色変換ロジック集約) | ✅ 完了 | |
+| Phase 3(ストレージ層抽出) | ✅ 完了 | Task 3-2(useSavedPalettesフック)のみ Phase 4 へ委譲(→ Phase 4 Task 4-3 で `useSavedPalettesStore` として実装済み) |
+| Phase 4(巨大コンポーネント分割) | ⚠️ 一部完了 | 詳細は下記。`page.tsx` / `SavedPalettesPanel.tsx` / `ColorPalette.tsx` は完了。`ImageCanvas.tsx` はイベントハンドラ分割と lint 警告2件の修正が未着手 |
+| Phase 5(ワークスペース衛生) | ✅ 完了 | `app/test/page.tsx` 削除はユーザー確認済みで実施 |
+
+**追加インフラ(当初計画にはなかったもの):** Phase 4 の手動 QA チェックリストを自動化するため、`packages/web/e2e/`(Playwright)を新設した。`pnpm --filter @palette-tool/web test:e2e`(または root `pnpm test:e2e`)で実行。カバー範囲: アップロード→矩形選択→色抽出、キャンバスズーム、グレースケール切替、パレット保存/削除→リロード確認、モバイルタブ切替。**ポリゴン選択・アノテーションドラッグ・タッチ/ピンチズームは未カバー**(下記「残タスク」参照)。
+
+### Phase 4 の内訳
+
+| Task | 対象 | 状態 | 行数変化 |
+|---|---|---|---|
+| 4-1 | `page.tsx` | ✅ 完了 | 1020 → 568 行(`useAnnotationHistory` / `usePaletteExtraction` を抽出) |
+| 4-2 | `ImageCanvas.tsx` | ⚠️ 保守的パスのみ完了 | 1389 → 1057 行(`lib/canvas-draw.ts` の純粋描画関数と `useCanvasViewport` フックのみ抽出。マウス/タッチ/ピンチズーム/ポリゴン選択/アノテーションドラッグの各イベントハンドラは未分割のまま `ImageCanvas.tsx` に残存) |
+| 4-3 | `SavedPalettesPanel.tsx` | ✅ 完了 | 1772 → 1397 行(`useSavedPalettesStore` / `usePaletteExportActions` を抽出) |
+| 4-4 | `ColorPalette.tsx` | ✅ 完了 | 912 → 689 行(`ColorValueBars` / `usePaletteExport` を抽出) |
+
+### 残タスク(次回の作業ポイント)
+
+1. **E2E カバレッジの拡充**(ImageCanvas 本体分割の前提条件)
+   - ポリゴン選択(複数点クリック→クローズ)のテスト
+   - アノテーションドラッグ(pointモード・annotateサブモード)のテスト
+   - タッチ操作・ピンチズームのテスト(Playwright のタッチエミュレーション、`hasTouch: true` 等)
+2. **`ImageCanvas.tsx` のイベントハンドラ分割**(1のE2Eが揃ってから着手)
+   - `hooks/useCanvasPointer.ts` へ `handleMouseDown/Move/Up`, `handleTouchStart/Move/End`, `handleDoubleClick` を移動(計画書 Task 4-2 原案どおり)
+3. **lint 警告2件の修正**(2と合わせて、依存配列変更の前後で必ず手動+E2E確認)
+   - `drawCanvas` 呼び出し側の `isDrawing` 不要依存
+   - `handleTouchMove` の `selectionMode` 欠落依存
+
+### やらないと決めているもの(スコープ外、変更なし)
+
+第4節「やらないこと」を参照。`rgbToLab` 実装統合・状態管理ライブラリ導入・フレームワークアップグレード・experiments/ 品質改善・機能追加は引き続き対象外。
 
 ---
 
@@ -31,7 +72,7 @@ pnpm typecheck && pnpm lint && pnpm test
 - `packages/web` に UI を変更した場合は `pnpm --filter @palette-tool/web build` も実行して Next.js ビルドが通ることを確認する。
 - CLAUDE.md の指示に従い、タスク完了時は完了ログを記録すること。
 
-### 計測済みベースライン(2026-07-02 時点)
+### 計測済みベースライン(2026-07-02、作業着手前)
 
 | 項目 | 状態 |
 |---|---|
@@ -39,6 +80,8 @@ pnpm typecheck && pnpm lint && pnpm test
 | `pnpm lint` | 成功。ただし `ImageCanvas.tsx` に react-hooks/exhaustive-deps 警告 2 件(445行目, 1099行目) |
 | テスト | `cube-renderer` の 9 件のみ存在・全通過。**web と color-engine にはテストが 1 件もない** |
 | git 状態 | master ブランチ、クリーン |
+
+上記は着手前の状態。**Phase 0〜3, 5 および Phase 4 の一部(Task 4-1, 4-3, 4-4)が完了した現時点**では、typecheck/lintは変わらず全成功、テストはunit 97件 + E2E(Playwright)7件、`ImageCanvas.tsx`のlint警告2件は同じ理由(タッチ/選択挙動を壊すリスク)でそのまま残存。詳細は冒頭の「進捗状況」節を参照。
 
 ### 絶対に守る制約
 
