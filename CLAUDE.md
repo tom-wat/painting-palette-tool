@@ -71,29 +71,33 @@ pnpm dev
 
 ## テスト・ログ環境設定
 
-### テストファイル構造
+### テストファイル構造（実態）
+
+テストはルート `tests/` ではなく、**各パッケージの `src/` 配下にテスト対象と同居**させる方式を採用している（`*.test.ts`）。ルートの `tests/`(`e2e/` `integration/` `fixtures/`)は現状空ディレクトリで、実体を持たない。
 
 ```
-tests/
-├── unit/                    # 単体テスト
-│   ├── color-extraction/    # 色抽出ロジック
-│   ├── cube-rendering/      # 3D描画
-│   └── image-processing/    # 画像処理
-├── integration/             # 統合テスト
-│   ├── color-pipeline/      # 色抽出パイプライン
-│   └── export-formats/      # エクスポート機能
-├── e2e/                     # E2Eテスト
-│   ├── user-workflows/      # ユーザーワークフロー
-│   └── cross-browser/       # ブラウザ間テスト
-├── benchmarks/              # パフォーマンステスト
-│   ├── color-algorithms/    # アルゴリズム性能
-│   └── rendering/           # 描画性能
-└── fixtures/                # テストデータ
-    ├── images/              # サンプル画像
-    └── palettes/            # 期待値パレット
+packages/
+├── color-engine/src/
+│   ├── color-space.test.ts
+│   ├── color-conversions.test.ts
+│   ├── sampling.test.ts
+│   └── extraction.test.ts
+├── cube-renderer/src/
+│   └── renderer.test.ts
+└── web/src/lib/
+    ├── export-formats.test.ts
+    ├── selection-tools.test.ts
+    ├── brightness-analysis.test.ts
+    └── palette-storage.test.ts
 ```
 
-### ログ設定（vibelogger使用）
+- 実行は各パッケージの `pnpm test`(vitest、CIモード = `vitest run`)。ウォッチモードは `pnpm test:watch`。
+- `packages/web` は `vitest.config.ts` で `environment: 'jsdom'` を指定し、`vitest.setup.ts` で `ImageData` の最小ポリフィルを提供している(jsdomが未実装のため)。
+- E2E・integration・fixtures・benchmarks ディレクトリは未実装。導入する場合はこの節を実装内容に合わせて更新すること。
+
+### ログ設定(vibelogger使用)— 設計例(未実装)
+
+以下のログ/ベンチマークユーティリティ(`lib/logger.ts` `lib/benchmark.ts` `lib/task-logger.ts` 等)は**設計時のサンプルコードであり、実際にはリポジトリに存在しない**。実装する場合はこの節を参考にしつつ、実際のファイルパスと合わせて更新すること。
 
 ```typescript
 // lib/logger.ts
@@ -130,7 +134,7 @@ export const loggers = {
 };
 ```
 
-### パフォーマンス測定ユーティリティ
+### パフォーマンス測定ユーティリティ — 設計例(未実装)
 
 ```typescript
 // lib/benchmark.ts
@@ -168,10 +172,12 @@ export class PerformanceTracker {
 export const perf = new PerformanceTracker();
 ```
 
-### テスト実行時のログ設定
+### テスト実行時のログ設定 — 設計例(未実装。実際の設定は各パッケージの `vitest.config.ts` を参照)
+
+下記はカバレッジ・ベンチマーク設定を導入する場合の設計イメージ。`packages/web/vitest.config.ts` の実装は `environment: 'jsdom'` と `setupFiles: ['./vitest.setup.ts']` のみで、以下の `coverage` / `benchmark` 設定や `tests/setup.ts` は未導入。またテストランナーは vitest なので `jest.spyOn` ではなく `vi.spyOn` を使うこと。
 
 ```typescript
-// vitest.config.ts
+// vitest.config.ts(設計例)
 export default defineConfig({
   test: {
     environment: 'jsdom',
@@ -188,13 +194,13 @@ export default defineConfig({
   },
 });
 
-// tests/setup.ts
+// tests/setup.ts(設計例)
 import { logger } from '../lib/logger';
 
 // テスト時はログを制御
 global.beforeEach(() => {
   if (process.env.TEST_VERBOSE !== 'true') {
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   }
 });
 ```
@@ -304,7 +310,7 @@ loggers.rendering('Canvas2D', renderTime);
 pnpm typecheck && pnpm lint && pnpm test
 ```
 
-### 2. タスク完了ログのフォーマット
+### 2. タスク完了ログのフォーマット — 設計例(未実装。運用上はチャット内で完了報告すれば足りる)
 
 ```typescript
 // lib/task-logger.ts
