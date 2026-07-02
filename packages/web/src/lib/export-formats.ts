@@ -1,13 +1,14 @@
 /**
  * Export utilities for color palettes in various formats
  */
-import type { RGBColor, ExtractedColor } from '@palette-tool/color-engine';
 import {
+  type RGBColor,
+  type ExtractedColor,
   getAllColorSpaces,
   rgbToHsl,
   calculateHScL,
   formatColorValue
-} from './color-space-conversions';
+} from '@palette-tool/color-engine';
 import { drawAnnotationLabel, type AnnotationColorSpace } from './annotation-render';
 
 export type { RGBColor, ExtractedColor };

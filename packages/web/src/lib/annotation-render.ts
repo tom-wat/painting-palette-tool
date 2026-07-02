@@ -1,4 +1,4 @@
-import { rgbToHsl, calculateHScL, type RGBColor } from './color-space-conversions';
+import { rgbToHsl, calculateHScL, type RGBColor } from '@palette-tool/color-engine';
 
 export type AnnotationColorSpace = 'hscl' | 'hsl';
 

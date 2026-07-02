@@ -7,7 +7,7 @@ import {
   type Point
 } from '@/lib/selection-tools';
 import { type SelectionMode } from './AdvancedSelectionTools';
-import { rgbToGrayscale } from '@/lib/color-space-conversions';
+import { rgbToGrayscale } from '@palette-tool/color-engine';
 import { type ColorAnnotation } from '@/lib/export-formats';
 import { drawAnnotationLabel, type AnnotationColorSpace } from '@/lib/annotation-render';
 

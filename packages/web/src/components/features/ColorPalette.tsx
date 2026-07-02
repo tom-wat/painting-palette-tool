@@ -1,11 +1,13 @@
 import {
+  type RGBColor,
+  type ExtractedColor,
   calculateHScL,
   formatColorValue,
   rgbToHsl,
   rgbToLab,
   rgbToLch,
   rgbToOklch,
-} from '@/lib/color-space-conversions';
+} from '@palette-tool/color-engine';
 import {
   downloadFile,
   downloadTextFile,
@@ -17,7 +19,6 @@ import {
   exportAsProcreate,
 } from '@/lib/export-formats';
 import React, { useEffect, useRef, useState } from 'react';
-import type { RGBColor, ExtractedColor } from '@palette-tool/color-engine';
 import { Button, Card, CardContent, CardHeader, CardTitle, Modal } from '../ui';
 
 interface SavedPalette {

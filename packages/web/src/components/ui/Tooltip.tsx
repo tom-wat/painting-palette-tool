@@ -1,5 +1,5 @@
 import React from 'react';
-import { calculateHScL } from '@/lib/color-space-conversions';
+import { calculateHScL } from '@palette-tool/color-engine';
 
 export interface TooltipProps {
   x: number;
