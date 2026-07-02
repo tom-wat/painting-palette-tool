@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   type RGBColor,
   type ExtractedColor,
@@ -10,30 +10,9 @@ import {
   formatColorValue,
 } from '@palette-tool/color-engine';
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
-import {
-  exportAsPNG,
-  exportSavedPaletteAsJSON,
-  exportAsASE,
-  exportAsCSS,
-  exportAsAdobe,
-  exportAsProcreate,
-  exportMultiplePalettesAsASE,
-  exportMultiplePalettesAsCSS,
-  exportMultiplePalettesAsAdobe,
-  exportMultiplePalettesAsProcreate,
-  downloadFile,
-  downloadTextFile
-} from '@/lib/export-formats';
-import html2canvas from 'html2canvas';
 import type { SavedPalette } from '@/lib/export-formats';
-import {
-  loadSavedPalettes,
-  savePalette,
-  savePalettes,
-  deletePalette,
-  updatePalette,
-  SAVED_PALETTES_STORAGE_KEY,
-} from '@/lib/palette-storage';
+import { useSavedPalettesStore } from '@/hooks/useSavedPalettesStore';
+import { usePaletteExportActions } from '@/hooks/usePaletteExportActions';
 
 interface SavedPalettesPanelProps {
   className?: string;
@@ -46,18 +25,15 @@ export default function SavedPalettesPanel({
   onLoadPalette,
   onAddColorToExtracted,
 }: SavedPalettesPanelProps) {
-  const [savedPalettes, setSavedPalettes] = useState<SavedPalette[]>([]);
   const [selectedPalette, setSelectedPalette] = useState<SavedPalette | null>(null);
   const [showColorDetailModal, setShowColorDetailModal] = useState(false);
   const [selectedColor, setSelectedColor] = useState<ExtractedColor | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showBulkExportModal, setShowBulkExportModal] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [paletteToDelete, setPaletteToDelete] = useState<SavedPalette | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTagFilter, setActiveTagFilter] = useState<string>('');
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showPaletteDetailModal, setShowPaletteDetailModal] = useState(false);
   const [editingPalette, setEditingPalette] = useState<SavedPalette | null>(null);
@@ -70,6 +46,23 @@ export default function SavedPalettesPanel({
   const [showImportModal, setShowImportModal] = useState(false);
   const paletteRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    savedPalettes,
+    availableTags,
+    deletePaletteById,
+    updatePaletteById,
+    importOnePalette,
+    importManyPalettes,
+  } = useSavedPalettesStore();
+
+  const {
+    isExporting,
+    exportIndividualPaletteAsPNG,
+    exportAllPalettesAsPNG,
+    handleExportPalette: handleExportPaletteAction,
+    handleBulkExport: handleBulkExportAction,
+  } = usePaletteExportActions(paletteRefs);
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -182,92 +175,6 @@ export default function SavedPalettesPanel({
 
 
 
-  // Export individual palette as PNG
-  const exportIndividualPaletteAsPNG = async (palette: SavedPalette) => {
-    const paletteElement = paletteRefs.current[palette.id];
-    if (!paletteElement) return;
-    
-    setIsExporting(true);
-    try {
-      // Scroll to top to fix text positioning issues
-      const originalScrollY = window.scrollY;
-      window.scrollTo(0, 0);
-      
-      // Small delay to ensure scroll is complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const canvas = await html2canvas(paletteElement, {
-        backgroundColor: '#ffffff',
-        scale: window.devicePixelRatio || 1,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        foreignObjectRendering: false,
-        scrollX: 0,
-        scrollY: 0,
-      });
-      
-      // Restore original scroll position
-      window.scrollTo(0, originalScrollY);
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const timestamp = new Date().toISOString().split('T')[0];
-          const filename = `${palette.name}-palette-${timestamp}.png`;
-          downloadFile(blob, filename);
-        }
-      }, 'image/png', 0.95);
-      
-    } catch (error) {
-      console.error('PNG export failed:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  // Export all palettes as single PNG
-  const exportAllPalettesAsPNG = async () => {
-    const palettesContainer = document.querySelector('[data-palettes-container]') as HTMLElement;
-    if (!palettesContainer) return;
-    
-    setIsExporting(true);
-    try {
-      // Scroll to top to fix text positioning issues
-      const originalScrollY = window.scrollY;
-      window.scrollTo(0, 0);
-      
-      // Small delay to ensure scroll is complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const canvas = await html2canvas(palettesContainer, {
-        backgroundColor: '#ffffff',
-        scale: window.devicePixelRatio || 1,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        foreignObjectRendering: false,
-        scrollX: 0,
-        scrollY: 0,
-      });
-      
-      // Restore original scroll position
-      window.scrollTo(0, originalScrollY);
-      
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const timestamp = new Date().toISOString().split('T')[0];
-          const filename = `all-palettes-${timestamp}.png`;
-          downloadFile(blob, filename);
-        }
-      }, 'image/png', 0.95);
-      
-    } catch (error) {
-      console.error('PNG export failed:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   // Toggle all labels
   const handleToggleAllLabels = () => {
     const newShowAll = !showAllLabels;
@@ -290,202 +197,20 @@ export default function SavedPalettesPanel({
     }
   };
 
-  // Export single palette
-  const handleExportPalette = async (format: string, palette: SavedPalette) => {
-    setIsExporting(true);
-    try {
-      const timestamp = new Date().toISOString().split('T')[0];
-      const baseFilename = `${palette.name}-${timestamp}`;
-
-      switch (format) {
-        case 'png': {
-          // Check if called from modal and use modal element
-          const modalKey = `modal-${palette.id}`;
-          const modalElement = paletteRefs.current[modalKey];
-          
-          if (modalElement) {
-            // Use html2canvas for modal export
-            const canvas = await html2canvas(modalElement, {
-              backgroundColor: '#ffffff',
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-            });
-            
-            canvas.toBlob((blob) => {
-              if (blob) {
-                downloadFile(blob, `${baseFilename}.png`);
-              }
-            }, 'image/png', 0.95);
-          } else {
-            // Fallback to original PNG export
-            const pngBlob = await exportAsPNG(palette.colors);
-            downloadFile(pngBlob, `${baseFilename}.png`);
-          }
-          break;
-        }
-        
-        case 'json': {
-          const jsonContent = exportSavedPaletteAsJSON(palette);
-          downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
-          break;
-        }
-        
-        case 'ase': {
-          try {
-            const aseBlob = exportAsASE(palette.colors);
-            downloadFile(aseBlob, `${baseFilename}.ase`);
-          } catch (error) {
-            console.error('ASE export failed:', error);
-          }
-          break;
-        }
-        
-        case 'css': {
-          const cssContent = exportAsCSS(palette.colors);
-          downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
-          break;
-        }
-        
-        case 'adobe': {
-          try {
-            const acoBlob = exportAsAdobe(palette.colors);
-            downloadFile(acoBlob, `${baseFilename}.aco`);
-          } catch (error) {
-            console.error('Adobe Color export failed:', error);
-          }
-          break;
-        }
-        
-        case 'procreate': {
-          try {
-            const swatchesBlob = exportAsProcreate(palette.colors);
-            downloadFile(swatchesBlob, `${baseFilename}.swatches`);
-          } catch (error) {
-            console.error('Procreate export failed:', error);
-          }
-          break;
-        }
-        
-        default:
-          throw new Error(`Unsupported format: ${format}`);
-      }
-      
+  // Export single palette (closes the export modal, and the detail modal if
+  // it happened to be open, only on success — matches the original inline
+  // behavior of handleExportPalette).
+  const handleExportPalette = (format: string, palette: SavedPalette) =>
+    handleExportPaletteAction(format, palette, () => {
       setShowExportModal(false);
       if (showPaletteDetailModal) {
         setShowPaletteDetailModal(false);
       }
-      
-    } catch (error) {
-      console.error('Export failed:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
+    });
 
   // Export all palettes
-  const handleBulkExport = async (format: string) => {
-    setIsExporting(true);
-    try {
-      const timestamp = new Date().toISOString().split('T')[0];
-      const baseFilename = `all-palettes-${timestamp}`;
-
-      switch (format) {
-        case 'json': {
-          const bulkData = {
-            palettes: savedPalettes.map(palette => ({
-              palette: {
-                name: palette.name,
-                tags: palette.tags || [],
-              },
-              colors: palette.colors.map((extractedColor, index) => ({
-                index: index + 1,
-                rgb: {
-                  r: extractedColor.color.r,
-                  g: extractedColor.color.g,
-                  b: extractedColor.color.b,
-                },
-              }))
-            }))
-          };
-          const jsonContent = JSON.stringify(bulkData, null, 2);
-          downloadTextFile(jsonContent, `${baseFilename}.json`, 'application/json');
-          break;
-        }
-        
-        case 'ase': {
-          try {
-            const aseBlob = exportMultiplePalettesAsASE(savedPalettes);
-            downloadFile(aseBlob, `${baseFilename}.ase`);
-          } catch (error) {
-            console.error('Bulk ASE export failed:', error);
-          }
-          break;
-        }
-        
-        case 'css': {
-          try {
-            const cssContent = exportMultiplePalettesAsCSS(savedPalettes);
-            downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
-          } catch (error) {
-            console.error('Bulk CSS export failed:', error);
-          }
-          break;
-        }
-        
-        case 'adobe': {
-          try {
-            const acoBlob = exportMultiplePalettesAsAdobe(savedPalettes);
-            downloadFile(acoBlob, `${baseFilename}.aco`);
-          } catch (error) {
-            console.error('Bulk Adobe Color export failed:', error);
-          }
-          break;
-        }
-        
-        case 'procreate': {
-          try {
-            const swatchesBlob = exportMultiplePalettesAsProcreate(savedPalettes);
-            downloadFile(swatchesBlob, `${baseFilename}.swatches`);
-          } catch (error) {
-            console.error('Bulk Procreate export failed:', error);
-          }
-          break;
-        }
-        
-        case 'png': {
-          // PNG exports remain separate files due to visual nature
-          for (let i = 0; i < savedPalettes.length; i++) {
-            const palette = savedPalettes[i];
-            const filename = `${palette.name}-${timestamp}`;
-            
-            try {
-              const pngBlob = await exportAsPNG(palette.colors);
-              downloadFile(pngBlob, `${filename}.png`);
-            } catch (error) {
-              console.error('PNG export failed for', palette.name, ':', error);
-            }
-            
-            // Small delay to prevent browser blocking multiple downloads
-            if (i < savedPalettes.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          }
-          break;
-        }
-        
-        default:
-          throw new Error(`Unsupported format: ${format}`);
-      }
-      
-      setShowBulkExportModal(false);
-      
-    } catch (error) {
-      console.error('Bulk export failed:', error);
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const handleBulkExport = (format: string) =>
+    handleBulkExportAction(format, savedPalettes, () => setShowBulkExportModal(false));
 
   // Import JSON palette
   const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -565,24 +290,7 @@ export default function SavedPalettesPanel({
           }));
 
           // Save all palettes to storage
-          const updatedPalettes = savePalettes(importedPalettes);
-
-          // Update state
-          setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          ));
-
-          // Update available tags
-          const allTags = new Set<string>();
-          updatedPalettes.forEach((palette: SavedPalette) => {
-            if (palette.tags) {
-              palette.tags.forEach(tag => allTags.add(tag));
-            }
-          });
-          setAvailableTags(Array.from(allTags).sort());
-
-          // Dispatch custom event to notify other components
-          window.dispatchEvent(new CustomEvent('palettes-updated'));
+          importManyPalettes(importedPalettes);
 
           setShowImportModal(false);
           return; // Exit early since we handled everything here
@@ -591,24 +299,7 @@ export default function SavedPalettesPanel({
         }
 
         // Save to storage
-        const updatedPalettes = savePalette(importedPalette);
-
-        // Update state
-        setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ));
-
-        // Update available tags
-        const allTags = new Set<string>();
-        updatedPalettes.forEach((palette: SavedPalette) => {
-          if (palette.tags) {
-            palette.tags.forEach(tag => allTags.add(tag));
-          }
-        });
-        setAvailableTags(Array.from(allTags).sort());
-
-        // Dispatch custom event to notify other components
-        window.dispatchEvent(new CustomEvent('palettes-updated'));
+        importOnePalette(importedPalette);
 
         setShowImportModal(false);
 
@@ -623,49 +314,6 @@ export default function SavedPalettesPanel({
       fileInputRef.current.value = '';
     }
   };
-
-  // Load saved palettes from storage
-  useEffect(() => {
-    const loadPalettes = () => {
-      const palettes = loadSavedPalettes();
-      const sortedPalettes = palettes.sort((a: SavedPalette, b: SavedPalette) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setSavedPalettes(sortedPalettes);
-
-      // Extract unique tags
-      const allTags = new Set<string>();
-      sortedPalettes.forEach((palette: SavedPalette) => {
-        if (palette.tags) {
-          palette.tags.forEach(tag => allTags.add(tag));
-        }
-      });
-      setAvailableTags(Array.from(allTags).sort());
-    };
-
-    loadPalettes();
-
-    // Listen for storage changes (when palettes are saved from ColorPalette component)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === SAVED_PALETTES_STORAGE_KEY) {
-        loadPalettes();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also listen for custom events from the same page
-    const handleCustomUpdate = () => {
-      loadPalettes();
-    };
-    
-    window.addEventListener('palettes-updated', handleCustomUpdate);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('palettes-updated', handleCustomUpdate);
-    };
-  }, []);
 
   // Filter palettes based on selected tag
   // Filter palettes by search query (name and tags) and active tag filter
@@ -715,13 +363,9 @@ export default function SavedPalettesPanel({
   // Actually delete palette
   const confirmDeletePalette = () => {
     if (!paletteToDelete) return;
-    
-    try {
-      const updatedPalettes = deletePalette(paletteToDelete.id);
-      setSavedPalettes(updatedPalettes);
 
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('palettes-updated'));
+    try {
+      deletePaletteById(paletteToDelete.id);
     } catch (error) {
       console.error('Failed to delete palette:', error);
     } finally {
@@ -781,25 +425,11 @@ export default function SavedPalettesPanel({
     if (!editingPalette || !editingName.trim()) return;
 
     try {
-      const updatedPalettes = updatePalette(editingPalette.id, {
+      updatePaletteById(editingPalette.id, {
         name: editingName.trim(),
         tags: editingTags.length > 0 ? editingTags : undefined,
         updatedAt: new Date().toISOString(),
       });
-
-      setSavedPalettes(updatedPalettes);
-
-      // Update available tags
-      const allTags = new Set<string>();
-      updatedPalettes.forEach((palette: SavedPalette) => {
-        if (palette.tags) {
-          palette.tags.forEach(tag => allTags.add(tag));
-        }
-      });
-      setAvailableTags(Array.from(allTags).sort());
-
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('palettes-updated'));
 
       setShowPaletteDetailModal(false);
     } catch (error) {
@@ -819,15 +449,10 @@ export default function SavedPalettesPanel({
           color.color.b === colorToDelete.color.b)
       );
 
-      const updatedPalettes = updatePalette(paletteId, {
+      updatePaletteById(paletteId, {
         colors: updatedColors,
         updatedAt: new Date().toISOString(),
       });
-
-      setSavedPalettes(updatedPalettes);
-
-      // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('palettes-updated'));
     } catch (error) {
       console.error('Failed to delete color:', error);
     }
