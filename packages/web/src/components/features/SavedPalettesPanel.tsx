@@ -25,19 +25,15 @@ import {
   downloadTextFile
 } from '@/lib/export-formats';
 import html2canvas from 'html2canvas';
-
-interface SavedPalette {
-  id: string;
-  name: string;
-  colors: ExtractedColor[];
-  createdAt: string;
-  updatedAt: string;
-  tags?: string[];
-  imageInfo?: {
-    filename: string;
-    selectionArea?: unknown;
-  };
-}
+import type { SavedPalette } from '@/lib/export-formats';
+import {
+  loadSavedPalettes,
+  savePalette,
+  savePalettes,
+  deletePalette,
+  updatePalette,
+  SAVED_PALETTES_STORAGE_KEY,
+} from '@/lib/palette-storage';
 
 interface SavedPalettesPanelProps {
   className?: string;
@@ -568,14 +564,11 @@ export default function SavedPalettesPanel({
             tags: paletteData.palette.tags || [],
           }));
 
-          // Save all palettes to localStorage
-          const saved = localStorage.getItem('saved-palettes');
-          const savedPalettes = saved ? JSON.parse(saved) : [];
-          const updatedPalettes = [...savedPalettes, ...importedPalettes];
-          localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+          // Save all palettes to storage
+          const updatedPalettes = savePalettes(importedPalettes);
 
           // Update state
-          setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) => 
+          setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           ));
 
@@ -597,14 +590,11 @@ export default function SavedPalettesPanel({
           throw new Error('Invalid JSON format. Expected palette data with colors.');
         }
 
-        // Save to localStorage
-        const saved = localStorage.getItem('saved-palettes');
-        const savedPalettes = saved ? JSON.parse(saved) : [];
-        const updatedPalettes = [...savedPalettes, importedPalette];
-        localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+        // Save to storage
+        const updatedPalettes = savePalette(importedPalette);
 
         // Update state
-        setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) => 
+        setSavedPalettes(updatedPalettes.sort((a: SavedPalette, b: SavedPalette) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         ));
 
@@ -634,37 +624,30 @@ export default function SavedPalettesPanel({
     }
   };
 
-  // Load saved palettes from localStorage
+  // Load saved palettes from storage
   useEffect(() => {
     const loadPalettes = () => {
-      try {
-        const saved = localStorage.getItem('saved-palettes');
-        if (saved) {
-          const palettes = JSON.parse(saved);
-          const sortedPalettes = palettes.sort((a: SavedPalette, b: SavedPalette) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          setSavedPalettes(sortedPalettes);
-          
-          // Extract unique tags
-          const allTags = new Set<string>();
-          sortedPalettes.forEach((palette: SavedPalette) => {
-            if (palette.tags) {
-              palette.tags.forEach(tag => allTags.add(tag));
-            }
-          });
-          setAvailableTags(Array.from(allTags).sort());
+      const palettes = loadSavedPalettes();
+      const sortedPalettes = palettes.sort((a: SavedPalette, b: SavedPalette) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setSavedPalettes(sortedPalettes);
+
+      // Extract unique tags
+      const allTags = new Set<string>();
+      sortedPalettes.forEach((palette: SavedPalette) => {
+        if (palette.tags) {
+          palette.tags.forEach(tag => allTags.add(tag));
         }
-      } catch (error) {
-        console.error('Failed to load saved palettes:', error);
-      }
+      });
+      setAvailableTags(Array.from(allTags).sort());
     };
 
     loadPalettes();
 
     // Listen for storage changes (when palettes are saved from ColorPalette component)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'saved-palettes') {
+      if (e.key === SAVED_PALETTES_STORAGE_KEY) {
         loadPalettes();
       }
     };
@@ -734,10 +717,9 @@ export default function SavedPalettesPanel({
     if (!paletteToDelete) return;
     
     try {
-      const updatedPalettes = savedPalettes.filter(p => p.id !== paletteToDelete.id);
+      const updatedPalettes = deletePalette(paletteToDelete.id);
       setSavedPalettes(updatedPalettes);
-      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
-      
+
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('palettes-updated'));
     } catch (error) {
@@ -799,19 +781,13 @@ export default function SavedPalettesPanel({
     if (!editingPalette || !editingName.trim()) return;
 
     try {
-      const updatedPalette: SavedPalette = {
-        ...editingPalette,
+      const updatedPalettes = updatePalette(editingPalette.id, {
         name: editingName.trim(),
         tags: editingTags.length > 0 ? editingTags : undefined,
         updatedAt: new Date().toISOString(),
-      };
-
-      const updatedPalettes = savedPalettes.map(palette =>
-        palette.id === editingPalette.id ? updatedPalette : palette
-      );
+      });
 
       setSavedPalettes(updatedPalettes);
-      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
 
       // Update available tags
       const allTags = new Set<string>();
@@ -834,21 +810,22 @@ export default function SavedPalettesPanel({
   // Delete color from saved palette
   const handleDeleteColorFromPalette = (paletteId: string, colorToDelete: ExtractedColor) => {
     try {
-      const updatedPalettes = savedPalettes.map(palette => {
-        if (palette.id === paletteId) {
-          const updatedColors = palette.colors.filter(color => 
-            !(color.color.r === colorToDelete.color.r &&
-              color.color.g === colorToDelete.color.g &&
-              color.color.b === colorToDelete.color.b)
-          );
-          return { ...palette, colors: updatedColors, updatedAt: new Date().toISOString() };
-        }
-        return palette;
+      const palette = savedPalettes.find(p => p.id === paletteId);
+      if (!palette) return;
+
+      const updatedColors = palette.colors.filter(color =>
+        !(color.color.r === colorToDelete.color.r &&
+          color.color.g === colorToDelete.color.g &&
+          color.color.b === colorToDelete.color.b)
+      );
+
+      const updatedPalettes = updatePalette(paletteId, {
+        colors: updatedColors,
+        updatedAt: new Date().toISOString(),
       });
-      
+
       setSavedPalettes(updatedPalettes);
-      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
-      
+
       // Dispatch custom event to notify other components
       window.dispatchEvent(new CustomEvent('palettes-updated'));
     } catch (error) {

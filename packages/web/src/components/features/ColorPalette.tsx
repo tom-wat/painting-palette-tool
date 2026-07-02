@@ -17,22 +17,11 @@ import {
   exportAsJSON,
   exportAsPNG,
   exportAsProcreate,
+  type SavedPalette,
 } from '@/lib/export-formats';
+import { savePalette as persistPalette } from '@/lib/palette-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Modal } from '../ui';
-
-interface SavedPalette {
-  id: string;
-  name: string;
-  colors: ExtractedColor[];
-  createdAt: string;
-  updatedAt: string;
-  tags?: string[];
-  imageInfo?: {
-    filename: string;
-    selectionArea?: unknown;
-  };
-}
 
 interface ColorPaletteProps {
   colors: ExtractedColor[];
@@ -283,7 +272,7 @@ export default function ColorPalette({
     }
   };
 
-  // Save palette to localStorage
+  // Save palette to storage
   const savePalette = (name: string) => {
     if (!name.trim() || colors.length === 0) return;
 
@@ -302,10 +291,7 @@ export default function ColorPalette({
     };
 
     try {
-      const saved = localStorage.getItem('saved-palettes');
-      const savedPalettes = saved ? JSON.parse(saved) : [];
-      const updatedPalettes = [...savedPalettes, newPalette];
-      localStorage.setItem('saved-palettes', JSON.stringify(updatedPalettes));
+      persistPalette(newPalette);
 
       // Dispatch custom event to notify SavedPalettesPanel
       window.dispatchEvent(new CustomEvent('palettes-updated'));
