@@ -9,6 +9,10 @@ package-lock.json
 # Testing
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Production
 dist/

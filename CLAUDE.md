@@ -93,7 +93,8 @@ packages/
 
 - 実行は各パッケージの `pnpm test`(vitest、CIモード = `vitest run`)。ウォッチモードは `pnpm test:watch`。
 - `packages/web` は `vitest.config.ts` で `environment: 'jsdom'` を指定し、`vitest.setup.ts` で `ImageData` の最小ポリフィルを提供している(jsdomが未実装のため)。
-- E2E・integration・fixtures・benchmarks ディレクトリは未実装。導入する場合はこの節を実装内容に合わせて更新すること。
+- E2E は `packages/web/e2e/`(Playwright、`playwright.config.ts` は `packages/web` 直下)。`pnpm --filter @palette-tool/web test:e2e` または root `pnpm test:e2e` で実行(`pnpm dev` を webServer として自動起動)。フィクスチャ画像は `packages/web/e2e/fixtures/`。
+- ルート `tests/`(`integration/` `fixtures/`)と `benchmarks` は未実装。導入する場合はこの節を実装内容に合わせて更新すること。
 
 ### ログ設定(vibelogger使用)— 設計例(未実装)
 
