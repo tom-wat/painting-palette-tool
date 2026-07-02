@@ -4,7 +4,7 @@ import ColorPalette from '@/components/features/ColorPalette';
 import ImageCanvas from '@/components/features/ImageCanvas';
 import ImageUpload from '@/components/features/ImageUpload';
 import AnnotationControls from '@/components/features/AnnotationControls';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 // import BrightnessAnalysis from '@/components/features/BrightnessAnalysis';
 import AdvancedSelectionTools, {
   type AdvancedSelectionConfig,
@@ -29,7 +29,7 @@ import {
   exportAnnotationsOnly,
   downloadFile,
 } from '@/lib/export-formats';
-import { type AnnotationColorSpace } from '@/lib/annotation-render';
+import { useUISettings } from '@/hooks/useUISettings';
 
 interface ExtractionSettings {
   colorCount: number;
@@ -60,12 +60,32 @@ export default function Home() {
   const [annotations, setAnnotations] = useState<ColorAnnotation[]>([]);
   const [annotationHistory, setAnnotationHistory] = useState<ColorAnnotation[][]>([]);
   const [annotationFuture, setAnnotationFuture] = useState<ColorAnnotation[][]>([]);
-  const [annotationMode, setAnnotationMode] = useState<AnnotationMode>('pick');
-  const [annotationLineOpacity, setAnnotationLineOpacity] = useState(0.7);
-  const [annotationFontSize, setAnnotationFontSize] = useState<number>(16);
-  const [annotationTheme, setAnnotationTheme] = useState<'light' | 'dark'>('dark');
-  const [annotationLineColor, setAnnotationLineColor] = useState<string>('#ffffff');
-  const [annotationColorSpace, setAnnotationColorSpace] = useState<AnnotationColorSpace>('hscl');
+
+  // Advanced selection tools state (selectionConfig.mode is persisted by useUISettings below)
+  const [selectionConfig, setSelectionConfig] =
+    useState<AdvancedSelectionConfig>({
+      mode: 'point' as SelectionMode,
+    });
+  const clearSelectionFnRef = useRef<(() => void) | null>(null);
+  const setSelectionMode = useCallback(
+    (mode: SelectionMode) => setSelectionConfig((prev) => ({ ...prev, mode })),
+    []
+  );
+
+  const {
+    annotationLineOpacity,
+    setAnnotationLineOpacity,
+    annotationFontSize,
+    setAnnotationFontSize,
+    annotationMode,
+    setAnnotationMode,
+    annotationTheme,
+    setAnnotationTheme,
+    annotationLineColor,
+    setAnnotationLineColor,
+    annotationColorSpace,
+    setAnnotationColorSpace,
+  } = useUISettings(selectionConfig.mode, setSelectionMode);
 
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<MobileTab>('canvas');
@@ -120,56 +140,6 @@ export default function Home() {
 
   // Processing pipeline hook
   const pipeline = useProcessingPipeline();
-
-  // Advanced selection tools state
-  const [selectionConfig, setSelectionConfig] =
-    useState<AdvancedSelectionConfig>({
-      mode: 'point' as SelectionMode,
-    });
-  const clearSelectionFnRef = useRef<(() => void) | null>(null);
-  const isInitialSave = useRef(true);
-
-  // Load UI settings from localStorage after mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('painting-palette-ui-settings');
-      if (stored) {
-        const s = JSON.parse(stored);
-        if (s.annotationLineOpacity !== undefined) setAnnotationLineOpacity(s.annotationLineOpacity);
-        if (s.annotationFontSize !== undefined) setAnnotationFontSize(s.annotationFontSize);
-        if (s.annotationMode) setAnnotationMode(s.annotationMode);
-        if (s.annotationTheme) setAnnotationTheme(s.annotationTheme);
-        if (s.annotationLineColor) setAnnotationLineColor(s.annotationLineColor);
-        if (s.annotationColorSpace) setAnnotationColorSpace(s.annotationColorSpace);
-        if (s.selectionMode) setSelectionConfig((prev) => ({ ...prev, mode: s.selectionMode }));
-      }
-    } catch {
-      // ignore parse errors
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Save UI settings to localStorage on change (skip first run to avoid overwriting loaded values)
-  useEffect(() => {
-    if (isInitialSave.current) {
-      isInitialSave.current = false;
-      return;
-    }
-    try {
-      const settings = {
-        annotationLineOpacity,
-        annotationFontSize,
-        annotationMode,
-        annotationTheme,
-        annotationLineColor,
-        annotationColorSpace,
-        selectionMode: selectionConfig.mode,
-      };
-      localStorage.setItem('painting-palette-ui-settings', JSON.stringify(settings));
-    } catch {
-      // ignore storage errors
-    }
-  }, [annotationLineOpacity, annotationFontSize, annotationMode, annotationTheme, annotationLineColor, annotationColorSpace, selectionConfig.mode]);
 
   // Use useCallback to prevent re-rendering issues
   const handleClearSelectionCallback = useCallback((clearFn: () => void) => {
