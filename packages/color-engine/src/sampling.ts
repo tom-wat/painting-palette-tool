@@ -14,7 +14,7 @@ export class ImageSampler {
     imageData: ImageData,
     targetSampleCount: number
   ): SampledPixel[] {
-    const { width, height, data } = imageData;
+    const { width, height } = imageData;
     const samples: SampledPixel[] = [];
 
     // Calculate sample counts for each strategy

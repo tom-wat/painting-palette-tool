@@ -16,7 +16,6 @@ import {
   ExtractionConfig,
   ExtractionResult,
   RGBColor,
-  LABColor,
 } from './types.js';
 
 /**
