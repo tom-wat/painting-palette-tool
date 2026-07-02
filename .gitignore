@@ -2,6 +2,9 @@
 node_modules/
 .pnp
 .pnp.js
+# This project uses pnpm (see packageManager in package.json); npm lockfiles
+# are accidental and should never be committed.
+package-lock.json
 
 # Testing
 coverage/
