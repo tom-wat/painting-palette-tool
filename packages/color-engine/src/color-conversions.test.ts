@@ -12,8 +12,8 @@ import {
   formatColorValue,
   calculateColorDistance,
   areColorsSimilar,
-  type RGBColor,
-} from './color-space-conversions';
+} from './color-conversions';
+import type { RGBColor } from './types';
 
 const black: RGBColor = { r: 0, g: 0, b: 0 };
 const white: RGBColor = { r: 255, g: 255, b: 255 };

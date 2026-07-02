@@ -5,6 +5,7 @@
 
 export * from './types.js';
 export * from './color-space.js';
+export * from './color-conversions.js';
 export * from './sampling.js';
 export * from './extraction.js';
 
