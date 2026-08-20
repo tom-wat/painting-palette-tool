@@ -151,7 +151,7 @@ export default function ImageUpload({
         {isLoading ? (
           <div className="space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-muted-foreground">Processing image...</p>
+            <p className="text-sm text-muted-foreground">Processing image...</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -166,11 +166,11 @@ export default function ImageUpload({
               </svg>
             </div>
             <div className="space-y-2">
-              <p className="text-lg font-medium text-foreground">
+              <p className="text-sm font-medium text-foreground">
                 <span className="hidden lg:inline">Drop image here or click to select</span>
                 <span className="lg:hidden">Tap to select image</span>
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Supports: JPEG, PNG, GIF, WebP<span className="lg:hidden"><br /></span><span className="hidden lg:inline"> </span>(Max: 10MB, 8000×8000px)
               </p>
             </div>
