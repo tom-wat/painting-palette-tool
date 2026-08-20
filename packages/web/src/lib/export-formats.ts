@@ -4,13 +4,12 @@
 import {
   type RGBColor,
   type ExtractedColor,
-  getAllColorSpaces,
-  rgbToHsl,
-  calculateHScL,
-  formatColorValue
+  getAllColorSpaces
 } from '@palette-tool/color-engine';
 import { drawAnnotationLabel, type AnnotationColorSpace } from './annotation-render';
-import { ensureCanvasFontLoaded, getCanvasFontStack } from './canvas-font';
+import { ensureCanvasFontLoaded } from './canvas-font';
+import { renderPaletteSheets } from './palette-card-image';
+import { rgbToHex } from './palette-card-model';
 
 export type { RGBColor, ExtractedColor };
 
@@ -41,136 +40,46 @@ export interface ExportOptions {
   includeAllColorSpaces?: boolean;
   /** Drawn above the swatches in a PNG export. */
   title?: string;
+  /** PNG only: mirrors the panel's "Show Data" toggle. */
+  showLabels?: boolean;
 }
 
-/**
- * Convert RGB to hex string
- */
-export function rgbToHex(color: RGBColor): string {
-  const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
-  return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
-}
+/** Re-exported: the swatch colour is part of the shared palette-card model. */
+export { rgbToHex };
 
 
 /**
- * PNG exports are drawn straight onto a canvas rather than screenshotted from
- * the DOM. That keeps the output independent of the UI's styling — and of
- * whatever CSS colour syntax the app happens to use, which is what broke the
- * previous html2canvas-based capture once the theme moved to oklch().
- */
-const PNG_SCALE = 1.5; // 2x for quality, at 75% layout size
-const PNG_SWATCH = 100 * PNG_SCALE;
-const PNG_TEXT_HEIGHT = 60 * PNG_SCALE;
-const PNG_GAP = 16 * PNG_SCALE;
-const PNG_PADDING = 24 * PNG_SCALE;
-const PNG_TITLE_HEIGHT = 30 * PNG_SCALE;
-const PNG_LINE_HEIGHT = 18 * PNG_SCALE;
-
-
-/** One palette in a PNG sheet. */
-interface PaletteSheet {
-  colors: ExtractedColor[];
-  /** Drawn above the swatches; omitted for a bare strip. */
-  name?: string;
-}
-
-function sheetWidth(sheet: PaletteSheet): number {
-  const count = Math.max(sheet.colors.length, 1);
-  return count * PNG_SWATCH + (count - 1) * PNG_GAP;
-}
-
-function sheetHeight(sheet: PaletteSheet): number {
-  return (sheet.name ? PNG_TITLE_HEIGHT : 0) + PNG_SWATCH + PNG_TEXT_HEIGHT;
-}
-
-function drawSheet(
-  ctx: CanvasRenderingContext2D,
-  sheet: PaletteSheet,
-  originX: number,
-  originY: number
-): void {
-  let y = originY;
-
-  if (sheet.name) {
-    ctx.fillStyle = '#171717';
-    ctx.font = `600 ${14 * PNG_SCALE}px ${getCanvasFontStack()}`;
-    ctx.textAlign = 'left';
-    ctx.fillText(sheet.name, originX, y);
-    y += PNG_TITLE_HEIGHT;
-  }
-
-  ctx.font = `${12 * PNG_SCALE}px ${getCanvasFontStack()}`;
-  ctx.textAlign = 'center';
-
-  sheet.colors.forEach((extractedColor, index) => {
-    const x = originX + index * (PNG_SWATCH + PNG_GAP);
-
-    ctx.fillStyle = rgbToHex(extractedColor.color);
-    ctx.beginPath();
-    ctx.roundRect(x, y, PNG_SWATCH, PNG_SWATCH, 6 * PNG_SCALE);
-    ctx.fill();
-
-    const hsl = rgbToHsl(extractedColor.color);
-    const hscl = calculateHScL(extractedColor.color);
-
-    ctx.fillStyle = '#6b7280';
-    const textX = x + PNG_SWATCH / 2;
-    const textY = y + PNG_SWATCH + 8 * PNG_SCALE;
-    ctx.fillText(formatColorValue('hsl', hsl), textX, textY);
-    ctx.fillText(formatColorValue('hscl', hscl), textX, textY + PNG_LINE_HEIGHT);
-  });
-}
-
-async function renderSheets(sheets: PaletteSheet[]): Promise<Blob> {
-  await ensureCanvasFontLoaded();
-
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Cannot create canvas context');
-
-  canvas.width = Math.max(...sheets.map(sheetWidth)) + PNG_PADDING * 2;
-  canvas.height =
-    sheets.reduce((total, sheet) => total + sheetHeight(sheet), 0) +
-    (sheets.length - 1) * PNG_GAP * 2 +
-    PNG_PADDING * 2;
-
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.textBaseline = 'top';
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  let y = PNG_PADDING;
-  for (const sheet of sheets) {
-    drawSheet(ctx, sheet, PNG_PADDING, y);
-    y += sheetHeight(sheet) + PNG_GAP * 2;
-  }
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error('Failed to create PNG blob'));
-    }, 'image/png');
-  });
-}
-
-/**
- * Export palette as PNG image
+ * Export palette as PNG image.
+ *
+ * Drawn onto a canvas by `palette-card-image`, which mirrors the panel's
+ * layout, rather than screenshotted from the DOM.
  */
 export async function exportAsPNG(
   colors: ExtractedColor[],
   options: ExportOptions = {}
 ): Promise<Blob> {
-  return renderSheets([{ colors, name: options.title }]);
+  return renderPaletteSheets([
+    { colors, name: options.title, showLabels: options.showLabels },
+  ]);
 }
 
 /**
  * Export several saved palettes stacked into a single PNG.
  */
-export async function exportPalettesAsPNG(palettes: SavedPalette[]): Promise<Blob> {
+export async function exportPalettesAsPNG(
+  palettes: SavedPalette[],
+  /** Per palette, since the panel's "Show Data" toggle is per palette too. */
+  showLabels: (_palette: SavedPalette) => boolean = () => false
+): Promise<Blob> {
   if (palettes.length === 0) throw new Error('No palettes to export');
-  return renderSheets(palettes.map((p) => ({ colors: p.colors, name: p.name })));
+  return renderPaletteSheets(
+    palettes.map((palette) => ({
+      colors: palette.colors,
+      name: palette.name,
+      tags: palette.tags,
+      showLabels: showLabels(palette),
+    }))
+  );
 }
 
 /**

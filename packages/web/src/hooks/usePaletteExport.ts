@@ -18,7 +18,11 @@ import {
  * exports the working `colors` array. Both render PNGs through
  * export-formats' canvas renderer.
  */
-export function usePaletteExport(colors: ExtractedColor[]) {
+export function usePaletteExport(
+  colors: ExtractedColor[],
+  /** Mirrors the panel's "Show Data" toggle in the exported PNG. */
+  showLabels = false
+) {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (
@@ -33,7 +37,7 @@ export function usePaletteExport(colors: ExtractedColor[]) {
 
       switch (format) {
         case 'png': {
-          const pngBlob = await exportAsPNG(colors);
+          const pngBlob = await exportAsPNG(colors, { showLabels });
           downloadFile(pngBlob, `${baseFilename}.png`);
           break;
         }

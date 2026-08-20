@@ -58,12 +58,15 @@ export default function ColorPalette({
   );
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
-  const { isExporting, handleExport: handleExportAction } = usePaletteExport(colors);
+  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState(true);
+  const { isExporting, handleExport: handleExportAction } = usePaletteExport(
+    colors,
+    showColorSpaceLabels
+  );
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [paletteName, setPaletteName] = useState('');
   const [paletteTags, setPaletteTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [showColorSpaceLabels, setShowColorSpaceLabels] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to newly added colors

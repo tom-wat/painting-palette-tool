@@ -37,10 +37,16 @@ export function usePaletteExportActions(onError?: (_message: string) => void) {
   };
 
   // Export individual palette as PNG
-  const exportIndividualPaletteAsPNG = async (palette: SavedPalette) => {
+  const exportIndividualPaletteAsPNG = async (
+    palette: SavedPalette,
+    showLabels = false
+  ) => {
     setIsExporting(true);
     try {
-      const blob = await exportAsPNG(palette.colors, { title: palette.name });
+      const blob = await exportAsPNG(palette.colors, {
+        title: palette.name,
+        showLabels,
+      });
       const timestamp = new Date().toISOString().split('T')[0];
       downloadFile(blob, `${palette.name}-palette-${timestamp}.png`);
     } catch (error) {
@@ -51,12 +57,15 @@ export function usePaletteExportActions(onError?: (_message: string) => void) {
   };
 
   // Export all palettes as single PNG
-  const exportAllPalettesAsPNG = async (savedPalettes: SavedPalette[]) => {
+  const exportAllPalettesAsPNG = async (
+    savedPalettes: SavedPalette[],
+    showLabels?: (_palette: SavedPalette) => boolean
+  ) => {
     if (savedPalettes.length === 0) return;
 
     setIsExporting(true);
     try {
-      const blob = await exportPalettesAsPNG(savedPalettes);
+      const blob = await exportPalettesAsPNG(savedPalettes, showLabels);
       const timestamp = new Date().toISOString().split('T')[0];
       downloadFile(blob, `all-palettes-${timestamp}.png`);
     } catch (error) {
@@ -70,7 +79,8 @@ export function usePaletteExportActions(onError?: (_message: string) => void) {
   const handleExportPalette = async (
     format: string,
     palette: SavedPalette,
-    onSuccess?: () => void
+    onSuccess?: () => void,
+    showLabels = false
   ) => {
     setIsExporting(true);
     try {
@@ -79,7 +89,10 @@ export function usePaletteExportActions(onError?: (_message: string) => void) {
 
       switch (format) {
         case 'png': {
-          const pngBlob = await exportAsPNG(palette.colors, { title: palette.name });
+          const pngBlob = await exportAsPNG(palette.colors, {
+            title: palette.name,
+            showLabels,
+          });
           downloadFile(pngBlob, `${baseFilename}.png`);
           break;
         }
@@ -143,7 +156,8 @@ export function usePaletteExportActions(onError?: (_message: string) => void) {
   const handleBulkExport = async (
     format: string,
     savedPalettes: SavedPalette[],
-    onSuccess?: () => void
+    onSuccess?: () => void,
+    showLabels: (_palette: SavedPalette) => boolean = () => false
   ) => {
     setIsExporting(true);
     try {
@@ -220,7 +234,10 @@ export function usePaletteExportActions(onError?: (_message: string) => void) {
             const filename = `${palette.name}-${timestamp}`;
 
             try {
-              const pngBlob = await exportAsPNG(palette.colors);
+              const pngBlob = await exportAsPNG(palette.colors, {
+                title: palette.name,
+                showLabels: showLabels(palette),
+              });
               downloadFile(pngBlob, `${filename}.png`);
             } catch (error) {
               report(`PNG export for ${palette.name}`, error);

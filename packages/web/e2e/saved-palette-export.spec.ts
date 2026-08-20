@@ -22,10 +22,15 @@ async function saveAndShowPalette(page: import('@playwright/test').Page, name: s
 async function expectPngDownload(download: import('@playwright/test').Download, prefix: string) {
   expect(download.suggestedFilename()).toContain(prefix);
   expect(download.suggestedFilename()).toMatch(/\.png$/);
-  const path = await download.path();
-  const buffer = fs.readFileSync(path);
+  const buffer = fs.readFileSync(await download.path());
   expect(buffer.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
   expect(buffer.byteLength).toBeGreaterThan(1000);
+  return buffer;
+}
+
+/** Pixel height from the PNG's IHDR chunk. */
+function pngHeight(buffer: Buffer): number {
+  return buffer.readUInt32BE(20);
 }
 
 test('a saved palette downloads as a PNG', async ({ page }) => {
@@ -64,4 +69,26 @@ test('the detail dialog still exports the non-PNG formats', async ({ page }) => 
   ]);
   expect(download.suggestedFilename()).toContain(name);
   expect(download.suggestedFilename()).toMatch(/\.json$/);
+});
+
+test('the exported PNG follows the panel\'s Show Data toggle', async ({ page }) => {
+  const name = `E2E Png Labels ${Date.now()}`;
+  await saveAndShowPalette(page, name);
+
+  const exportPng = async () => {
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'PNG', exact: true }).first().click(),
+    ]);
+    return pngHeight(await expectPngDownload(download, name));
+  };
+
+  const withoutLabels = await exportPng();
+
+  await page.getByRole('button', { name: 'Show Data' }).first().click();
+  await expect(page.getByRole('button', { name: 'Hide Data' }).first()).toBeVisible();
+
+  // Labels add a row above every bar, so the image has to grow. Without this,
+  // the toggle could stop reaching the export and nothing would fail.
+  expect(await exportPng()).toBeGreaterThan(withoutLabels);
 });

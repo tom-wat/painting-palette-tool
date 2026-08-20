@@ -1,47 +1,17 @@
-import { type RGBColor, type ExtractedColor, calculateHScL, rgbToHsl } from '@palette-tool/color-engine';
-
-// Helper function to get bar color based on color space and type
-function getBarColor(
-  colorSpace: 'hsl' | 'hscl',
-  type: 'H' | 'S' | 'L' | 'Sc',
-  value: number,
-  color: RGBColor
-) {
-  const hsl = rgbToHsl(color);
-  const hscl = calculateHScL(color);
-
-  switch (colorSpace) {
-    case 'hsl':
-      switch (type) {
-        case 'H':
-          return `hsl(${value}, 50%, 50%)`;
-        case 'S':
-          return `hsl(${hsl.h}, ${value}%, 60%)`;
-        case 'L':
-          return `hsl(${hsl.h}, 50%, 60%)`;
-        default:
-          return '#9ca3af'; // gray-400
-      }
-
-    case 'hscl':
-      switch (type) {
-        case 'H':
-          return `hsl(${value}, 50%, 50%)`;
-        case 'Sc':
-          return `hsl(${hscl.h}, ${value}%, 60%)`;
-        case 'L':
-          return `hsl(${hscl.h}, 50%, 60%)`;
-        default:
-          return '#9ca3af'; // gray-400
-      }
-
-    default:
-      return '#9ca3af'; // gray-400
-  }
-}
+import { type ExtractedColor } from '@palette-tool/color-engine';
+import {
+  barRatio,
+  colorBarGroups,
+  formatBarValue,
+  type ColorBar,
+} from '@/lib/palette-card-model';
 
 /**
  * Horizontal HSL/HScL value bar graphs shown under a color swatch.
+ *
+ * The values and bar colors come from `lib/palette-card-model`, which the PNG
+ * export draws from as well — that is what keeps an exported image looking like
+ * the panel it came from.
  */
 export function ColorValueBars({
   color,
@@ -50,40 +20,20 @@ export function ColorValueBars({
   color: ExtractedColor;
   showLabels?: boolean;
 }) {
-  const hsl = rgbToHsl(color.color);
-  const hscl = calculateHScL(color.color);
-
-  const BarGraph = ({
-    label,
-    value,
-    max,
-    suffix = '',
-    colorSpace,
-    type,
-  }: {
-    label: string;
-    value: number;
-    max: number;
-    suffix?: string;
-    colorSpace: 'hsl' | 'hscl';
-    type: 'H' | 'S' | 'L' | 'Sc';
-  }) => (
+  const BarGraph = ({ bar }: { bar: ColorBar }) => (
     <div className={`text-[12px] ${showLabels ? 'space-y-0.5' : 'mb-1'}`}>
       {showLabels && (
         <div className="flex justify-between">
-          <span className="text-muted-foreground tracking-wide">{label}</span>
-          <span className="text-foreground font-mono">
-            {value}
-            {suffix}
-          </span>
+          <span className="text-muted-foreground tracking-wide">{bar.label}</span>
+          <span className="text-foreground font-mono">{formatBarValue(bar)}</span>
         </div>
       )}
       <div className="h-1 bg-border rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-200"
           style={{
-            width: `${Math.min((value / max) * 100, 100)}%`,
-            backgroundColor: getBarColor(colorSpace, type, value, color.color),
+            width: `${barRatio(bar) * 100}%`,
+            backgroundColor: bar.fill,
           }}
         />
       </div>
@@ -92,69 +42,22 @@ export function ColorValueBars({
 
   return (
     <div className="p-1">
-      {/* HSL Values */}
-      {showLabels && (
-        <div className="text-[12px] text-muted-foreground font-medium mb-1">HSL</div>
-      )}
-      <div className="space-y-1">
-        <BarGraph
-          label="H"
-          value={hsl.h}
-          max={360}
-          suffix="°"
-          colorSpace="hsl"
-          type="H"
-        />
-        <BarGraph
-          label="S"
-          value={hsl.s}
-          max={100}
-          suffix="%"
-          colorSpace="hsl"
-          type="S"
-        />
-        <BarGraph
-          label="L"
-          value={hsl.l}
-          max={100}
-          suffix="%"
-          colorSpace="hsl"
-          type="L"
-        />
-      </div>
-
-      {/* HScL Values */}
-      {showLabels && (
-        <div className="text-[12px] text-muted-foreground font-medium mb-1 mt-3">
-          HScL
+      {colorBarGroups(color).map((group, groupIndex) => (
+        <div key={group.name}>
+          {showLabels && (
+            <div
+              className={`text-[12px] text-muted-foreground font-medium mb-1 ${groupIndex > 0 ? 'mt-3' : ''}`}
+            >
+              {group.name}
+            </div>
+          )}
+          <div className={`space-y-1 ${!showLabels && groupIndex > 0 ? 'mt-3' : ''}`}>
+            {group.bars.map((bar) => (
+              <BarGraph key={`${group.name}-${bar.label}`} bar={bar} />
+            ))}
+          </div>
         </div>
-      )}
-      <div className={`space-y-1 ${!showLabels ? 'mt-3' : ''}`}>
-        <BarGraph
-          label="H"
-          value={hscl.h}
-          max={360}
-          suffix="°"
-          colorSpace="hscl"
-          type="H"
-        />
-        <BarGraph
-          label="Sc"
-          value={hscl.sc}
-          max={100}
-          suffix="%"
-          colorSpace="hscl"
-          type="Sc"
-        />
-        <BarGraph
-          label="L"
-          value={hscl.l}
-          max={100}
-          suffix="%"
-          colorSpace="hscl"
-          type="L"
-        />
-      </div>
+      ))}
     </div>
   );
 }

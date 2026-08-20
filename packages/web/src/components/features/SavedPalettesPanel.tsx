@@ -6,14 +6,15 @@ import {
   rgbToLab,
   rgbToLch,
   rgbToOklch,
-  calculateHScL,
   formatColorValue,
 } from '@palette-tool/color-engine';
 import { DownloadSimple, FolderOpen, Trash } from '@phosphor-icons/react';
 import { Button, Input, Modal } from '../ui';
 import { ToggleChip } from '../controls';
 import { cn } from '@/lib/cn';
+import { rgbToHex } from '@/lib/palette-card-model';
 import type { SavedPalette } from '@/lib/export-formats';
+import { ColorValueBars } from './color-palette/ColorValueBars';
 import { useSavedPalettesStore } from '@/hooks/useSavedPalettesStore';
 import { usePaletteExportActions } from '@/hooks/usePaletteExportActions';
 
@@ -100,11 +101,10 @@ export default function SavedPalettesPanel({
     handleBulkExport: handleBulkExportAction,
   } = usePaletteExportActions(onError);
 
-  // Helper function to convert RGB to HEX
-  const rgbToHex = (color: RGBColor): string => {
-    const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0');
-    return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
-  };
+  // Whether a palette's swatches show their HSL/HScL numbers. PNG exports read
+  // the same flag, so an exported image matches the panel it came from.
+  const labelsShownFor = (palette: SavedPalette): boolean =>
+    showColorSpaceLabels[palette.id] || false;
 
   // Helper function to get swatch border class based on color brightness
   const getSwatchBorderClass = (color: RGBColor): string => {
@@ -113,103 +113,6 @@ export default function SavedPalettesPanel({
     if (brightness < 30) return 'border border-input';
     return 'border border-border';
   };
-
-  // Helper function to get bar color based on color space and type
-  const getBarColor = (colorSpace: 'hsl' | 'hscl', type: 'H' | 'S' | 'L' | 'Sc', value: number, color: RGBColor) => {
-    const hsl = rgbToHsl(color);
-    const hscl = calculateHScL(color);
-    
-    switch(colorSpace) {
-      case 'hsl':
-        switch(type) {
-          case 'H': return `hsl(${value}, 50%, 50%)`;
-          case 'S': return `hsl(${hsl.h}, ${value}%, 60%)`;
-          case 'L': return `hsl(${hsl.h}, 50%, 60%)`;
-          default: return '#9ca3af'; // gray-400
-        }
-      
-      case 'hscl':
-        switch(type) {
-          case 'H': return `hsl(${value}, 50%, 50%)`;
-          case 'Sc': return `hsl(${hscl.h}, ${value}%, 60%)`;
-          case 'L': return `hsl(${hscl.h}, 50%, 60%)`;
-          default: return '#9ca3af'; // gray-400
-        }
-      
-      default:
-        return '#9ca3af'; // gray-400
-    }
-  };
-
-  // Component for rendering horizontal bar graphs
-  const ColorValueBars = ({ color, paletteId }: { color: ExtractedColor; paletteId: string }) => {
-    const hsl = rgbToHsl(color.color);
-    const hscl = calculateHScL(color.color);
-    const showLabels = showColorSpaceLabels[paletteId] || false;
-    
-    const BarGraph = ({ 
-      label, 
-      value, 
-      max, 
-      suffix = '', 
-      colorSpace, 
-      type 
-    }: { 
-      label: string; 
-      value: number; 
-      max: number; 
-      suffix?: string;
-      colorSpace: 'hsl' | 'hscl';
-      type: 'H' | 'S' | 'L' | 'Sc';
-    }) => (
-      <div className={`text-[12px] ${showLabels ? 'space-y-0.5' : 'mb-1'}`}>
-        {showLabels && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground tracking-wide">{label}</span>
-            <span className="text-foreground font-mono">{value}{suffix}</span>
-          </div>
-        )}
-        <div className="h-1 bg-border rounded-full overflow-hidden">
-          <div 
-            className="h-full rounded-full transition-all duration-200"
-            style={{ 
-              width: `${Math.min((value / max) * 100, 100)}%`,
-              backgroundColor: getBarColor(colorSpace, type, value, color.color)
-            }}
-          />
-        </div>
-      </div>
-    );
-
-    return (
-      <div className="p-1">
-        {/* HSL Values */}
-        {showLabels && (
-          <div className="text-[12px] text-muted-foreground font-medium mb-1">HSL</div>
-        )}
-        <div className="space-y-1">
-          <BarGraph label="H" value={hsl.h} max={360} suffix="°" colorSpace="hsl" type="H" />
-          <BarGraph label="S" value={hsl.s} max={100} suffix="%" colorSpace="hsl" type="S" />
-          <BarGraph label="L" value={hsl.l} max={100} suffix="%" colorSpace="hsl" type="L" />
-        </div>
-        
-        {/* HScL Values */}
-        {showLabels && (
-          <div className="text-[12px] text-muted-foreground font-medium mb-1 mt-3">HScL</div>
-        )}
-        <div className={`space-y-1 ${!showLabels ? 'mt-3' : ''}`}>
-          <BarGraph label="H" value={hscl.h} max={360} suffix="°" colorSpace="hscl" type="H" />
-          <BarGraph label="Sc" value={hscl.sc} max={100} suffix="%" colorSpace="hscl" type="Sc" />
-          <BarGraph label="L" value={hscl.l} max={100} suffix="%" colorSpace="hscl" type="L" />
-        </div>
-      </div>
-    );
-  };
-
-
-
-
-
 
   // Toggle all labels
   const handleToggleAllLabels = () => {
@@ -237,16 +140,26 @@ export default function SavedPalettesPanel({
   // it happened to be open, only on success — matches the original inline
   // behavior of handleExportPalette).
   const handleExportPalette = (format: string, palette: SavedPalette) =>
-    handleExportPaletteAction(format, palette, () => {
-      setShowExportModal(false);
-      if (showPaletteDetailModal) {
-        setShowPaletteDetailModal(false);
-      }
-    });
+    handleExportPaletteAction(
+      format,
+      palette,
+      () => {
+        setShowExportModal(false);
+        if (showPaletteDetailModal) {
+          setShowPaletteDetailModal(false);
+        }
+      },
+      labelsShownFor(palette)
+    );
 
   // Export all palettes
   const handleBulkExport = (format: string) =>
-    handleBulkExportAction(format, savedPalettes, () => setShowBulkExportModal(false));
+    handleBulkExportAction(
+      format,
+      savedPalettes,
+      () => setShowBulkExportModal(false),
+      labelsShownFor
+    );
 
   // Import JSON palette
   const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -586,7 +499,7 @@ export default function SavedPalettesPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportAllPalettesAsPNG(savedPalettes)}
+              onClick={() => exportAllPalettesAsPNG(savedPalettes, labelsShownFor)}
               disabled={savedPalettes.length === 0 || isExporting}
             >
               <DownloadSimple />
@@ -695,7 +608,10 @@ export default function SavedPalettesPanel({
                           disabled={isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
-                            exportIndividualPaletteAsPNG(palette);
+                            exportIndividualPaletteAsPNG(
+                              palette,
+                              labelsShownFor(palette)
+                            );
                           }}
                         >
                           <DownloadSimple />
@@ -761,7 +677,10 @@ export default function SavedPalettesPanel({
                               className={`aspect-square rounded shadow-sm mb-1 ${getSwatchBorderClass(color.color)}`}
                               style={{ backgroundColor: hex }}
                             />
-                            <ColorValueBars color={color} paletteId={palette.id} />
+                            <ColorValueBars
+                              color={color}
+                              showLabels={labelsShownFor(palette)}
+                            />
                           </div>
                         );
                       })}
