@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, Tooltip } from '../ui';
+import { CornersOut, Minus, Plus } from '@phosphor-icons/react';
+import { Button, Tooltip } from '../ui';
+import { cn } from '@/lib/cn';
 import {
   PolygonSelection,
   extractImageDataFromMask,
@@ -33,6 +35,8 @@ interface ImageCanvasProps {
   onPointColorAdd?: (_color: { r: number, g: number, b: number }) => void;
   selectionMode: SelectionMode;
   onClearSelection?: (_clearFn: () => void) => void;
+  /** Whether a selection exists that Clear would act on. */
+  onSelectionStateChange?: (_hasSelection: boolean) => void;
   className?: string;
   isGreyscale?: boolean;
   annotations?: ColorAnnotation[];
@@ -43,10 +47,6 @@ interface ImageCanvasProps {
   annotationTheme?: 'light' | 'dark';
   annotationLineColor?: string;
   annotationColorSpace?: AnnotationColorSpace;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
 }
 
 export default function ImageCanvas({
@@ -55,6 +55,7 @@ export default function ImageCanvas({
   onPointColorAdd,
   selectionMode,
   onClearSelection,
+  onSelectionStateChange,
   className = '',
   isGreyscale = false,
   annotations = [],
@@ -65,10 +66,6 @@ export default function ImageCanvas({
   annotationTheme = 'dark',
   annotationLineColor = '#ffffff',
   annotationColorSpace = 'hscl',
-  onUndo,
-  onRedo,
-  canUndo = false,
-  canRedo = false,
 }: ImageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -895,156 +892,97 @@ export default function ImageCanvas({
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd, handleWheel]);
 
+  // The Clear action lives in the app header; keep it in step with what the
+  // canvas actually holds.
+  const hasSelection = !!(
+    selection ||
+    currentMask ||
+    polygonSelection.getIsComplete()
+  );
+  useEffect(() => {
+    onSelectionStateChange?.(hasSelection);
+  }, [hasSelection, onSelectionStateChange]);
+
   return (
-    <Card className={className}>
-      <CardContent className="p-3 lg:p-6 flex-1 flex flex-col">
-        <div className="flex-1 flex flex-col space-y-3 lg:space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="hidden lg:block text-lg font-semibold">Image Canvas</h3>
-          <div className="flex items-center space-x-2 ml-auto">
-            <div className="text-xs text-gray-500">
-              {Math.round(scale * 100)}%
-            </div>
-            <button
-              onClick={() => {
-                if (!canvasRef.current) return;
-                const canvas = canvasRef.current;
-                handleZoom(-100, canvas.width / 2, canvas.height / 2);
-              }}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              title="Zoom out (-)"
-            >
-              −
-            </button>
-            <button
-              onClick={() => {
-                if (!canvasRef.current) return;
-                const canvas = canvasRef.current;
-                handleZoom(100, canvas.width / 2, canvas.height / 2);
-              }}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              title="Zoom in (+)"
-            >
-              +
-            </button>
-            <button
-              onClick={resetView}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              title="Fit to container (F)"
-            >
-              Fit
-            </button>
-            <button
-              onClick={zoomToActualSize}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              title="Actual size (1)"
-            >
-              100%
-            </button>
-            {(selectionMode === 'rectangle' || selectionMode === 'polygon') && (
-              <button
-                onClick={clearSelection}
-                disabled={!(selection || currentMask || polygonSelection.getIsComplete())}
-                className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-white"
-                title="Clear selection (ESC)"
-              >
-                Clear
-              </button>
-            )}
-            {annotationMode === 'annotate' && (
-              <>
-                <button
-                  onClick={onUndo}
-                  disabled={!canUndo}
-                  className="p-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-white"
-                  title="Undo"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 7v6h6"/>
-                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
-                  </svg>
-                </button>
-                <button
-                  onClick={onRedo}
-                  disabled={!canRedo}
-                  className="p-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-white"
-                  title="Redo"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 7v6h-6"/>
-                    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
-                  </svg>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative h-full w-full touch-none overflow-hidden bg-muted',
+        className
+      )}
+    >
+      <canvas
+        ref={canvasRef}
+        className={cn(
+          'absolute inset-0 touch-none',
+          isPanning ? 'cursor-move' : 'cursor-crosshair'
+        )}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          if (isAnnotating) {
+            setIsAnnotating(false);
+            setAnnotationAnchorImg(null);
+            setAnnotationPreviewImg(null);
+          }
+          handleMouseUp();
+          // Clear debounce timeout and hide tooltip immediately
+          if (tooltipDebounceRef.current) {
+            clearTimeout(tooltipDebounceRef.current);
+            tooltipDebounceRef.current = null;
+          }
+          setTooltipVisible(false);
+        }}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={(e) => {
+          e.preventDefault(); // Prevent context menu
+        }}
+      />
 
-        <div
-          ref={containerRef}
-          className="relative bg-gray-100 rounded-lg overflow-hidden flex-1 min-h-0"
-          style={{ minHeight: 'min(400px, 40vh)' }}
+      <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-md border border-border bg-background/90 p-1 shadow-sm backdrop-blur">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Zoom out"
+          onClick={() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            handleZoom(-100, canvas.width / 2, canvas.height / 2);
+          }}
         >
-          <canvas
-            ref={canvasRef}
-            className={`absolute inset-0 ${
-              isPanning
-                ? 'cursor-move'
-                : isAnnotating
-                  ? 'cursor-crosshair'
-                  : 'cursor-crosshair'
-            } touch-none`}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={() => {
-              if (isAnnotating) {
-                setIsAnnotating(false);
-                setAnnotationAnchorImg(null);
-                setAnnotationPreviewImg(null);
-              }
-              handleMouseUp();
-              // Clear debounce timeout and hide tooltip immediately
-              if (tooltipDebounceRef.current) {
-                clearTimeout(tooltipDebounceRef.current);
-                tooltipDebounceRef.current = null;
-              }
-              setTooltipVisible(false);
-            }}
-            onDoubleClick={handleDoubleClick}
-            onContextMenu={(e) => {
-              e.preventDefault(); // Prevent context menu
-            }}
-          />
-        </div>
-
-        <div className="hidden lg:block text-sm text-gray-600 space-y-1">
-          {selectionMode === 'rectangle' && selection ? (
-            <p>
-              Selection: {Math.abs(selection.end.x - selection.start.x).toFixed(0)} × {Math.abs(selection.end.y - selection.start.y).toFixed(0)} px
-            </p>
-          ) : selectionMode === 'polygon' && polygonSelection.getVertices().length > 0 ? (
-            <p>
-              Polygon path: {polygonSelection.getVertices().length} points • {polygonSelection.getIsComplete() ? 'Selection completed - extracting colors' : 'Click near first point or double-click to complete'}
-            </p>
-          ) : selectionMode === 'point' && annotationMode === 'annotate' ? (
-            <p>Click and drag on the image to add color annotations</p>
-          ) : selectionMode === 'point' ? (
-            <p>Click anywhere on the image to add colors to your palette</p>
-          ) : (
-            <p>Click and drag to select an area for color extraction</p>
-          )}
-          <p className="text-xs text-gray-500">
-            <span className="hidden sm:inline">
-              Controls: Scroll wheel to zoom • Shift + drag to pan • ESC to clear selection
-            </span>
-            <span className="sm:hidden">
-              Touch: Tap and drag to select • Two fingers to zoom and pan
-            </span>
-          </p>
-        </div>
-        </div>
-      </CardContent>
+          <Minus />
+        </Button>
+        <button
+          type="button"
+          aria-label="Actual size"
+          title="Actual size"
+          onClick={zoomToActualSize}
+          className="w-12 rounded-sm text-center text-xs tabular-nums text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {Math.round(scale * 100)}%
+        </button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Zoom in"
+          onClick={() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            handleZoom(100, canvas.width / 2, canvas.height / 2);
+          }}
+        >
+          <Plus />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Fit to screen"
+          onClick={resetView}
+        >
+          <CornersOut />
+        </Button>
+      </div>
 
       {/* Tooltip for point mode - positioned relative to page */}
       <Tooltip
@@ -1053,6 +991,6 @@ export default function ImageCanvas({
         color={tooltipColor}
         visible={tooltipVisible && selectionMode === 'point' && !isAnnotating}
       />
-    </Card>
+    </div>
   );
 }

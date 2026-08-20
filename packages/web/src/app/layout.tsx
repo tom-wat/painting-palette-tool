@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
+import { JetBrains_Mono } from 'next/font/google';
 import React from 'react';
 import './globals.css';
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jetbrains-mono',
+});
 
 export const metadata: Metadata = {
   title: 'Painting Palette',
@@ -19,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full antialiased bg-white text-gray-900">{children}</body>
+    <html lang="en" className={`h-full ${jetbrainsMono.variable}`}>
+      <body className="h-full antialiased">{children}</body>
     </html>
   );
 }

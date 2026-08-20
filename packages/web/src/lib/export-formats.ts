@@ -10,6 +10,7 @@ import {
   formatColorValue
 } from '@palette-tool/color-engine';
 import { drawAnnotationLabel, type AnnotationColorSpace } from './annotation-render';
+import { ensureCanvasFontLoaded, getCanvasFontStack } from './canvas-font';
 
 export type { RGBColor, ExtractedColor };
 
@@ -38,6 +39,8 @@ export interface ExportOptions {
   includeMetadata?: boolean;
   sortBy?: 'frequency' | 'brightness' | 'hue';
   includeAllColorSpaces?: boolean;
+  /** Drawn above the swatches in a PNG export. */
+  title?: string;
 }
 
 /**
@@ -50,93 +53,124 @@ export function rgbToHex(color: RGBColor): string {
 
 
 /**
- * Export palette as PNG image
+ * PNG exports are drawn straight onto a canvas rather than screenshotted from
+ * the DOM. That keeps the output independent of the UI's styling — and of
+ * whatever CSS colour syntax the app happens to use, which is what broke the
+ * previous html2canvas-based capture once the theme moved to oklch().
  */
-export async function exportAsPNG(
-  colors: ExtractedColor[],
-  _options: ExportOptions = {}
-): Promise<Blob> {
-  
-  // Create canvas for palette
+const PNG_SCALE = 1.5; // 2x for quality, at 75% layout size
+const PNG_SWATCH = 100 * PNG_SCALE;
+const PNG_TEXT_HEIGHT = 60 * PNG_SCALE;
+const PNG_GAP = 16 * PNG_SCALE;
+const PNG_PADDING = 24 * PNG_SCALE;
+const PNG_TITLE_HEIGHT = 30 * PNG_SCALE;
+const PNG_LINE_HEIGHT = 18 * PNG_SCALE;
+
+
+/** One palette in a PNG sheet. */
+interface PaletteSheet {
+  colors: ExtractedColor[];
+  /** Drawn above the swatches; omitted for a bare strip. */
+  name?: string;
+}
+
+function sheetWidth(sheet: PaletteSheet): number {
+  const count = Math.max(sheet.colors.length, 1);
+  return count * PNG_SWATCH + (count - 1) * PNG_GAP;
+}
+
+function sheetHeight(sheet: PaletteSheet): number {
+  return (sheet.name ? PNG_TITLE_HEIGHT : 0) + PNG_SWATCH + PNG_TEXT_HEIGHT;
+}
+
+function drawSheet(
+  ctx: CanvasRenderingContext2D,
+  sheet: PaletteSheet,
+  originX: number,
+  originY: number
+): void {
+  let y = originY;
+
+  if (sheet.name) {
+    ctx.fillStyle = '#171717';
+    ctx.font = `600 ${14 * PNG_SCALE}px ${getCanvasFontStack()}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(sheet.name, originX, y);
+    y += PNG_TITLE_HEIGHT;
+  }
+
+  ctx.font = `${12 * PNG_SCALE}px ${getCanvasFontStack()}`;
+  ctx.textAlign = 'center';
+
+  sheet.colors.forEach((extractedColor, index) => {
+    const x = originX + index * (PNG_SWATCH + PNG_GAP);
+
+    ctx.fillStyle = rgbToHex(extractedColor.color);
+    ctx.beginPath();
+    ctx.roundRect(x, y, PNG_SWATCH, PNG_SWATCH, 6 * PNG_SCALE);
+    ctx.fill();
+
+    const hsl = rgbToHsl(extractedColor.color);
+    const hscl = calculateHScL(extractedColor.color);
+
+    ctx.fillStyle = '#6b7280';
+    const textX = x + PNG_SWATCH / 2;
+    const textY = y + PNG_SWATCH + 8 * PNG_SCALE;
+    ctx.fillText(formatColorValue('hsl', hsl), textX, textY);
+    ctx.fillText(formatColorValue('hscl', hscl), textX, textY + PNG_LINE_HEIGHT);
+  });
+}
+
+async function renderSheets(sheets: PaletteSheet[]): Promise<Blob> {
+  await ensureCanvasFontLoaded();
+
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Cannot create canvas context');
 
-  // Calculate canvas dimensions (horizontal layout, 75% size)
-  const baseScale = 2; // Base scale for quality
-  const sizeScale = 0.75; // 75% size reduction
-  const scale = baseScale * sizeScale; // Combined scale (1.5x)
-  const colorCount = colors.length;
-  const colorsPerRow = colorCount; // All colors in one row
-  const rows = 1; // Single row
-  const colorSize = 100 * scale; // 75% of original size
-  const textHeight = 60 * scale; // 75% text space
-  const itemGap = 16 * scale; // 75% gaps (but proportionally wider)
-  const itemWidth = colorSize;
-  const itemHeight = colorSize + textHeight;
-  const padding = 24 * scale; // 75% padding
-  
-  canvas.width = colorsPerRow * itemWidth + (colorsPerRow - 1) * itemGap + (padding * 2);
-  canvas.height = rows * itemHeight + (rows - 1) * itemGap + (padding * 2);
+  canvas.width = Math.max(...sheets.map(sheetWidth)) + PNG_PADDING * 2;
+  canvas.height =
+    sheets.reduce((total, sheet) => total + sheetHeight(sheet), 0) +
+    (sheets.length - 1) * PNG_GAP * 2 +
+    PNG_PADDING * 2;
 
-  // Enable high-quality rendering
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
+  ctx.textBaseline = 'top';
 
-  // Draw white background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Set font properties (scaled for better quality)
-  ctx.font = `${12 * scale}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
+  let y = PNG_PADDING;
+  for (const sheet of sheets) {
+    drawSheet(ctx, sheet, PNG_PADDING, y);
+    y += sheetHeight(sheet) + PNG_GAP * 2;
+  }
 
-  // Draw colors with text labels (SavedPalettes style)
-  colors.forEach((extractedColor, index) => {
-    const row = Math.floor(index / colorsPerRow);
-    const col = index % colorsPerRow;
-    
-    const x = padding + col * (itemWidth + itemGap);
-    const y = padding + row * (itemHeight + itemGap);
-    
-    // Draw color square with rounded corners effect (scaled)
-    const cornerRadius = 6 * scale; // Scaled corner radius
-    ctx.fillStyle = rgbToHex(extractedColor.color);
-    
-    // Use roundRect for better quality rounded corners
-    ctx.beginPath();
-    ctx.roundRect(x, y, colorSize, colorSize, cornerRadius);
-    ctx.fill();
-    
-    // No border
-    
-    // Calculate color values (excluding LCH)
-    const hsl = rgbToHsl(extractedColor.color);
-    const hscl = calculateHScL(extractedColor.color);
-    
-    // Draw text labels (HSL and HScL only)
-    ctx.fillStyle = '#6b7280'; // gray-500
-    const textX = x + colorSize / 2;
-    const textStartY = y + colorSize + (8 * scale); // Scaled text spacing
-    const lineHeight = 18 * scale; // Scaled line height
-    
-    // HSL line
-    ctx.fillText(formatColorValue('hsl', hsl), textX, textStartY);
-    
-    // HScL line
-    ctx.fillText(formatColorValue('hscl', hscl), textX, textStartY + lineHeight);
-  });
-
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-      } else {
-        throw new Error('Failed to create PNG blob');
-      }
+      if (blob) resolve(blob);
+      else reject(new Error('Failed to create PNG blob'));
     }, 'image/png');
   });
+}
+
+/**
+ * Export palette as PNG image
+ */
+export async function exportAsPNG(
+  colors: ExtractedColor[],
+  options: ExportOptions = {}
+): Promise<Blob> {
+  return renderSheets([{ colors, name: options.title }]);
+}
+
+/**
+ * Export several saved palettes stacked into a single PNG.
+ */
+export async function exportPalettesAsPNG(palettes: SavedPalette[]): Promise<Blob> {
+  if (palettes.length === 0) throw new Error('No palettes to export');
+  return renderSheets(palettes.map((p) => ({ colors: p.colors, name: p.name })));
 }
 
 /**
@@ -808,6 +842,7 @@ export async function exportImageWithAnnotations(
   options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string; colorSpace?: AnnotationColorSpace } = {}
 ): Promise<Blob> {
   const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff', colorSpace = 'hscl' } = options;
+  await ensureCanvasFontLoaded();
   const img = await loadImage(imageFile);
 
   const canvas = document.createElement('canvas');
@@ -836,6 +871,7 @@ export async function exportAnnotationsOnly(
   options: { lineOpacity?: number; fontSize?: number; theme?: 'light' | 'dark'; lineColor?: string; colorSpace?: AnnotationColorSpace } = {}
 ): Promise<Blob> {
   const { lineOpacity = 0.7, fontSize = 16, theme = 'dark', lineColor = '#ffffff', colorSpace = 'hscl' } = options;
+  await ensureCanvasFontLoaded();
   const img = await loadImage(imageFile);
 
   const canvas = document.createElement('canvas');

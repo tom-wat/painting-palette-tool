@@ -1,4 +1,8 @@
 import React from 'react';
+import { cn } from '@/lib/cn';
+
+const fieldClasses =
+  'w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:bg-muted disabled:cursor-not-allowed';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -6,65 +10,34 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   className?: string;
 }
 
-export default function Input({
-  label,
-  error,
-  className = '',
-  ...props
-}: InputProps) {
+export default function Input({ label, error, className = '', ...props }: InputProps) {
   return (
     <div className="w-full">
-      {label && (
-        <label className="block text-sm font-medium text-gray-800 mb-1">
-          {label}
-        </label>
-      )}
+      {label && <label className="mb-1 block text-sm">{label}</label>}
       <input
-        className={`
-          w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800 bg-white
-          focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent
-          disabled:bg-gray-100 disabled:cursor-not-allowed
-          ${error ? 'border-red-500' : ''}
-          ${className}
-        `}
+        className={cn(fieldClasses, error && 'border-destructive', className)}
         {...props}
       />
-      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
 
-interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
   className?: string;
 }
 
-export function Textarea({
-  label,
-  error,
-  className = '',
-  ...props
-}: TextareaProps) {
+export function Textarea({ label, error, className = '', ...props }: TextareaProps) {
   return (
     <div className="w-full">
-      {label && (
-        <label className="block text-sm font-medium text-gray-800 mb-1">
-          {label}
-        </label>
-      )}
+      {label && <label className="mb-1 block text-sm">{label}</label>}
       <textarea
-        className={`
-          w-full px-3 py-2 border border-gray-300 rounded-md text-gray-800 bg-white
-          focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent
-          disabled:bg-gray-100 disabled:cursor-not-allowed
-          ${error ? 'border-red-500' : ''}
-          ${className}
-        `}
+        className={cn(fieldClasses, error && 'border-destructive', className)}
         {...props}
       />
-      {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

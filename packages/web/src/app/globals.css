@@ -2,26 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Semantic design tokens, shared with the sibling drawing tools
+ * (tool-starter-template / flow-finder). Values are oklch channels only —
+ * the `oklch(var(--x) / <alpha-value>)` form in tailwind.config.ts needs the
+ * alpha slot free so `bg-foreground/50` keeps working.
+ *
+ * The dark palette is defined but not switched on anywhere: the UI is fixed to
+ * light. Adding `class="dark"` to <html> is all that is needed to enable it.
+ */
+:root {
+  --background: 1 0 0;
+  --foreground: 0.145 0 0;
+  --card: 1 0 0;
+  --card-foreground: 0.145 0 0;
+  --popover: 1 0 0;
+  --popover-foreground: 0.145 0 0;
+  --primary: 0.205 0 0;
+  --primary-foreground: 0.985 0 0;
+  --secondary: 0.97 0 0;
+  --secondary-foreground: 0.205 0 0;
+  --muted: 0.97 0 0;
+  --muted-foreground: 0.556 0 0;
+  --accent: 0.97 0 0;
+  --accent-foreground: 0.205 0 0;
+  /* Monochrome by project rule (CLAUDE.md: no accent colors). Destructive
+     actions are marked by an inverting hover, not by hue — set this to
+     oklch 0.577 0.245 27.325 if a red is ever wanted back. */
+  --destructive: 0.145 0 0;
+  --destructive-foreground: 0.985 0 0;
+  --border: 0.922 0 0;
+  --input: 0.922 0 0;
+  --ring: 0.708 0 0;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: 0.145 0 0;
+  --foreground: 0.985 0 0;
+  --card: 0.205 0 0;
+  --card-foreground: 0.985 0 0;
+  --popover: 0.205 0 0;
+  --popover-foreground: 0.985 0 0;
+  --primary: 0.922 0 0;
+  --primary-foreground: 0.205 0 0;
+  --secondary: 0.269 0 0;
+  --secondary-foreground: 0.985 0 0;
+  --muted: 0.269 0 0;
+  --muted-foreground: 0.708 0 0;
+  --accent: 0.269 0 0;
+  --accent-foreground: 0.985 0 0;
+  --destructive: 0.985 0 0;
+  --destructive-foreground: 0.145 0 0;
+  /* The reference theme uses translucent white here; solid equivalents keep
+     the channel-only format that the alpha modifier depends on. */
+  --border: 0.269 0 0;
+  --input: 0.32 0 0;
+  --ring: 0.556 0 0;
+}
+
 @layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply font-mono;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
   img {
     @apply inline-block;
   }
-}
-
-/* 確実にスタイルが読み込まれることを確認するための基本設定 */
-html {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  color: #171717;
-  background-color: #ffffff;
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
 }
 
 @layer utilities {
@@ -30,3 +82,45 @@ body {
   }
 }
 
+@layer components {
+  /*
+   * Native range input styled from the tokens. The filled portion is driven by
+   * the --slider-fill custom property that LabeledSlider sets per value; that
+   * is the one thing a class cannot express, so it stays an inline style.
+   */
+  .range-track {
+    background: linear-gradient(
+      to right,
+      oklch(var(--primary)) 0%,
+      oklch(var(--primary)) var(--slider-fill, 0%),
+      oklch(var(--border)) var(--slider-fill, 0%),
+      oklch(var(--border)) 100%
+    );
+  }
+
+  .range-track::-webkit-slider-thumb {
+    appearance: none;
+    height: 14px;
+    width: 14px;
+    border-radius: 9999px;
+    background: oklch(var(--primary));
+    border: 2px solid oklch(var(--background));
+    box-shadow: 0 1px 3px oklch(var(--foreground) / 0.15);
+    cursor: pointer;
+  }
+
+  .range-track::-moz-range-thumb {
+    height: 14px;
+    width: 14px;
+    border-radius: 9999px;
+    background: oklch(var(--primary));
+    border: 2px solid oklch(var(--background));
+    box-shadow: 0 1px 3px oklch(var(--foreground) / 0.15);
+    cursor: pointer;
+  }
+
+  .range-track:focus-visible {
+    outline: 2px solid oklch(var(--ring));
+    outline-offset: 2px;
+  }
+}

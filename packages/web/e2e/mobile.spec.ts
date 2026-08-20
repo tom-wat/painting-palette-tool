@@ -1,17 +1,24 @@
 import { test, expect } from '@playwright/test';
 
-test('mobile tab bar switches between canvas and saved views', async ({ page }) => {
+test('mobile panels open as bottom sheets and the header switches views', async ({ page }) => {
   await page.goto('/');
 
-  const tabBar = page.getByRole('navigation');
-  await expect(tabBar.getByRole('button', { name: 'Canvas' })).toBeVisible();
-  await expect(tabBar.getByRole('button', { name: 'Tools' })).toBeVisible();
-  await expect(tabBar.getByRole('button', { name: 'Palette' })).toBeVisible();
-  await expect(tabBar.getByRole('button', { name: 'Saved' })).toBeVisible();
+  const panelBar = page.getByRole('navigation');
+  await expect(panelBar.getByRole('button', { name: 'Controls' })).toBeVisible();
+  await expect(panelBar.getByRole('button', { name: 'Colors' })).toBeVisible();
 
-  await tabBar.getByRole('button', { name: 'Saved' }).click();
+  // Each panel is a bottom sheet on mobile rather than a sidebar.
+  await panelBar.getByRole('button', { name: 'Controls' }).click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('heading', { name: 'Controls' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Extraction Settings' })).toBeVisible();
+  await sheet.getByRole('button', { name: 'Close' }).click();
+  await expect(sheet).toBeHidden();
+
+  // Canvas / Saved is a header-level switch shared with the desktop layout.
+  await page.getByRole('radio', { name: 'Palette', exact: true }).click();
   await expect(page.getByRole('heading', { name: /Saved Palettes/ })).toBeVisible();
 
-  await tabBar.getByRole('button', { name: 'Canvas' }).click();
-  await expect(page.locator('main:visible').getByText('Tap to select image')).toBeVisible();
+  await page.getByRole('radio', { name: 'Canvas' }).click();
+  await expect(page.getByText('Tap to select image')).toBeVisible();
 });

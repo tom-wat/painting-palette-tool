@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/cn';
 
 interface SliderProps {
   value: number;
@@ -10,6 +11,10 @@ interface SliderProps {
   className?: string;
 }
 
+/**
+ * Bare slider. Prefer `controls/LabeledSlider` for settings-panel rows — this
+ * stays for the places that need a slider without the standard row layout.
+ */
 export default function Slider({
   value,
   onChange,
@@ -22,48 +27,24 @@ export default function Slider({
   const percentage = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={cn('w-full', className)}>
       {label && (
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-sm font-medium text-gray-800">{label}</label>
-          <span className="text-sm text-gray-600">{value}</span>
+        <div className="mb-2 flex items-baseline justify-between">
+          <label className="text-sm">{label}</label>
+          <span className="text-xs tabular-nums text-muted-foreground">{value}</span>
         </div>
       )}
-      <div className="relative">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-          style={{
-            background: `linear-gradient(to right, #000 0%, #000 ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`,
-          }}
-        />
-      </div>
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 16px;
-          width: 16px;
-          border-radius: 50%;
-          background: #000;
-          cursor: pointer;
-          border: 2px solid #fff;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        .slider::-moz-range-thumb {
-          height: 16px;
-          width: 16px;
-          border-radius: 50%;
-          background: #000;
-          cursor: pointer;
-          border: 2px solid #fff;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-      `}</style>
+      <input
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ '--slider-fill': `${percentage}%` } as React.CSSProperties}
+        className="range-track h-1.5 w-full cursor-pointer appearance-none rounded-full"
+      />
     </div>
   );
 }

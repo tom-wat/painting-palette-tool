@@ -14,9 +14,9 @@ import {
 /**
  * Owns the export-in-progress flag and the current-in-progress-palette
  * export switch (PNG/JSON/CSS/ASE/Adobe/Procreate). Distinct from
- * usePaletteExportActions, which exports already-*saved* palettes and
- * needs DOM refs for html2canvas capture — this one exports the working
- * `colors` array directly via export-formats' pure PNG renderer.
+ * usePaletteExportActions, which exports already-*saved* palettes — this one
+ * exports the working `colors` array. Both render PNGs through
+ * export-formats' canvas renderer.
  */
 export function usePaletteExport(colors: ExtractedColor[]) {
   const [isExporting, setIsExporting] = useState(false);

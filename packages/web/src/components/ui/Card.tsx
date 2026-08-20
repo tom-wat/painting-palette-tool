@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/cn';
 
 interface CardProps {
   children: React.ReactNode;
@@ -7,9 +8,7 @@ interface CardProps {
 
 export default function Card({ children, className = '' }: CardProps) {
   return (
-    <div
-      className={`bg-white border border-gray-100 rounded-lg shadow-sm ${className}`}
-    >
+    <div className={cn('rounded-lg border border-border bg-card text-card-foreground', className)}>
       {children}
     </div>
   );
@@ -21,11 +20,7 @@ interface CardHeaderProps {
 }
 
 export function CardHeader({ children, className = '' }: CardHeaderProps) {
-  return (
-    <div className={`border-b border-gray-100 p-6 ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={cn('border-b border-border px-4 py-3', className)}>{children}</div>;
 }
 
 interface CardTitleProps {
@@ -34,11 +29,7 @@ interface CardTitleProps {
 }
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
-  return (
-    <h3 className={`text-lg font-semibold text-gray-800 ${className}`}>
-      {children}
-    </h3>
-  );
+  return <h3 className={cn('text-sm font-semibold', className)}>{children}</h3>;
 }
 
 interface CardContentProps {
@@ -47,7 +38,7 @@ interface CardContentProps {
 }
 
 export function CardContent({ children, className = '' }: CardContentProps) {
-  // If className is provided, use it completely; otherwise use default p-6
-  const contentClasses = className ? className : 'p-6';
+  // If className is provided, use it completely; otherwise use default padding
+  const contentClasses = className ? className : 'p-4';
   return <div className={contentClasses}>{children}</div>;
 }

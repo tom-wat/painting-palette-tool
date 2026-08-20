@@ -70,7 +70,7 @@ export default function Modal({
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-50 transition-opacity"
+          className="fixed inset-0 bg-foreground/40 transition-opacity"
           aria-hidden="true"
           onClick={onClose}
         ></div>
@@ -85,20 +85,20 @@ export default function Modal({
 
         {/* Modal panel */}
         <div
-          className={`inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full ${className}`}
+          className={`inline-block align-middle bg-background border border-border rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full ${className}`}
         >
           {title && (
-            <div className="bg-white px-6 py-4 border-b border-gray-100">
+            <div className="bg-background px-6 py-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <h3
-                  className="text-lg font-semibold text-gray-800"
+                  className="text-lg font-semibold text-foreground"
                   id="modal-title"
                 >
                   {title}
                 </h3>
                 <button
                   type="button"
-                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="text-muted-foreground hover:text-foreground focus:outline-none"
                   onClick={onClose}
                 >
                   <span className="sr-only">Close</span>
@@ -120,7 +120,7 @@ export default function Modal({
             </div>
           )}
 
-          <div className={`bg-white ${className?.includes('no-padding') ? '' : 'px-6 py-4'}`}>{children}</div>
+          <div className={`bg-background ${className?.includes('no-padding') ? '' : 'px-6 py-4'}`}>{children}</div>
         </div>
       </div>
     </div>
@@ -135,7 +135,7 @@ interface ModalFooterProps {
 export function ModalFooter({ children, className = '' }: ModalFooterProps) {
   return (
     <div
-      className={`bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 ${className}`}
+      className={`bg-muted px-6 py-4 border-t border-border flex justify-end space-x-3 ${className}`}
     >
       {children}
     </div>

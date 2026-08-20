@@ -1,4 +1,7 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
+import { cn } from '@/lib/cn';
 
 interface SelectOption {
   value: string;
@@ -26,7 +29,7 @@ export default function Select({
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
 
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = options.find((option) => option.value === value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -45,62 +48,72 @@ export default function Select({
   };
 
   return (
-    <div className={`relative w-full ${className}`} ref={selectRef}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-800 mb-2">
-          {label}
-        </label>
-      )}
-      
-      <div
-        className={`
-          relative w-full px-3 py-2 bg-white border border-gray-300 rounded-md cursor-pointer
-          focus:outline-none focus:ring-1 focus:ring-gray-800 focus:border-gray-800
-          ${isOpen ? 'ring-1 ring-gray-800 border-gray-800' : ''}
-        `}
+    <div className={cn('relative w-full', className)} ref={selectRef}>
+      {label && <label className="mb-1.5 block text-sm">{label}</label>}
+
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          'w-full rounded-md border border-input bg-background px-3 py-1.5 text-left text-sm focus:outline-none focus:ring-1 focus:ring-ring',
+          isOpen && 'ring-1 ring-ring'
+        )}
       >
-        <div className="flex items-center justify-between">
-          <span className={selectedOption ? 'text-gray-800' : 'text-gray-500'}>
+        <div className="flex items-center justify-between gap-2">
+          <span className={cn('truncate', !selectedOption && 'text-muted-foreground')}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${
-              isOpen ? 'rotate-180' : ''
-            }`}
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+              isOpen && 'rotate-180'
+            )}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-          <div className="py-1 max-h-60 overflow-auto">
+        <div
+          role="listbox"
+          className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-lg"
+        >
+          <div className="max-h-60 overflow-auto py-1">
             {options.map((option) => (
-              <div
+              <button
                 key={option.value}
-                className={`
-                  px-3 py-2 cursor-pointer transition-colors
-                  ${option.value === value 
-                    ? 'bg-gray-800 text-white' 
-                    : 'text-gray-800 hover:bg-gray-50'
-                  }
-                `}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                className={cn(
+                  'block w-full px-3 py-1.5 text-left text-sm transition-colors',
+                  option.value === value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                )}
                 onClick={() => handleOptionClick(option.value)}
               >
                 <div className="font-medium">{option.label}</div>
                 {option.description && (
-                  <div className={`text-xs ${
-                    option.value === value ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <div
+                    className={cn(
+                      'text-xs',
+                      option.value === value
+                        ? 'text-primary-foreground/70'
+                        : 'text-muted-foreground'
+                    )}
+                  >
                     {option.description}
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         </div>

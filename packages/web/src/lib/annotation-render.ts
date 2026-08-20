@@ -1,9 +1,7 @@
 import { rgbToHsl, calculateHScL, type RGBColor } from '@palette-tool/color-engine';
+import { getCanvasFontStack } from './canvas-font';
 
 export type AnnotationColorSpace = 'hscl' | 'hsl';
-
-const FONT_STACK =
-  "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
 
 interface BarRow {
   label: string;
@@ -108,7 +106,7 @@ export function drawAnnotationLabel(
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
   const extraPad = isTauri ? Math.round(fontSize * 0.25) : 0;
 
-  ctx.font = `${fontSize}px ${FONT_STACK}`;
+  ctx.font = `${fontSize}px ${getCanvasFontStack()}`;
   const titleW = ctx.measureText(title).width;
   const headerW = swatchSize + pad + titleW;
 
@@ -141,7 +139,7 @@ export function drawAnnotationLabel(
     ctx.strokeRect(contentX, swatchY, swatchSize, swatchSize);
   }
 
-  ctx.font = `${fontSize}px ${FONT_STACK}`;
+  ctx.font = `${fontSize}px ${getCanvasFontStack()}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = textPrimary;
@@ -152,7 +150,7 @@ export function drawAnnotationLabel(
   let rowY = by + pad + headerH + headerGap;
   for (const row of rows) {
     // Label (left) + value (right)
-    ctx.font = `${fontSize}px ${FONT_STACK}`;
+    ctx.font = `${fontSize}px ${getCanvasFontStack()}`;
     ctx.textAlign = 'left';
     ctx.fillStyle = textSecondary;
     ctx.fillText(row.label, contentX, rowY);

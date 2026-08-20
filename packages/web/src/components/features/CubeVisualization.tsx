@@ -69,7 +69,7 @@ export default function CubeVisualization({ colors, config = {} }: CubeVisualiza
       <Card>
         <CardContent>
           <div className="text-center py-8">
-            <div className="text-gray-400 mb-2">
+            <div className="text-muted-foreground mb-2">
               <svg
                 className="w-12 h-12 mx-auto mb-4"
                 fill="none"
@@ -84,8 +84,8 @@ export default function CubeVisualization({ colors, config = {} }: CubeVisualiza
                 />
               </svg>
             </div>
-            <p className="text-gray-600">No colors extracted yet</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-muted-foreground">No colors extracted yet</p>
+            <p className="text-sm text-muted-foreground">
               Upload an image to see the 3D cube visualization
             </p>
           </div>
@@ -102,7 +102,7 @@ export default function CubeVisualization({ colors, config = {} }: CubeVisualiza
             <h3 className="text-lg font-semibold">3D Cube Visualization</h3>
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
               {renderTime && (
-                <span className="text-xs text-gray-500 order-last sm:order-first">
+                <span className="text-xs text-muted-foreground order-last sm:order-first">
                   Rendered in {renderTime.toFixed(1)}ms
                 </span>
               )}
@@ -130,24 +130,24 @@ export default function CubeVisualization({ colors, config = {} }: CubeVisualiza
 
           <div className="relative">
             {isRendering && (
-              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+              <div className="absolute inset-0 bg-background bg-opacity-75 flex items-center justify-center z-10">
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground"></div>
                   <span>Rendering 3D cubes...</span>
                 </div>
               </div>
             )}
             
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-muted p-4 rounded-lg">
               <canvas
                 ref={canvasRef}
-                className="max-w-full h-auto border border-gray-100 rounded-md shadow-sm bg-white"
+                className="max-w-full h-auto border border-border rounded-md shadow-sm bg-background"
                 style={{ display: 'block', margin: '0 auto' }}
               />
             </div>
           </div>
 
-          <div className="text-xs text-gray-500 space-y-1">
+          <div className="text-xs text-muted-foreground space-y-1">
             <p>• Isometric 3D visualization shows color relationships and depth</p>
             <p>• Each cube represents a color with proper lighting and shading</p>
             <p>• Arranged in a grid for easy color comparison during painting</p>

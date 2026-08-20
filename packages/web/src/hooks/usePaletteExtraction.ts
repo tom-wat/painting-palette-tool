@@ -7,7 +7,6 @@ import {
   type ExtractedColor,
 } from '@palette-tool/color-engine';
 import { useProcessingPipeline } from '@/lib/processing-pipeline';
-import type { MobileTab } from '@/components/features/MobileTabBar';
 import type { ToastType } from '@/components/ui';
 
 export interface ExtractionSettings {
@@ -150,14 +149,15 @@ function mergeAndDeduplicateColors(
 /**
  * Owns color-palette extraction: settings, the extraction pipeline
  * (caching/debounce/cancellation), point/selection/saved-color add flows,
- * and the resulting extractedColors list. imageData/isGreyscale/mobileTab
- * are inputs owned by the caller; showToast/setPaletteBadge are effects the
- * caller wants notified of.
+ * and the resulting extractedColors list. imageData/isGreyscale are inputs
+ * owned by the caller; showToast/setPaletteBadge are effects the caller wants
+ * notified of. The badge marks that new colors landed in a palette panel the
+ * user is not looking at — AppShell only renders it on mobile, where the
+ * palette lives behind a sheet.
  */
 export function usePaletteExtraction(
   imageData: ImageData | null,
   isGreyscale: boolean,
-  mobileTab: MobileTab,
   setPaletteBadge: (_badge: boolean) => void,
   showToast: (_message: string, _type: ToastType) => void
 ) {
@@ -328,7 +328,7 @@ export function usePaletteExtraction(
         setExtractedColors(mergedColors);
         // Update last added color IDs (only keep the new ones)
         setLastAddedColorIds(new Set(newColorIds));
-        if (newColorIds.length > 0 && mobileTab !== 'palette') setPaletteBadge(true);
+        if (newColorIds.length > 0) setPaletteBadge(true);
       }
     }
     setSelectedImageData(selectionData);
@@ -361,7 +361,7 @@ export function usePaletteExtraction(
 
       // Update last added color IDs (only keep the new one)
       setLastAddedColorIds(new Set([colorId]));
-      if (mobileTab !== 'palette') setPaletteBadge(true);
+      setPaletteBadge(true);
     } else {
       showToast('Exact same color already exists in palette', 'error');
     }
@@ -385,7 +385,7 @@ export function usePaletteExtraction(
 
       // Update last added color IDs (only keep the new one)
       setLastAddedColorIds(new Set([colorId]));
-      if (mobileTab !== 'palette') setPaletteBadge(true);
+      setPaletteBadge(true);
     } else {
       showToast('Color already exists in palette', 'error');
     }

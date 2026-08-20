@@ -47,10 +47,10 @@ export default function BrightnessAnalysis({
               {analysis.colors.map((color, index) => (
                 <div
                   key={index}
-                  className="flex items-center space-x-2 p-2 bg-gray-50 rounded-md text-sm"
+                  className="flex items-center space-x-2 p-2 bg-muted rounded-md text-sm"
                 >
                   <div
-                    className="w-4 h-4 rounded border border-gray-300"
+                    className="w-4 h-4 rounded border border-input"
                     style={{
                       backgroundColor: `rgb(${color.color.r}, ${color.color.g}, ${color.color.b})`,
                     }}
@@ -59,11 +59,11 @@ export default function BrightnessAnalysis({
                     <div className="font-medium truncate">
                       {getCategoryLabel(color.category)}
                     </div>
-                    <div className="text-gray-600">
+                    <div className="text-muted-foreground">
                       {Math.round(color.brightness * 100)}%
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {color.wcagLevel}
                   </div>
                 </div>
@@ -76,36 +76,36 @@ export default function BrightnessAnalysis({
             <h4 className="text-md font-medium">Brightness Distribution</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-foreground">
                   {formatPercentage(distribution.dark)}
                 </div>
-                <div className="text-sm text-gray-600">Dark</div>
-                <div className="text-xs text-gray-500">(0-20%)</div>
+                <div className="text-sm text-muted-foreground">Dark</div>
+                <div className="text-xs text-muted-foreground">(0-20%)</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-foreground">
                   {formatPercentage(distribution.medium)}
                 </div>
-                <div className="text-sm text-gray-600">Medium</div>
-                <div className="text-xs text-gray-500">(20-70%)</div>
+                <div className="text-sm text-muted-foreground">Medium</div>
+                <div className="text-xs text-muted-foreground">(20-70%)</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">
+                <div className="text-2xl font-bold text-foreground">
                   {formatPercentage(distribution.light)}
                 </div>
-                <div className="text-sm text-gray-600">Light</div>
-                <div className="text-xs text-gray-500">(70-100%)</div>
+                <div className="text-sm text-muted-foreground">Light</div>
+                <div className="text-xs text-muted-foreground">(70-100%)</div>
               </div>
             </div>
             
             {/* Histogram */}
             <div className="mt-4">
-              <div className="text-sm text-gray-600 mb-2">Brightness Histogram</div>
+              <div className="text-sm text-muted-foreground mb-2">Brightness Histogram</div>
               <div className="flex items-end space-x-1 h-20">
                 {distribution.histogram.map((value, index) => (
                   <div
                     key={index}
-                    className="flex-1 bg-gray-300 rounded-t"
+                    className="flex-1 bg-border rounded-t"
                     style={{
                       height: `${Math.max(value * 100, 2)}%`,
                       backgroundColor: value > 0.1 ? '#000' : '#e5e7eb',
@@ -114,7 +114,7 @@ export default function BrightnessAnalysis({
                   />
                 ))}
               </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
                 <span>0%</span>
                 <span>50%</span>
                 <span>100%</span>
@@ -127,25 +127,25 @@ export default function BrightnessAnalysis({
             <h4 className="text-md font-medium">Statistics</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <div className="text-gray-600">Mean</div>
+                <div className="text-muted-foreground">Mean</div>
                 <div className="font-semibold">{Math.round(statistics.mean * 100)}%</div>
               </div>
               <div>
-                <div className="text-gray-600">Median</div>
+                <div className="text-muted-foreground">Median</div>
                 <div className="font-semibold">{Math.round(statistics.median * 100)}%</div>
               </div>
               <div>
-                <div className="text-gray-600">Std Dev</div>
+                <div className="text-muted-foreground">Std Dev</div>
                 <div className="font-semibold">{Math.round(statistics.standardDeviation * 100)}%</div>
               </div>
               <div>
-                <div className="text-gray-600">Range</div>
+                <div className="text-muted-foreground">Range</div>
                 <div className="font-semibold">{Math.round(statistics.range * 100)}%</div>
               </div>
             </div>
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2 border-t border-border">
               <div className="text-sm">
-                <span className="text-gray-600">Dominant Tone: </span>
+                <span className="text-muted-foreground">Dominant Tone: </span>
                 <span className="font-semibold capitalize">{statistics.dominantTone}</span>
               </div>
             </div>
@@ -158,9 +158,9 @@ export default function BrightnessAnalysis({
               <div className="flex items-center justify-between text-sm">
                 <span>Harmony Score</span>
                 <div className="flex items-center space-x-2">
-                  <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="w-20 h-2 bg-border rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-black rounded-full"
+                      className="h-full bg-foreground rounded-full"
                       style={{ width: `${harmony.harmonyScore * 100}%` }}
                     />
                   </div>
@@ -169,32 +169,32 @@ export default function BrightnessAnalysis({
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <div className={`p-2 rounded ${harmony.isMonochromatic ? 'bg-black text-white' : 'bg-gray-100'}`}>
+                <div className={`p-2 rounded ${harmony.isMonochromatic ? 'bg-foreground text-primary-foreground' : 'bg-muted'}`}>
                   Monochromatic
                 </div>
-                <div className={`p-2 rounded ${harmony.isComplementary ? 'bg-black text-white' : 'bg-gray-100'}`}>
+                <div className={`p-2 rounded ${harmony.isComplementary ? 'bg-foreground text-primary-foreground' : 'bg-muted'}`}>
                   Complementary
                 </div>
-                <div className={`p-2 rounded ${harmony.isAnalogous ? 'bg-black text-white' : 'bg-gray-100'}`}>
+                <div className={`p-2 rounded ${harmony.isAnalogous ? 'bg-foreground text-primary-foreground' : 'bg-muted'}`}>
                   Analogous
                 </div>
               </div>
               
               <div className="text-sm pt-2">
-                <span className="text-gray-600">Contrast Ratio: </span>
+                <span className="text-muted-foreground">Contrast Ratio: </span>
                 <span className="font-semibold">{harmony.contrastRatio.toFixed(1)}:1</span>
                 {harmony.contrastRatio >= 7 && (
-                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  <span className="ml-2 text-xs bg-muted text-foreground px-2 py-1 rounded">
                     AAA
                   </span>
                 )}
                 {harmony.contrastRatio >= 4.5 && harmony.contrastRatio < 7 && (
-                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                  <span className="ml-2 text-xs bg-muted text-foreground px-2 py-1 rounded">
                     AA
                   </span>
                 )}
                 {harmony.contrastRatio < 4.5 && (
-                  <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                  <span className="ml-2 text-xs bg-muted text-foreground px-2 py-1 rounded">
                     Poor
                   </span>
                 )}

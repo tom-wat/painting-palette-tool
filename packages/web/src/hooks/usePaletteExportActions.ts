@@ -1,7 +1,7 @@
-import { useState, type MutableRefObject } from 'react';
-import html2canvas from 'html2canvas';
+import { useState } from 'react';
 import {
   exportAsPNG,
+  exportPalettesAsPNG,
   exportSavedPaletteAsJSON,
   exportAsASE,
   exportAsCSS,
@@ -19,96 +19,48 @@ import {
 /**
  * Owns the export-in-progress flag and every saved-palette export path
  * (single-palette PNG/JSON/CSS/ASE/Adobe/Procreate, all-palettes-as-one-PNG,
- * and bulk multi-format export). paletteRefs is the DOM-ref map used for
- * html2canvas PNG capture, keyed by palette id (and `modal-${id}` for the
- * detail-modal capture target) — populated by SavedPalettesPanel's JSX.
+ * and bulk multi-format export).
+ *
+ * PNGs are drawn onto a canvas by `lib/export-formats`, not screenshotted from
+ * the DOM: the previous html2canvas capture threw on the theme's oklch()
+ * colours and left the download silently doing nothing.
+ *
+ * `onError` is how a failure reaches the user — every path reports through it
+ * rather than only logging.
  */
-export function usePaletteExportActions(
-  paletteRefs: MutableRefObject<Record<string, HTMLDivElement | null>>
-) {
+export function usePaletteExportActions(onError?: (_message: string) => void) {
   const [isExporting, setIsExporting] = useState(false);
+
+  const report = (context: string, error: unknown) => {
+    console.error(`${context}:`, error);
+    onError?.(`${context} failed`);
+  };
 
   // Export individual palette as PNG
   const exportIndividualPaletteAsPNG = async (palette: SavedPalette) => {
-    const paletteElement = paletteRefs.current[palette.id];
-    if (!paletteElement) return;
-
     setIsExporting(true);
     try {
-      // Scroll to top to fix text positioning issues
-      const originalScrollY = window.scrollY;
-      window.scrollTo(0, 0);
-
-      // Small delay to ensure scroll is complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(paletteElement, {
-        backgroundColor: '#ffffff',
-        scale: window.devicePixelRatio || 1,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        foreignObjectRendering: false,
-        scrollX: 0,
-        scrollY: 0,
-      });
-
-      // Restore original scroll position
-      window.scrollTo(0, originalScrollY);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const timestamp = new Date().toISOString().split('T')[0];
-          const filename = `${palette.name}-palette-${timestamp}.png`;
-          downloadFile(blob, filename);
-        }
-      }, 'image/png', 0.95);
-
+      const blob = await exportAsPNG(palette.colors, { title: palette.name });
+      const timestamp = new Date().toISOString().split('T')[0];
+      downloadFile(blob, `${palette.name}-palette-${timestamp}.png`);
     } catch (error) {
-      console.error('PNG export failed:', error);
+      report('PNG export', error);
     } finally {
       setIsExporting(false);
     }
   };
 
   // Export all palettes as single PNG
-  const exportAllPalettesAsPNG = async () => {
-    const palettesContainer = document.querySelector('[data-palettes-container]') as HTMLElement;
-    if (!palettesContainer) return;
+  const exportAllPalettesAsPNG = async (savedPalettes: SavedPalette[]) => {
+    if (savedPalettes.length === 0) return;
 
     setIsExporting(true);
     try {
-      // Scroll to top to fix text positioning issues
-      const originalScrollY = window.scrollY;
-      window.scrollTo(0, 0);
-
-      // Small delay to ensure scroll is complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(palettesContainer, {
-        backgroundColor: '#ffffff',
-        scale: window.devicePixelRatio || 1,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        foreignObjectRendering: false,
-        scrollX: 0,
-        scrollY: 0,
-      });
-
-      // Restore original scroll position
-      window.scrollTo(0, originalScrollY);
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const timestamp = new Date().toISOString().split('T')[0];
-          const filename = `all-palettes-${timestamp}.png`;
-          downloadFile(blob, filename);
-        }
-      }, 'image/png', 0.95);
-
+      const blob = await exportPalettesAsPNG(savedPalettes);
+      const timestamp = new Date().toISOString().split('T')[0];
+      downloadFile(blob, `all-palettes-${timestamp}.png`);
     } catch (error) {
-      console.error('PNG export failed:', error);
+      report('PNG export', error);
     } finally {
       setIsExporting(false);
     }
@@ -127,29 +79,8 @@ export function usePaletteExportActions(
 
       switch (format) {
         case 'png': {
-          // Check if called from modal and use modal element
-          const modalKey = `modal-${palette.id}`;
-          const modalElement = paletteRefs.current[modalKey];
-
-          if (modalElement) {
-            // Use html2canvas for modal export
-            const canvas = await html2canvas(modalElement, {
-              backgroundColor: '#ffffff',
-              scale: 2,
-              useCORS: true,
-              allowTaint: true,
-            });
-
-            canvas.toBlob((blob) => {
-              if (blob) {
-                downloadFile(blob, `${baseFilename}.png`);
-              }
-            }, 'image/png', 0.95);
-          } else {
-            // Fallback to original PNG export
-            const pngBlob = await exportAsPNG(palette.colors);
-            downloadFile(pngBlob, `${baseFilename}.png`);
-          }
+          const pngBlob = await exportAsPNG(palette.colors, { title: palette.name });
+          downloadFile(pngBlob, `${baseFilename}.png`);
           break;
         }
 
@@ -164,7 +95,7 @@ export function usePaletteExportActions(
             const aseBlob = exportAsASE(palette.colors);
             downloadFile(aseBlob, `${baseFilename}.ase`);
           } catch (error) {
-            console.error('ASE export failed:', error);
+            report('ASE export', error);
           }
           break;
         }
@@ -180,7 +111,7 @@ export function usePaletteExportActions(
             const acoBlob = exportAsAdobe(palette.colors);
             downloadFile(acoBlob, `${baseFilename}.aco`);
           } catch (error) {
-            console.error('Adobe Color export failed:', error);
+            report('Adobe Color export', error);
           }
           break;
         }
@@ -190,7 +121,7 @@ export function usePaletteExportActions(
             const swatchesBlob = exportAsProcreate(palette.colors);
             downloadFile(swatchesBlob, `${baseFilename}.swatches`);
           } catch (error) {
-            console.error('Procreate export failed:', error);
+            report('Procreate export', error);
           }
           break;
         }
@@ -202,7 +133,7 @@ export function usePaletteExportActions(
       onSuccess?.();
 
     } catch (error) {
-      console.error('Export failed:', error);
+      report('Export', error);
     } finally {
       setIsExporting(false);
     }
@@ -247,7 +178,7 @@ export function usePaletteExportActions(
             const aseBlob = exportMultiplePalettesAsASE(savedPalettes);
             downloadFile(aseBlob, `${baseFilename}.ase`);
           } catch (error) {
-            console.error('Bulk ASE export failed:', error);
+            report('Bulk ASE export', error);
           }
           break;
         }
@@ -257,7 +188,7 @@ export function usePaletteExportActions(
             const cssContent = exportMultiplePalettesAsCSS(savedPalettes);
             downloadTextFile(cssContent, `${baseFilename}.css`, 'text/css');
           } catch (error) {
-            console.error('Bulk CSS export failed:', error);
+            report('Bulk CSS export', error);
           }
           break;
         }
@@ -267,7 +198,7 @@ export function usePaletteExportActions(
             const acoBlob = exportMultiplePalettesAsAdobe(savedPalettes);
             downloadFile(acoBlob, `${baseFilename}.aco`);
           } catch (error) {
-            console.error('Bulk Adobe Color export failed:', error);
+            report('Bulk Adobe Color export', error);
           }
           break;
         }
@@ -277,7 +208,7 @@ export function usePaletteExportActions(
             const swatchesBlob = exportMultiplePalettesAsProcreate(savedPalettes);
             downloadFile(swatchesBlob, `${baseFilename}.swatches`);
           } catch (error) {
-            console.error('Bulk Procreate export failed:', error);
+            report('Bulk Procreate export', error);
           }
           break;
         }
@@ -292,7 +223,7 @@ export function usePaletteExportActions(
               const pngBlob = await exportAsPNG(palette.colors);
               downloadFile(pngBlob, `${filename}.png`);
             } catch (error) {
-              console.error('PNG export failed for', palette.name, ':', error);
+              report(`PNG export for ${palette.name}`, error);
             }
 
             // Small delay to prevent browser blocking multiple downloads
@@ -310,7 +241,7 @@ export function usePaletteExportActions(
       onSuccess?.();
 
     } catch (error) {
-      console.error('Bulk export failed:', error);
+      report('Bulk export', error);
     } finally {
       setIsExporting(false);
     }

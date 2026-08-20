@@ -206,7 +206,7 @@ global.beforeEach(() => {
 });
 ```
 
-## UIデザイン要件
+## UI 規約 — 最重要
 
 **【重要】白黒・ミニマルデザイン必須**
 
@@ -214,6 +214,88 @@ global.beforeEach(() => {
 - 白・黒・グレーのみでインターフェース構築
 - 最小限のUIコンポーネントでシンプルな構成
 - 機能性重視、装飾的要素は排除
+
+姉妹プロジェクト(`tool-starter-template` / `flow-finder`)と同じ設計言語を採用している。
+**UIを毎回ゼロから組まない。以下の順で部品を使う。**
+
+1. **`src/components/controls/` の複合部品を最優先で使う**
+   - `LabeledSlider` — 設定パネルの数値スライダー行(ラベル+値+スライダー)。
+     ラベルだけで意味が通らないときは `ariaLabel` で読み上げ用の名前を別に与える
+   - `SegmentedControl` — 排他的なモード切替(選択モード、Pick/Annotate、Canvas/Saved)。
+     `role="radiogroup"` + `role="radio"` を出すので、E2E からは `getByRole('radio')` で取る
+   - `ToggleChip` — ON/OFF ピル
+   - `ColorRow` — 色選択行(ラベル+スウォッチ+hex入力)
+2. **汎用UIは `src/components/ui/` を使う**(Button / Card / Input / Select / Slider /
+   Toggle / Modal / Sheet / Toast / Tooltip)。足りないものはここに足す。個別画面で自作しない
+3. レイアウトは必ず `AppShell` の枠内で組む。**デスクトップとモバイルで別ツリーを書かない** —
+   ヘッダー+左パネル+キャンバス+右パネルを渡せば、モバイルでは左右パネルが
+   ボトムシート(`ui/Sheet`)に自動で切り替わる
+4. 設定パネル内のグループ分けは `CollapsibleSection` を使う
+5. **パネルの中身を `Card` で囲まない。** 外枠は `AppShell` のサイドバー(`border-r` / `border-l`)が
+   担当する。パネル内のタイトル行は左右で揃える —
+   `shrink-0 border-b border-border px-4 py-3` + `text-sm font-semibold` の見出し。
+   その下にスクロール領域(`min-h-0 flex-1 overflow-y-auto p-4`)を置く
+   (`ColorPalette` / `AnnotationControls` がこの形)
+
+### キャンバス
+
+`ImageCanvas` は flow-finder と同じ形にしてある。**この形を崩さないこと。**
+
+- **Card もタイトルもフッター説明も持たない。** `AppShell` の中央カラムいっぱいに広がる
+  フルブリードの `<canvas>` で、下地は `bg-muted`
+- **キャンバス上に置く UI は右下のズームピルだけ** —
+  `absolute bottom-3 right-3 ... rounded-md border bg-background/90 p-1 shadow-sm backdrop-blur`。
+  中身は `[−] [倍率] [+] [Fit]` の4つ。アイコンは `Button variant="ghost" size="icon-sm"`
+- **倍率表示そのものが「実寸(100%)に戻す」ボタン**。専用の 1:1 ボタンは置かない
+  (ピルに5つ目を足すと flow-finder の形から外れる)
+- **それ以外の操作(Undo / Redo / Clear)はヘッダーに置く。** キャンバス内部の状態が要る場合は
+  コールバックで外に出す(`onClearSelection` / `onSelectionStateChange`)
+- 操作の説明文はキャンバスに書かない。左パネルの `ModeHint` が担当する
+
+### 色とトークン
+
+色は **`src/app/globals.css` の CSS 変数 → Tailwind セマンティッククラス**経由でのみ指定する。
+
+- `bg-background` `text-foreground` `text-muted-foreground` `border-border` `border-input`
+  `bg-primary` / `text-primary-foreground` `bg-muted` `bg-accent` `bg-card` `bg-popover`
+  `ring-ring` `bg-destructive` / `text-destructive`
+- **生の色クラス(`bg-gray-100` `text-white` `border-red-200` 等)は禁止**。
+  `tailwind.config.ts` に `gray` パレットは定義していないので書いても効かない
+- 変数値は **oklch のチャンネル値のみ**(`--background: 1 0 0;`)。
+  `oklch(var(--x) / <alpha-value>)` で参照しており、`bg-foreground/40` のような
+  不透明度修飾を効かせるために alpha スロットを空けてある。**完全な色関数を入れないこと**
+- `--destructive` は**無彩色**にしてある(白黒ルール優先)。破壊的操作はホバーで反転させて示す
+- ダークテーマの変数は定義済みだが**UIはライト固定**。`<html>` に `class="dark"` を
+  付ければ有効になる。トークンを足すときは `:root` と `.dark` の両方に書く
+
+その他:
+
+- インラインstyle(`style={{}}`)は原則禁止。例外は**クラスで表現できない動的な値**だけ
+  (スライダーの `--slider-fill`、色スウォッチの `backgroundColor`、座標追従UIの位置)
+- フォントは JetBrains Mono(`next/font/google` で自己ホスト、`--font-jetbrains-mono`)
+- アイコンは `@phosphor-icons/react`。インライン SVG を新しく書き足さない
+
+### ハマりどころ
+
+- **PNG 書き出しを DOM のスクリーンショットで作らない。** 以前は html2canvas で
+  パレットカードを撮っていたが、テーマを oklch に移した途端
+  `Attempting to parse an unsupported color function "oklch"` で落ち、**例外が
+  console にしか出ないためダウンロードが無言で失敗していた**。
+  PNG は `lib/export-formats.ts` の `exportAsPNG` / `exportPalettesAsPNG` が
+  Canvas API で直接描く。書き出し結果を UI のスタイルから切り離しておくこと
+- **エクスポートの失敗は必ずユーザーに届ける。** `usePaletteExportActions` は
+  `onError` を受け取り、`page.tsx` がトーストに流している。`console.error` だけで終わらせない
+- **canvas に文字を描くときは `lib/canvas-font.ts` の `getCanvasFontStack()` を使う。**
+  `next/font` は JetBrains Mono を `__JetBrains_Mono_<hash>` という生成名で自己ホストし、
+  CSS 変数 `--font-jetbrains-mono` からしか辿れない。canvas は CSS 変数を読めないので、
+  ベタ書きのフォント名にすると**黙って OS フォントにフォールバックし、UI と字形がずれる**。
+  書き出しに乗る文字は `ensureCanvasFontLoaded()` を await してから描くこと
+  (未ロードのフォントは無言で差し替えられ、その結果がファイルとして残る)
+- **`next dev` 実行中に `next build` / `next lint` を走らせない。** 同じ `.next` を
+  共有しているため dev サーバーがチャンクと CSS を 404 で返すようになる。
+  画面が無スタイル(font-family が `Times`)になったらこれを疑い、
+  `.next` を消して dev を再起動する
+- UIテキストはすべて英語
 
 ## 開発フロー
 

@@ -41,16 +41,16 @@ export default function Toast({
   }, [duration]); // Remove onClose from dependencies
 
   const borderColor = {
-    error: 'border-gray-900',
-    success: 'border-gray-700',
-    info: 'border-gray-500',
+    error: 'border-primary',
+    success: 'border-primary',
+    info: 'border-muted-foreground',
   }[type];
 
   return (
     <div
       className={`
         fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-max px-4 py-3 rounded-lg shadow-lg
-        bg-white border-2 ${borderColor} text-gray-800
+        bg-background border-2 ${borderColor} text-foreground
         transition-all duration-300
         ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
       `}
@@ -110,7 +110,7 @@ export default function Toast({
             setIsVisible(false);
             setTimeout(() => onCloseRef.current?.(), 300);
           }}
-          className="flex-shrink-0 text-gray-500 hover:text-gray-800 transition-colors"
+          className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Close"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

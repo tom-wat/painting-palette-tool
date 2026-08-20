@@ -128,8 +128,8 @@ export default function ImageUpload({
       <div
         className={`
           border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 h-full
-          flex flex-col justify-center bg-white
-          ${isDragging ? 'border-blue-500' : 'border-gray-300 hover:border-gray-400'}
+          flex flex-col justify-center bg-background
+          ${isDragging ? 'border-ring' : 'border-input hover:border-muted-foreground'}
           ${isLoading ? 'cursor-wait' : 'cursor-pointer'}
         `}
         onDrop={handleDrop}
@@ -150,12 +150,12 @@ export default function ImageUpload({
 
         {isLoading ? (
           <div className="space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800 mx-auto"></div>
-            <p className="text-gray-600">Processing image...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Processing image...</p>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="text-6xl text-gray-300">
+            <div className="text-6xl text-muted-foreground">
               <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -166,11 +166,11 @@ export default function ImageUpload({
               </svg>
             </div>
             <div className="space-y-2">
-              <p className="text-lg font-medium text-gray-900">
+              <p className="text-lg font-medium text-foreground">
                 <span className="hidden lg:inline">Drop image here or click to select</span>
                 <span className="lg:hidden">Tap to select image</span>
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Supports: JPEG, PNG, GIF, WebP<span className="lg:hidden"><br /></span><span className="hidden lg:inline"> </span>(Max: 10MB, 8000×8000px)
               </p>
             </div>

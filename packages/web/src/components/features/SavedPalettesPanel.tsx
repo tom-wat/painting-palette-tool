@@ -9,7 +9,10 @@ import {
   calculateHScL,
   formatColorValue,
 } from '@palette-tool/color-engine';
-import { Card, CardHeader, CardTitle, CardContent, Button, Modal } from '../ui';
+import { DownloadSimple, FolderOpen, Trash } from '@phosphor-icons/react';
+import { Button, Input, Modal } from '../ui';
+import { ToggleChip } from '../controls';
+import { cn } from '@/lib/cn';
 import type { SavedPalette } from '@/lib/export-formats';
 import { useSavedPalettesStore } from '@/hooks/useSavedPalettesStore';
 import { usePaletteExportActions } from '@/hooks/usePaletteExportActions';
@@ -18,12 +21,46 @@ interface SavedPalettesPanelProps {
   className?: string;
   onLoadPalette?: (_palette: SavedPalette) => void;
   onAddColorToExtracted?: (_color: ExtractedColor) => void;
+  /** How export failures reach the user. */
+  onError?: (_message: string) => void;
+}
+
+/**
+ * Panel chrome shared with the side panels: a bordered title row and a
+ * scrolling body, with the outer border left to whatever contains it.
+ */
+function PanelShell({
+  title,
+  actions,
+  filters,
+  className,
+  children,
+}: {
+  title: string;
+  actions: React.ReactNode;
+  filters?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn('flex h-full flex-col', className)}>
+      <div className="shrink-0 space-y-3 border-b border-border px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        </div>
+        {filters}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+    </div>
+  );
 }
 
 export default function SavedPalettesPanel({
   className = '',
   onLoadPalette,
   onAddColorToExtracted,
+  onError,
 }: SavedPalettesPanelProps) {
   const [selectedPalette, setSelectedPalette] = useState<SavedPalette | null>(null);
   const [showColorDetailModal, setShowColorDetailModal] = useState(false);
@@ -44,7 +81,6 @@ export default function SavedPalettesPanel({
   const [showColorSpaceLabels, setShowColorSpaceLabels] = useState<Record<string, boolean>>({});
   const [showAllLabels, setShowAllLabels] = useState<boolean>(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const paletteRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -62,7 +98,7 @@ export default function SavedPalettesPanel({
     exportAllPalettesAsPNG,
     handleExportPalette: handleExportPaletteAction,
     handleBulkExport: handleBulkExportAction,
-  } = usePaletteExportActions(paletteRefs);
+  } = usePaletteExportActions(onError);
 
   // Helper function to convert RGB to HEX
   const rgbToHex = (color: RGBColor): string => {
@@ -73,9 +109,9 @@ export default function SavedPalettesPanel({
   // Helper function to get swatch border class based on color brightness
   const getSwatchBorderClass = (color: RGBColor): string => {
     const brightness = (color.r * 299 + color.g * 587 + color.b * 114) / 1000;
-    if (brightness > 220) return 'border border-gray-300';
-    if (brightness < 30) return 'border border-gray-400';
-    return 'border border-gray-100';
+    if (brightness > 220) return 'border border-input';
+    if (brightness < 30) return 'border border-input';
+    return 'border border-border';
   };
 
   // Helper function to get bar color based on color space and type
@@ -129,11 +165,11 @@ export default function SavedPalettesPanel({
       <div className={`text-[12px] ${showLabels ? 'space-y-0.5' : 'mb-1'}`}>
         {showLabels && (
           <div className="flex justify-between">
-            <span className="text-gray-500 tracking-wide">{label}</span>
-            <span className="text-gray-700 font-mono">{value}{suffix}</span>
+            <span className="text-muted-foreground tracking-wide">{label}</span>
+            <span className="text-foreground font-mono">{value}{suffix}</span>
           </div>
         )}
-        <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-1 bg-border rounded-full overflow-hidden">
           <div 
             className="h-full rounded-full transition-all duration-200"
             style={{ 
@@ -149,7 +185,7 @@ export default function SavedPalettesPanel({
       <div className="p-1">
         {/* HSL Values */}
         {showLabels && (
-          <div className="text-[12px] text-gray-500 font-medium mb-1">HSL</div>
+          <div className="text-[12px] text-muted-foreground font-medium mb-1">HSL</div>
         )}
         <div className="space-y-1">
           <BarGraph label="H" value={hsl.h} max={360} suffix="°" colorSpace="hsl" type="H" />
@@ -159,7 +195,7 @@ export default function SavedPalettesPanel({
         
         {/* HScL Values */}
         {showLabels && (
-          <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">HScL</div>
+          <div className="text-[12px] text-muted-foreground font-medium mb-1 mt-3">HScL</div>
         )}
         <div className={`space-y-1 ${!showLabels ? 'mt-3' : ''}`}>
           <BarGraph label="H" value={hscl.h} max={360} suffix="°" colorSpace="hscl" type="H" />
@@ -461,28 +497,20 @@ export default function SavedPalettesPanel({
   if (savedPalettes.length === 0) {
     return (
       <>
-        <Card className={className}>
-          <CardHeader>
-            <div className="flex items-center justify-between mb-3">
-              <CardTitle>Saved Palettes (0)</CardTitle>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowImportModal(true)}
-                >
-                  Import JSON
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-6 text-gray-500">
-              <div className="mb-2">No saved palettes yet</div>
-              <div className="text-sm">Save palettes or import JSON files to see them here</div>
-            </div>
-          </CardContent>
-        </Card>
+        <PanelShell
+          title="Saved Palettes (0)"
+          className={className}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)}>
+              Import JSON
+            </Button>
+          }
+        >
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <div className="mb-2">No saved palettes yet</div>
+            <div className="text-xs">Save palettes or import JSON files to see them here</div>
+          </div>
+        </PanelShell>
 
         {/* JSON Import modal */}
         {showImportModal && (
@@ -493,7 +521,7 @@ export default function SavedPalettesPanel({
             className="sm:max-w-md"
           >
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Select a JSON file exported from this tool to import a palette:
               </p>
               
@@ -503,14 +531,14 @@ export default function SavedPalettesPanel({
                   type="file"
                   accept=".json"
                   onChange={handleImportJSON}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Supports JSON files exported from individual palettes or color extractions
                 </p>
               </div>
 
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 <strong>Supported formats:</strong>
                 <ul className="list-disc list-inside mt-1 space-y-1">
                   <li>Individual palette JSON (from palette export)</li>
@@ -534,112 +562,92 @@ export default function SavedPalettesPanel({
     );
   }
 
+  const paletteCount =
+    searchQuery || activeTagFilter ? filteredPalettes.length : savedPalettes.length;
+
   return (
     <>
-      <Card className={className}>
-        <CardHeader>
-          {/* Desktop: single row */}
-          <div className="hidden lg:flex items-center justify-between mb-3">
-            <CardTitle>Saved Palettes ({(searchQuery || activeTagFilter) ? filteredPalettes.length : savedPalettes.length})</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)}>
-                Import JSON
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleToggleAllLabels} disabled={savedPalettes.length === 0}>
-                {showAllLabels ? 'Hide All Data' : 'Show All Data'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => exportAllPalettesAsPNG()} disabled={savedPalettes.length === 0 || isExporting} className="flex items-center space-x-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span>PNG All</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowBulkExportModal(true)} disabled={savedPalettes.length === 0}>
-                Export All
-              </Button>
-            </div>
-          </div>
-          {/* Mobile: two rows */}
-          <div className="lg:hidden mb-3 space-y-2">
-            <CardTitle>Saved Palettes ({(searchQuery || activeTagFilter) ? filteredPalettes.length : savedPalettes.length})</CardTitle>
-            <div className="flex flex-wrap gap-1">
-              <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)}>
-                Import JSON
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleToggleAllLabels} disabled={savedPalettes.length === 0}>
-                {showAllLabels ? 'Hide All Data' : 'Show All Data'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => exportAllPalettesAsPNG()} disabled={savedPalettes.length === 0 || isExporting}>
-                PNG All
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowBulkExportModal(true)} disabled={savedPalettes.length === 0}>
-                Export All
-              </Button>
-            </div>
-          </div>
-          
-          {/* Tag filter */}
-          {availableTags.length > 0 && (
-            <div className="space-y-3">
-              
-              {/* Tag search input */}
-              <div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search palettes by name or tag (use spaces for multiple keywords)..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      <PanelShell
+        title={`Saved Palettes (${paletteCount})`}
+        className={className}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setShowImportModal(true)}>
+              Import JSON
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleAllLabels}
+              disabled={savedPalettes.length === 0}
+            >
+              {showAllLabels ? 'Hide All Data' : 'Show All Data'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportAllPalettesAsPNG(savedPalettes)}
+              disabled={savedPalettes.length === 0 || isExporting}
+            >
+              <DownloadSimple />
+              PNG All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBulkExportModal(true)}
+              disabled={savedPalettes.length === 0}
+            >
+              Export All
+            </Button>
+          </>
+        }
+        filters={
+          availableTags.length > 0 ? (
+            <div className="space-y-2">
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search palettes by name or tag (use spaces for multiple keywords)..."
+                aria-label="Search palettes"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                <ToggleChip
+                  label={`All (${savedPalettes.length})`}
+                  pressed={!activeTagFilter}
+                  onPressedChange={() => setActiveTagFilter('')}
                 />
+                {displayedTags.map((tag) => {
+                  const count = savedPalettes.filter((palette) =>
+                    palette.tags?.includes(tag)
+                  ).length;
+                  return (
+                    <ToggleChip
+                      key={tag}
+                      label={`${tag} (${count})`}
+                      pressed={activeTagFilter === tag}
+                      onPressedChange={() => setActiveTagFilter(tag)}
+                    />
+                  );
+                })}
               </div>
-              
-              {/* Tag buttons */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setActiveTagFilter('')}
-                    className={`px-3 py-1 text-xs rounded-md border transition-colors ${
-                      !activeTagFilter 
-                        ? 'bg-gray-800 text-white border-gray-800' 
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    All ({savedPalettes.length})
-                  </button>
-                  {displayedTags.map(tag => {
-                    const count = savedPalettes.filter(p => p.tags?.includes(tag)).length;
-                    return (
-                      <button
-                        key={tag}
-                        onClick={() => setActiveTagFilter(tag)}
-                        className={`px-3 py-1 text-xs rounded-md border transition-colors ${
-                          activeTagFilter === tag 
-                            ? 'bg-gray-800 text-white border-gray-800' 
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        {tag} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {/* Show more/less button */}
-                {hasMoreTags && (
-                  <button
-                    onClick={() => setShowAllTags(!showAllTags)}
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
-                  >
-                    {showAllTags ? 'Show less' : `Show more (${availableTags.length - TAG_DISPLAY_LIMIT} more)`}
-                  </button>
-                )}
-              </div>
+              {hasMoreTags && (
+                <button
+                  onClick={() => setShowAllTags(!showAllTags)}
+                  className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
+                >
+                  {showAllTags
+                    ? 'Show less'
+                    : `Show more (${availableTags.length - TAG_DISPLAY_LIMIT} more)`}
+                </button>
+              )}
             </div>
-          )}
-        </CardHeader>
-        <CardContent>
+          ) : undefined
+        }
+      >
           {filteredPalettes.length === 0 && (searchQuery || activeTagFilter) ? (
-            <div className="text-center py-6 text-gray-500">
+            <div className="text-center py-6 text-muted-foreground">
               <div className="mb-2">
                 {searchQuery && activeTagFilter 
                   ? `No palettes found matching "${searchQuery}" with tag "${activeTagFilter}"`
@@ -651,76 +659,71 @@ export default function SavedPalettesPanel({
               <div className="text-sm">Try adjusting your search or clear the filters</div>
             </div>
           ) : (
-            <div className="space-y-3" data-palettes-container>
+            <div className="space-y-3">
               {filteredPalettes.map((palette) => (
               <div
                 key={palette.id}
-                ref={(el) => {
-                  if (el) {
-                    paletteRefs.current[palette.id] = el;
-                  }
-                }}
-                className="border border-gray-100 rounded-lg p-3 hover:border-gray-300 transition-colors cursor-pointer"
-                style={{ transform: 'translateZ(0)' }}
+                data-palette-id={palette.id}
+                className="cursor-pointer rounded-md p-3 transition-colors hover:bg-accent"
                 onClick={() => openPaletteDetailModal(palette)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-800 text-sm truncate">
+                      <h4 className="font-medium text-foreground text-sm truncate">
                         {palette.name}
                       </h4>
-                      <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
-                        <button
+                      <div className="ml-2 flex flex-shrink-0 items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title={showColorSpaceLabels[palette.id] ? 'Hide data' : 'Show data'}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setShowColorSpaceLabels(prev => ({
+                            setShowColorSpaceLabels((prev) => ({
                               ...prev,
-                              [palette.id]: !prev[palette.id]
+                              [palette.id]: !prev[palette.id],
                             }));
                           }}
-                          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors min-h-[30px] flex items-center space-x-1"
-                          title={showColorSpaceLabels[palette.id] ? 'Hide data' : 'Show data'}
                         >
-{showColorSpaceLabels[palette.id] ? 'Hide Data' : 'Show Data'}
-                        </button>
-                        <button
+                          {showColorSpaceLabels[palette.id] ? 'Hide Data' : 'Show Data'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title="Export as PNG"
+                          disabled={isExporting}
                           onClick={(e) => {
                             e.stopPropagation();
                             exportIndividualPaletteAsPNG(palette);
                           }}
-                          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1 min-h-[30px]"
-                          title="Export as PNG"
-                          disabled={isExporting}
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          <span>PNG</span>
-                        </button>
+                          <DownloadSimple />
+                          PNG
+                        </Button>
                         {onLoadPalette && (
-                          <button
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label="Load palette"
+                            title="Load palette"
                             onClick={(e) => {
                               e.stopPropagation();
                               loadPalette(palette);
                             }}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-colors min-h-[30px] flex items-center justify-center"
-                            title="Load palette"
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
-                            </svg>
-                          </button>
+                            <FolderOpen />
+                          </Button>
                         )}
-                        <button
-                          onClick={(e) => showDeleteConfirmation(palette.id, e)}
-                          className="px-2 py-1 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors min-h-[30px] flex items-center justify-center"
+                        <Button
+                          variant="destructive"
+                          size="icon-sm"
+                          aria-label="Delete palette"
                           title="Delete palette"
+                          onClick={(e) => showDeleteConfirmation(palette.id, e)}
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                          <Trash />
+                        </Button>
                       </div>
                     </div>
                     
@@ -730,7 +733,7 @@ export default function SavedPalettesPanel({
                         {palette.tags.map((tag, tagIndex) => (
                           <span
                             key={tagIndex}
-                            className="inline-block px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded-md"
+                            className="inline-block px-2 py-0.5 text-xs bg-muted text-foreground rounded-md"
                           >
                             {tag}
                           </span>
@@ -771,8 +774,7 @@ export default function SavedPalettesPanel({
             ))}
           </div>
           )}
-        </CardContent>
-      </Card>
+      </PanelShell>
 
       {/* Palette Detail Modal */}
       {showPaletteDetailModal && editingPalette && (
@@ -791,7 +793,7 @@ export default function SavedPalettesPanel({
           <div className="space-y-6">
             {/* Palette Name */}
             <div>
-              <label htmlFor="edit-palette-name" className="block text-sm font-medium text-gray-800 mb-2">
+              <label htmlFor="edit-palette-name" className="block text-sm font-medium text-foreground mb-2">
                 Palette Name
               </label>
               <input
@@ -800,13 +802,13 @@ export default function SavedPalettesPanel({
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
                 placeholder="Enter palette name..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
+                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground"
               />
             </div>
 
             {/* Tags */}
             <div>
-              <label htmlFor="edit-palette-tags" className="block text-sm font-medium text-gray-800 mb-2">
+              <label htmlFor="edit-palette-tags" className="block text-sm font-medium text-foreground mb-2">
                 Tags
               </label>
               <input
@@ -818,9 +820,9 @@ export default function SavedPalettesPanel({
                 onCompositionStart={() => setIsComposing(true)}
                 onCompositionEnd={() => setIsComposing(false)}
                 placeholder="Enter tags separated by comma or press Enter..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
+                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Press Enter or comma to add tags
               </p>
               
@@ -829,13 +831,13 @@ export default function SavedPalettesPanel({
                   {editingTags.map((tag, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-md"
+                      className="inline-flex items-center px-2 py-1 text-xs bg-muted text-foreground rounded-md"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => removeEditingTag(tag)}
-                        className="ml-1 text-gray-500 hover:text-gray-700"
+                        className="ml-1 text-muted-foreground hover:text-foreground"
                         aria-label={`Remove tag ${tag}`}
                       >
                         ×
@@ -847,17 +849,11 @@ export default function SavedPalettesPanel({
             </div>
 
             {/* Color Grid */}
-            <div 
-              ref={(el) => {
-                if (el && editingPalette) {
-                  paletteRefs.current[`modal-${editingPalette.id}`] = el;
-                }
-              }}
-            >
-              <label className="block text-sm font-medium text-gray-800 mb-2">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Colors ({editingPalette.colors.length})
               </label>
-              <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 p-4 bg-muted rounded-lg">
                 {editingPalette.colors.map((color, idx) => {
                   const hsl = rgbToHsl(color.color);
                   return (
@@ -873,46 +869,51 @@ export default function SavedPalettesPanel({
             </div>
 
             {/* Export Section */}
-            <div className="border-t border-gray-100 pt-4">
-              <label className="block text-sm font-medium text-gray-800 mb-3">
+            <div className="pt-4">
+              <label className="block text-sm font-medium text-foreground mb-3">
                 Export Palette
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <button
-                  onClick={() => handleExportPalette('json', editingPalette)}
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={isExporting}
-                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  onClick={() => handleExportPalette('json', editingPalette)}
                 >
                   JSON
-                </button>
-                <button
-                  onClick={() => handleExportPalette('css', editingPalette)}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={isExporting}
-                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  onClick={() => handleExportPalette('css', editingPalette)}
                 >
                   CSS
-                </button>
-                <button
-                  onClick={() => handleExportPalette('ase', editingPalette)}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={isExporting}
-                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  onClick={() => handleExportPalette('ase', editingPalette)}
                 >
                   ASE
-                </button>
-                <button
-                  onClick={() => handleExportPalette('adobe', editingPalette)}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={isExporting}
-                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  onClick={() => handleExportPalette('adobe', editingPalette)}
                 >
                   Adobe Color
-                </button>
-                <button
-                  onClick={() => handleExportPalette('procreate', editingPalette)}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={isExporting}
-                  className="px-3 py-2 text-xs border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  onClick={() => handleExportPalette('procreate', editingPalette)}
                 >
                   Procreate
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -964,7 +965,7 @@ export default function SavedPalettesPanel({
             {/* Color values */}
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   HEX
                 </label>
                 <div className="flex">
@@ -972,7 +973,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={rgbToHex(selectedColor.color).toUpperCase()}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-input rounded-l-md bg-muted text-foreground"
                   />
                   <Button
                     variant="outline"
@@ -988,7 +989,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   RGB
                 </label>
                 <div className="flex">
@@ -996,7 +997,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={`rgb(${selectedColor.color.r}, ${selectedColor.color.g}, ${selectedColor.color.b})`}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-input rounded-l-md bg-muted text-foreground"
                   />
                   <Button
                     variant="outline"
@@ -1015,7 +1016,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   HSL
                 </label>
                 <div className="flex">
@@ -1023,7 +1024,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('hsl', rgbToHsl(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-input rounded-l-md bg-muted text-foreground"
                   />
                   <Button
                     variant="outline"
@@ -1042,7 +1043,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   LAB
                 </label>
                 <div className="flex">
@@ -1050,7 +1051,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('lab', rgbToLab(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-input rounded-l-md bg-muted text-foreground"
                   />
                   <Button
                     variant="outline"
@@ -1069,7 +1070,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   LCH
                 </label>
                 <div className="flex">
@@ -1077,7 +1078,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('lch', rgbToLch(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-input rounded-l-md bg-muted text-foreground"
                   />
                   <Button
                     variant="outline"
@@ -1096,7 +1097,7 @@ export default function SavedPalettesPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-800 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   OkLCH
                 </label>
                 <div className="flex">
@@ -1104,7 +1105,7 @@ export default function SavedPalettesPanel({
                     type="text"
                     value={formatColorValue('oklch', rgbToOklch(selectedColor.color))}
                     readOnly
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-gray-800"
+                    className="flex-1 px-3 py-2 border border-input rounded-l-md bg-muted text-foreground"
                   />
                   <Button
                     variant="outline"
@@ -1124,7 +1125,7 @@ export default function SavedPalettesPanel({
             </div>
 
             {/* Add to extracted palette and delete actions */}
-            <div className="border-t border-gray-100 pt-4 space-y-3">
+            <div className="space-y-3 pt-4">
               {onAddColorToExtracted && (
                 <button
                   onClick={() => {
@@ -1135,7 +1136,7 @@ export default function SavedPalettesPanel({
                       setSelectedPalette(null);
                     }
                   }}
-                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-md text-foreground hover:bg-accent transition-colors"
                 >
                   Add to Extracted Palette
                 </button>
@@ -1149,7 +1150,7 @@ export default function SavedPalettesPanel({
                     setSelectedPalette(null);
                   }
                 }}
-                className="w-full px-3 py-2 text-sm border border-orange-300 rounded-md text-orange-600 hover:bg-orange-50 transition-colors"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
               >
                 Delete This Color
               </button>
@@ -1170,7 +1171,7 @@ export default function SavedPalettesPanel({
           className="sm:max-w-md"
         >
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Choose a format to export &ldquo;{selectedPalette.name}&rdquo; palette:
             </p>
             
@@ -1178,63 +1179,63 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleExportPalette('png', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">PNG Image</div>
-                <div className="text-sm text-gray-600">Visual palette grid for sharing</div>
+                <div className="font-semibold text-foreground">PNG Image</div>
+                <div className="text-sm text-muted-foreground">Visual palette grid for sharing</div>
               </button>
 
               <button
                 onClick={() => handleExportPalette('json', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">JSON Data</div>
-                <div className="text-sm text-gray-600">Complete color data with metadata</div>
+                <div className="font-semibold text-foreground">JSON Data</div>
+                <div className="text-sm text-muted-foreground">Complete color data with metadata</div>
               </button>
 
               <button
                 onClick={() => handleExportPalette('css', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">CSS Variables</div>
-                <div className="text-sm text-gray-600">CSS custom properties</div>
+                <div className="font-semibold text-foreground">CSS Variables</div>
+                <div className="text-sm text-muted-foreground">CSS custom properties</div>
               </button>
 
               <button
                 onClick={() => handleExportPalette('ase', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">Adobe ASE</div>
-                <div className="text-sm text-gray-600">Adobe Swatch Exchange format</div>
+                <div className="font-semibold text-foreground">Adobe ASE</div>
+                <div className="text-sm text-muted-foreground">Adobe Swatch Exchange format</div>
               </button>
 
               <button
                 onClick={() => handleExportPalette('adobe', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">Adobe Color</div>
-                <div className="text-sm text-gray-600">ACO palette file for Adobe products</div>
+                <div className="font-semibold text-foreground">Adobe Color</div>
+                <div className="text-sm text-muted-foreground">ACO palette file for Adobe products</div>
               </button>
 
               <button
                 onClick={() => handleExportPalette('procreate', selectedPalette)}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">Procreate</div>
-                <div className="text-sm text-gray-600">Swatches file for Procreate</div>
+                <div className="font-semibold text-foreground">Procreate</div>
+                <div className="text-sm text-muted-foreground">Swatches file for Procreate</div>
               </button>
 
             </div>
 
             {isExporting && (
               <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
-                <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <span className="ml-2 text-sm text-muted-foreground">Preparing export...</span>
               </div>
             )}
           </div>
@@ -1250,7 +1251,7 @@ export default function SavedPalettesPanel({
           className="sm:max-w-md"
         >
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Choose a format to export all {savedPalettes.length} palettes:
             </p>
             
@@ -1258,54 +1259,54 @@ export default function SavedPalettesPanel({
               <button
                 onClick={() => handleBulkExport('json')}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">JSON Collection</div>
-                <div className="text-sm text-gray-600">Single file with all palettes and metadata</div>
+                <div className="font-semibold text-foreground">JSON Collection</div>
+                <div className="text-sm text-muted-foreground">Single file with all palettes and metadata</div>
               </button>
 
               <button
                 onClick={() => handleBulkExport('css')}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">CSS File</div>
-                <div className="text-sm text-gray-600">Single CSS file with all palette variables</div>
+                <div className="font-semibold text-foreground">CSS File</div>
+                <div className="text-sm text-muted-foreground">Single CSS file with all palette variables</div>
               </button>
 
               <button
                 onClick={() => handleBulkExport('ase')}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">Adobe ASE File</div>
-                <div className="text-sm text-gray-600">Single ASE file with all palette colors</div>
+                <div className="font-semibold text-foreground">Adobe ASE File</div>
+                <div className="text-sm text-muted-foreground">Single ASE file with all palette colors</div>
               </button>
 
               <button
                 onClick={() => handleBulkExport('adobe')}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">Adobe Color File</div>
-                <div className="text-sm text-gray-600">Single ACO file with all palette colors</div>
+                <div className="font-semibold text-foreground">Adobe Color File</div>
+                <div className="text-sm text-muted-foreground">Single ACO file with all palette colors</div>
               </button>
 
               <button
                 onClick={() => handleBulkExport('procreate')}
                 disabled={isExporting}
-                className="p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md border border-border p-4 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <div className="font-semibold text-gray-800">Procreate File</div>
-                <div className="text-sm text-gray-600">Single swatches file with all palette colors</div>
+                <div className="font-semibold text-foreground">Procreate File</div>
+                <div className="text-sm text-muted-foreground">Single swatches file with all palette colors</div>
               </button>
 
             </div>
 
             {isExporting && (
               <div className="flex items-center justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-800"></div>
-                <span className="ml-2 text-sm text-gray-600">Preparing export...</span>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <span className="ml-2 text-sm text-muted-foreground">Preparing export...</span>
               </div>
             )}
           </div>
@@ -1321,10 +1322,10 @@ export default function SavedPalettesPanel({
           className="sm:max-w-md"
         >
           <div className="space-y-4">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               Are you sure you want to delete the palette <strong>&ldquo;{paletteToDelete.name}&rdquo;</strong>?
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               This action cannot be undone. The palette contains {paletteToDelete.colors.length} colors.
             </div>
             
@@ -1337,7 +1338,7 @@ export default function SavedPalettesPanel({
               </Button>
               <Button
                 onClick={confirmDeletePalette}
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="bg-destructive hover:bg-destructive/90 text-primary-foreground"
               >
                 Delete Palette
               </Button>
@@ -1355,7 +1356,7 @@ export default function SavedPalettesPanel({
           className="sm:max-w-md"
         >
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Select a JSON file exported from this tool to import a palette:
             </p>
             
@@ -1365,14 +1366,14 @@ export default function SavedPalettesPanel({
                 type="file"
                 accept=".json"
                 onChange={handleImportJSON}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Supports JSON files exported from individual palettes or color extractions
               </p>
             </div>
 
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               <strong>Supported formats:</strong>
               <ul className="list-disc list-inside mt-1 space-y-1">
                 <li>Individual palette JSON (from palette export)</li>

@@ -1,15 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { uploadFixtureImage } from './helpers';
 
-test('grayscale toggle flips its own label', async ({ page }) => {
+test('greyscale chip toggles its pressed state', async ({ page }) => {
   await uploadFixtureImage(page);
 
   const toggle = page.getByRole('button', { name: 'Greyscale' });
-  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
   await toggle.click();
-  await expect(page.getByRole('button', { name: 'Color' })).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
-  await page.getByRole('button', { name: 'Color' }).click();
-  await expect(page.getByRole('button', { name: 'Greyscale' })).toBeVisible();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 });

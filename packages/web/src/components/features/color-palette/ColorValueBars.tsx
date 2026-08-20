@@ -71,14 +71,14 @@ export function ColorValueBars({
     <div className={`text-[12px] ${showLabels ? 'space-y-0.5' : 'mb-1'}`}>
       {showLabels && (
         <div className="flex justify-between">
-          <span className="text-gray-500 tracking-wide">{label}</span>
-          <span className="text-gray-700 font-mono">
+          <span className="text-muted-foreground tracking-wide">{label}</span>
+          <span className="text-foreground font-mono">
             {value}
             {suffix}
           </span>
         </div>
       )}
-      <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+      <div className="h-1 bg-border rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-200"
           style={{
@@ -94,7 +94,7 @@ export function ColorValueBars({
     <div className="p-1">
       {/* HSL Values */}
       {showLabels && (
-        <div className="text-[12px] text-gray-500 font-medium mb-1">HSL</div>
+        <div className="text-[12px] text-muted-foreground font-medium mb-1">HSL</div>
       )}
       <div className="space-y-1">
         <BarGraph
@@ -125,7 +125,7 @@ export function ColorValueBars({
 
       {/* HScL Values */}
       {showLabels && (
-        <div className="text-[12px] text-gray-500 font-medium mb-1 mt-3">
+        <div className="text-[12px] text-muted-foreground font-medium mb-1 mt-3">
           HScL
         </div>
       )}

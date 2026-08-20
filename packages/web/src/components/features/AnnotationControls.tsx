@@ -1,5 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from '../ui';
-import { Slider } from '../ui';
+'use client';
+
+import React from 'react';
+import { Button } from '../ui';
+import { LabeledSlider, SegmentedControl } from '../controls';
 import { type AnnotationColorSpace } from '@/lib/annotation-render';
 
 interface AnnotationControlsProps {
@@ -19,6 +22,32 @@ interface AnnotationControlsProps {
   onColorSpaceChange: (_colorSpace: AnnotationColorSpace) => void;
 }
 
+const colorSpaceOptions = [
+  { value: 'hscl' as AnnotationColorSpace, label: 'HScL' },
+  { value: 'hsl' as AnnotationColorSpace, label: 'HSL' },
+];
+
+const themeOptions = [
+  { value: 'light' as const, label: 'Light' },
+  { value: 'dark' as const, label: 'Dark' },
+];
+
+/** The two line colors the annotation renderer supports. */
+const lineColorOptions = [
+  { value: '#ffffff', label: 'White' },
+  { value: '#000000', label: 'Black' },
+];
+
+/** One labelled control row in the annotation panel. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <span className="block text-sm">{label}</span>
+      {children}
+    </div>
+  );
+}
+
 export default function AnnotationControls({
   lineOpacity,
   onLineOpacityChange,
@@ -36,149 +65,87 @@ export default function AnnotationControls({
   onColorSpaceChange,
 }: AnnotationControlsProps) {
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
-        <CardTitle>Annotations</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
-          {/* Color space toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-2">
-              Color Space
-            </label>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button
-                onClick={() => onColorSpaceChange('hscl')}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  colorSpace === 'hscl'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                HScL
-              </button>
-              <button
-                onClick={() => onColorSpaceChange('hsl')}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  colorSpace === 'hsl'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                HSL
-              </button>
-            </div>
-          </div>
-
-          {/* Theme toggle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-2">
-              Label Theme
-            </label>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button
-                onClick={() => onAnnotationThemeChange('light')}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  annotationTheme === 'light'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Light
-              </button>
-              <button
-                onClick={() => onAnnotationThemeChange('dark')}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  annotationTheme === 'dark'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Dark
-              </button>
-            </div>
-          </div>
-
-          {/* Line Color */}
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-2">
-              Line Color
-            </label>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button
-                onClick={() => onLineColorChange('#ffffff')}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  lineColor === '#ffffff'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                White
-              </button>
-              <button
-                onClick={() => onLineColorChange('#000000')}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  lineColor === '#000000'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                Black
-              </button>
-            </div>
-          </div>
-
-          {/* Line Opacity */}
-          <Slider
-            label="Line Opacity"
-            value={Math.round(lineOpacity * 100)}
-            onChange={(v) => onLineOpacityChange(v / 100)}
-            min={0}
-            max={100}
-            step={5}
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold">Annotations</h2>
+      </div>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+        <Field label="Color Space">
+          <SegmentedControl
+            ariaLabel="Color space"
+            value={colorSpace}
+            onChange={onColorSpaceChange}
+            options={colorSpaceOptions}
           />
+        </Field>
 
-          {/* Font Size */}
-          <Slider
-            label="Font Size"
-            value={fontSize}
-            onChange={onFontSizeChange}
-            min={12}
-            max={36}
-            step={1}
+        <Field label="Label Theme">
+          <SegmentedControl
+            ariaLabel="Label theme"
+            value={annotationTheme}
+            onChange={onAnnotationThemeChange}
+            options={themeOptions}
           />
+        </Field>
 
-          {/* Export */}
-          <div className="space-y-2 pt-2 border-t border-gray-100">
-            <button
-              onClick={onExportImage}
-              disabled={!hasAnnotations}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Export PNG
-            </button>
-            <button
-              onClick={onExportOverlay}
-              disabled={!hasAnnotations}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Export PNG (overlay)
-            </button>
-          </div>
+        <Field label="Line Color">
+          <SegmentedControl
+            ariaLabel="Line color"
+            value={lineColor}
+            onChange={onLineColorChange}
+            options={lineColorOptions}
+          />
+        </Field>
 
-          {/* Clear */}
-          <div className="pt-2 border-t border-gray-100">
-            <button
-              onClick={onClearAnnotations}
-              disabled={!hasAnnotations}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-600"
-            >
-              Clear All Annotations
-            </button>
-          </div>
+        <LabeledSlider
+          label="Line Opacity"
+          value={Math.round(lineOpacity * 100)}
+          onChange={(v) => onLineOpacityChange(v / 100)}
+          min={0}
+          max={100}
+          step={5}
+          unit="%"
+        />
+
+        <LabeledSlider
+          label="Font Size"
+          value={fontSize}
+          onChange={onFontSizeChange}
+          min={12}
+          max={36}
+          unit="px"
+        />
+
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={!hasAnnotations}
+            onClick={onExportImage}
+          >
+            Export PNG
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={!hasAnnotations}
+            onClick={onExportOverlay}
+          >
+            Export PNG (overlay)
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+
+        <div>
+          <Button
+            variant="destructive"
+            className="w-full"
+            disabled={!hasAnnotations}
+            onClick={onClearAnnotations}
+          >
+            Clear All Annotations
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

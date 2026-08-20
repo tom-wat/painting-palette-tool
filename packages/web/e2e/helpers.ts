@@ -10,13 +10,18 @@ export const FIXTURE_IMAGE = path.join(__dirname, 'fixtures', 'quadrants.png');
  */
 export async function uploadFixtureImage(page: Page) {
   await page.goto('/');
-  // Both the desktop and mobile layouts render their own <ImageUpload>
-  // (toggled via CSS display, not conditional rendering), so #file-input
-  // exists twice in the DOM; scope to whichever <main> is actually visible.
-  await page.locator('main:visible #file-input').setInputFiles(FIXTURE_IMAGE);
+  await page.locator('#file-input').setInputFiles(FIXTURE_IMAGE);
   await expect(page.getByRole('heading', { name: 'Extracted Color Palette' })).toBeVisible({
     timeout: 15_000,
   });
+}
+
+/**
+ * The selection mode lives in two SegmentedControls — the left panel and the
+ * mobile bar above the canvas — one of which is always hidden by CSS.
+ */
+function selectionMode(page: Page, label: string) {
+  return page.getByRole('radio', { name: label, exact: true }).filter({ visible: true });
 }
 
 /**
@@ -25,7 +30,7 @@ export async function uploadFixtureImage(page: Page) {
  * auto-extracts on mouse-up (ImageCanvas.tsx handleMouseUp, rectangle case).
  */
 export async function selectRectangleOnCanvas(page: Page) {
-  await page.getByRole('button', { name: 'Rectangle' }).click();
+  await selectionMode(page, 'Rect').click();
 
   const canvas = page.locator('canvas').first();
   const box = await canvas.boundingBox();
