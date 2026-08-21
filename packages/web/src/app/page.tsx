@@ -13,12 +13,7 @@ import AdvancedSelectionTools, {
 } from '@/components/features/AdvancedSelectionTools';
 import SavedPalettesPanel from '@/components/features/SavedPalettesPanel';
 import { AppShell, CollapsibleSection } from '@/components/layout';
-import {
-  LabeledSlider,
-  SegmentedControl,
-  ThemeControl,
-  ToggleChip,
-} from '@/components/controls';
+import { LabeledSlider, SegmentedControl, ToggleChip } from '@/components/controls';
 import { Button, Select, Toggle, useToast } from '@/components/ui';
 import {
   exportImageWithAnnotations,
@@ -318,10 +313,6 @@ export default function Home() {
             Upload an image to configure extraction parameters.
           </p>
         )}
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Appearance" defaultOpen={false}>
-        <ThemeControl />
       </CollapsibleSection>
     </div>
   );

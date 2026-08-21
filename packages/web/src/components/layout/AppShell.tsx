@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Sheet from '../ui/Sheet';
+import ThemeToggle from './ThemeToggle';
 
 interface AppShellProps {
   title: string;
@@ -89,7 +90,10 @@ export default function AppShell({
             title
           )}
         </h1>
-        <div className="flex items-center gap-2">{headerActions}</div>
+        <div className="flex items-center gap-2">
+          {headerActions}
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">

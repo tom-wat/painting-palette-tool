@@ -9,17 +9,15 @@ import { uploadFixtureImageAndExtract } from './helpers';
  * actually repainted rather than just re-classed.
  */
 
-const APPEARANCE = 'Appearance';
+type ThemeLabel = 'Light' | 'Dark' | 'System';
 
-async function setAppearanceOpen(page: Page, open: boolean) {
-  const section = page.getByRole('button', { name: APPEARANCE });
-  const isOpen = (await section.getAttribute('aria-expanded')) === 'true';
-  if (isOpen !== open) await section.click();
+function themeTrigger(page: Page) {
+  return page.getByRole('button', { name: 'Theme' });
 }
 
-async function chooseTheme(page: Page, label: 'Light' | 'Dark' | 'Auto') {
-  await setAppearanceOpen(page, true);
-  await page.getByRole('radio', { name: label, exact: true }).click();
+async function chooseTheme(page: Page, label: ThemeLabel) {
+  await themeTrigger(page).click();
+  await page.getByRole('menuitemradio', { name: label, exact: true }).click();
 }
 
 /**
@@ -128,17 +126,17 @@ test.describe('persistence and first paint', () => {
     ).toBe(true);
   });
 
-  test('Auto follows the OS setting in both directions', async ({ page }) => {
+  test('System follows the OS setting in both directions', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/');
-    await chooseTheme(page, 'Auto');
+    await chooseTheme(page, 'System');
     expect(await htmlIsDark(page)).toBe(true);
 
-    // Collapsed, so the switch itself is unmounted. The media-query listener
-    // belongs to ThemeProvider at the app root; when it lived in the switch,
-    // closing this section quietly stopped the app following the OS.
-    await setAppearanceOpen(page, false);
-    await expect(page.getByRole('radio', { name: 'Auto' })).toHaveCount(0);
+    // The menu is closed, so nothing theme-related is mounted below the
+    // provider. The media-query listener belongs to ThemeProvider at the app
+    // root; when it lived in the switch, dismissing the switch quietly stopped
+    // the app following the OS.
+    await expect(page.getByRole('menu')).toHaveCount(0);
 
     // No reload: a schedule flipping at dusk takes effect in place.
     await page.emulateMedia({ colorScheme: 'light' });
@@ -146,22 +144,6 @@ test.describe('persistence and first paint', () => {
 
     await page.emulateMedia({ colorScheme: 'dark' });
     await expect.poll(() => htmlIsDark(page)).toBe(true);
-  });
-
-  test('the switch shows the active preference the instant it is opened', async ({
-    page,
-  }) => {
-    await page.goto('/');
-    await chooseTheme(page, 'Dark');
-    await setAppearanceOpen(page, false);
-
-    // Reopening must not flash an empty placeholder before the real control:
-    // the first frame already carries the selection.
-    await setAppearanceOpen(page, true);
-    await expect(page.getByRole('radio', { name: 'Dark' })).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
   });
 
   test('an explicit choice overrides the OS', async ({ page }) => {
@@ -172,6 +154,105 @@ test.describe('persistence and first paint', () => {
     expect(await htmlIsDark(page)).toBe(false);
     await page.reload();
     expect(await htmlIsDark(page)).toBe(false);
+  });
+});
+
+test.describe('header toggle', () => {
+  test('the menu marks the active theme and applies a new one', async ({ page }) => {
+    await page.goto('/');
+    await chooseTheme(page, 'Light');
+
+    await themeTrigger(page).click();
+    await expect(page.getByRole('menuitemradio', { name: 'Light' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+
+    await page.getByRole('menuitemradio', { name: 'Dark' }).click();
+    expect(await htmlIsDark(page)).toBe(true);
+    // Choosing dismisses the menu.
+    await expect(page.getByRole('menu')).toHaveCount(0);
+
+    await themeTrigger(page).click();
+    await expect(page.getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+  });
+
+  test('the trigger icon follows the resolved theme', async ({ page }) => {
+    await page.goto('/');
+
+    // Sun in light, moon in dark — the two icons are both in the DOM and
+    // swapped by CSS, so exactly one is ever visible.
+    const icons = themeTrigger(page).locator('svg');
+    await expect(icons).toHaveCount(2);
+
+    await chooseTheme(page, 'Light');
+    await expect(themeTrigger(page).locator('svg:visible')).toHaveCount(1);
+    const lightIcon = await themeTrigger(page).locator('svg:visible').getAttribute('class');
+
+    await chooseTheme(page, 'Dark');
+    await expect(themeTrigger(page).locator('svg:visible')).toHaveCount(1);
+    const darkIcon = await themeTrigger(page).locator('svg:visible').getAttribute('class');
+
+    expect(lightIcon).not.toBe(darkIcon);
+  });
+
+  test('the right icon is on screen at first paint, with no pop-in', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/');
+    await chooseTheme(page, 'Dark');
+
+    // The icon is chosen from the `.dark` class, so the class has to be on
+    // <html> by the time <body> exists — i.e. written by the blocking script.
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        if (!document.body) return;
+        (window as unknown as Record<string, unknown>).__darkAtBodyStart =
+          document.documentElement.classList.contains('dark');
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
+
+    await page.reload();
+
+    expect(
+      await page.evaluate(
+        () => (window as unknown as Record<string, unknown>).__darkAtBodyStart
+      )
+    ).toBe(true);
+    await expect(themeTrigger(page).locator('svg:visible')).toHaveCount(1);
+  });
+
+  test('closes on Escape and on a click outside', async ({ page }) => {
+    await page.goto('/');
+
+    await themeTrigger(page).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(themeTrigger(page)).toBeFocused();
+
+    await themeTrigger(page).click();
+    await expect(page.getByRole('menu')).toBeVisible();
+    await page.mouse.click(400, 400);
+    await expect(page.getByRole('menu')).toHaveCount(0);
+  });
+
+  test('arrow keys walk the items and Enter picks one', async ({ page }) => {
+    await page.goto('/');
+    await chooseTheme(page, 'Light');
+
+    await themeTrigger(page).click();
+    // Opens with the active item focused, so one step down lands on Dark.
+    await expect(page.getByRole('menuitemradio', { name: 'Light' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitemradio', { name: 'Dark' })).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    expect(await htmlIsDark(page)).toBe(true);
   });
 });
 

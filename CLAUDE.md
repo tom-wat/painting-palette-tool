@@ -226,7 +226,10 @@ global.beforeEach(() => {
    - `ToggleChip` — ON/OFF ピル
    - `ColorRow` — 色選択行(ラベル+スウォッチ+hex入力)
 2. **汎用UIは `src/components/ui/` を使う**(Button / Card / Input / Select / Slider /
-   Toggle / Modal / Sheet / Toast / Tooltip)。足りないものはここに足す。個別画面で自作しない
+   Toggle / Modal / Sheet / Toast / Tooltip / DropdownMenu)。足りないものはここに足す。
+   個別画面で自作しない。`DropdownMenu` は姉妹プロジェクトが Radix から得ているものを
+   自前で書いたもの(本プロジェクトに Radix は入れていない)。フォーカス移動・矢印キー・
+   Escape・外側クリックを自前で持っているので、**新しいメニューを個別に組まずこれを使う**
 3. レイアウトは必ず `AppShell` の枠内で組む。**デスクトップとモバイルで別ツリーを書かない** —
    ヘッダー+左パネル+キャンバス+右パネルを渡せば、モバイルでは左右パネルが
    ボトムシート(`ui/Sheet`)に自動で切り替わる
@@ -270,11 +273,13 @@ global.beforeEach(() => {
   もう一方のテーマで前のテーマの値が残る
 - テーマの状態は `lib/theme.ts`(純粋関数)と `components/ThemeProvider.tsx` が持つ。
   設定は localStorage(`painting-palette-theme`)に `light` / `dark` / `system` で保存。
-  UI は左パネルの Appearance セクション(`controls/ThemeControl`)
+  UI はヘッダー右端の `layout/ThemeToggle`(`AppShell` が常に描画する)。
+  姉妹プロジェクト `object-proportion` の ThemeToggle と同じ形 —
+  ghost アイコンボタン + Light / Dark / System のドロップダウン
 - **`ThemeProvider` は必ずルート(`app/layout.tsx`)に置く。** `system` の間は
   `matchMedia` を監視し続ける必要があり、スイッチのある折りたたみセクションの中に
-  状態を持たせると、**セクションを閉じた瞬間に OS 追従が止まる**(実際に踏んだ)。
-  `e2e/theme.spec.ts` がセクションを閉じた状態で追従を検証している
+  状態を持たせると、**その UI が閉じた瞬間に OS 追従が止まる**(実際に踏んだ)。
+  `e2e/theme.spec.ts` がメニューを閉じた状態で追従を検証している
 - **初回描画前の適用は `app/theme-script.tsx` のインラインスクリプトが担当**。
   React のハイドレーション後に適用するとダーク設定のユーザーに白画面が一瞬見えるため、
   ブロッキングスクリプトで `<head>` に置いてある。`lib/theme.ts` のロジックを
@@ -283,6 +288,15 @@ global.beforeEach(() => {
 - `color-scheme` を `:root` / `.dark` の両方に置いている。スクロールバーや
   ネイティブのフォームコントロールは CSS 変数が届かないので、これが無いと
   ダーク時に白いままになる
+- **ヘッダーのボタンのアイコンは React state で選ばない**。Sun / Moon の両方を出して
+  `dark:hidden` / `hidden dark:block` で CSS に選ばせる。`.dark` はブロッキング
+  スクリプトが初回描画前に付けるので、これで最初のフレームから正しい。state で選ぶと
+  サーバーとクライアントでアイコンが食い違い、毎回ロード時にポップインする。
+  メニューの中身は開いたときにしか mount されないので state で構わない
+- **`@layer components` のクラス名は必ずソースにリテラルで書く**。tailwind は
+  ソース内に現れないクラス名のルールを `@layer components` から削除するので、
+  `` `foo-${key}` `` のような組み立て方をすると**ルールごと消えて無言で壊れる**
+  (実際に踏んだ: アイコンが全部 `display:none` のままになり、原因が CSS 側に出ない)
 - **UI のテーマと注釈(annotation)のテーマは別物**。`useUISettings` の `annotationTheme` は
   画像の上に描くラベルボックスの色で、UI ではなく画像に合わせて選ぶもの。混同しないこと
 
