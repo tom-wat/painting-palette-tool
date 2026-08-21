@@ -8,8 +8,11 @@
  * the `oklch(var(--x) / <alpha-value>)` form in tailwind.config.ts needs the
  * alpha slot free so `bg-foreground/50` keeps working.
  *
- * The dark palette is defined but not switched on anywhere: the UI is fixed to
- * light. Adding `class="dark"` to <html> is all that is needed to enable it.
+ * The dark palette is switched on by the `.dark` class on <html> (tailwind is
+ * `darkMode: 'class'`). `lib/theme.ts` owns that class; `app/theme-script.tsx`
+ * sets it before the first paint. `color-scheme` rides along on each palette so
+ * that scrollbars and native form-control chrome — which CSS variables cannot
+ * reach — invert too.
  */
 :root {
   --background: 1 0 0;
@@ -35,6 +38,7 @@
   --input: 0.922 0 0;
   --ring: 0.708 0 0;
   --radius: 0.625rem;
+  color-scheme: light;
 }
 
 .dark {
@@ -59,6 +63,7 @@
   --border: 0.269 0 0;
   --input: 0.32 0 0;
   --ring: 0.556 0 0;
+  color-scheme: dark;
 }
 
 @layer base {

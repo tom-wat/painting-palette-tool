@@ -265,8 +265,26 @@ global.beforeEach(() => {
   `oklch(var(--x) / <alpha-value>)` で参照しており、`bg-foreground/40` のような
   不透明度修飾を効かせるために alpha スロットを空けてある。**完全な色関数を入れないこと**
 - `--destructive` は**無彩色**にしてある(白黒ルール優先)。破壊的操作はホバーで反転させて示す
-- ダークテーマの変数は定義済みだが**UIはライト固定**。`<html>` に `class="dark"` を
-  付ければ有効になる。トークンを足すときは `:root` と `.dark` の両方に書く
+- **ダークモードは実装済み**。`<html>` の `.dark` クラスで切り替わる(`darkMode: 'class'`)。
+  トークンを足すときは `:root` と `.dark` の**両方**に書く — 片方だけだと
+  もう一方のテーマで前のテーマの値が残る
+- テーマの状態は `lib/theme.ts`(純粋関数)と `components/ThemeProvider.tsx` が持つ。
+  設定は localStorage(`painting-palette-theme`)に `light` / `dark` / `system` で保存。
+  UI は左パネルの Appearance セクション(`controls/ThemeControl`)
+- **`ThemeProvider` は必ずルート(`app/layout.tsx`)に置く。** `system` の間は
+  `matchMedia` を監視し続ける必要があり、スイッチのある折りたたみセクションの中に
+  状態を持たせると、**セクションを閉じた瞬間に OS 追従が止まる**(実際に踏んだ)。
+  `e2e/theme.spec.ts` がセクションを閉じた状態で追従を検証している
+- **初回描画前の適用は `app/theme-script.tsx` のインラインスクリプトが担当**。
+  React のハイドレーション後に適用するとダーク設定のユーザーに白画面が一瞬見えるため、
+  ブロッキングスクリプトで `<head>` に置いてある。`lib/theme.ts` のロジックを
+  意図的に小さく複製している(import するとフェッチ待ちが発生して意味がない)。
+  このため `<html>` には `suppressHydrationWarning` が付いている
+- `color-scheme` を `:root` / `.dark` の両方に置いている。スクロールバーや
+  ネイティブのフォームコントロールは CSS 変数が届かないので、これが無いと
+  ダーク時に白いままになる
+- **UI のテーマと注釈(annotation)のテーマは別物**。`useUISettings` の `annotationTheme` は
+  画像の上に描くラベルボックスの色で、UI ではなく画像に合わせて選ぶもの。混同しないこと
 
 その他:
 

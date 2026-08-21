@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '../ui';
+import { cn } from '@/lib/cn';
 import { PaletteAnalysis, BrightnessCategory } from '@/lib/brightness-analysis';
 
 interface BrightnessAnalysisProps {
@@ -105,11 +106,13 @@ export default function BrightnessAnalysis({
                 {distribution.histogram.map((value, index) => (
                   <div
                     key={index}
-                    className="flex-1 bg-border rounded-t"
-                    style={{
-                      height: `${Math.max(value * 100, 2)}%`,
-                      backgroundColor: value > 0.1 ? '#000' : '#e5e7eb',
-                    }}
+                    // Tokens rather than hexes — the bars have to invert with
+                    // the theme like the rest of the panel.
+                    className={cn(
+                      'flex-1 rounded-t',
+                      value > 0.1 ? 'bg-foreground' : 'bg-border'
+                    )}
+                    style={{ height: `${Math.max(value * 100, 2)}%` }}
                     title={`${Math.round(index * 10)}-${Math.round((index + 1) * 10)}%: ${formatPercentage(value)}`}
                   />
                 ))}
